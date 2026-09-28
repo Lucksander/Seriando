@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import com.seriando.app.ui.home.HomeScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,60 +39,3 @@ fun SeriandoApp() {
     HomeScreen()
 }
 
-@Composable
-fun HomeScreen() {
-
-    var textoPesquisa by remember { mutableStateOf("") }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp)
-    ) {
-        Text(
-            text = "SERIANDO",
-            style = MaterialTheme.typography.headlineLarge
-        )
-
-        Text(
-            text = "Organize suas séries. Nunca perca onde parou.",
-            style = MaterialTheme.typography.bodyLarge
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        OutlinedTextField(
-            value = textoPesquisa,
-            onValueChange = { textoPesquisa = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = {
-                Text("Pesquisar série")
-            }
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Button(
-            onClick = {
-                println("Pesquisa: $textoPesquisa")
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Pesquisar")
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Text(
-            text = "Minhas séries",
-            style = MaterialTheme.typography.headlineSmall
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Você ainda não adicionou nenhuma série.",
-            style = MaterialTheme.typography.bodyMedium
-        )
-    }
-}
