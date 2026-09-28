@@ -1,5 +1,6 @@
 package com.seriando.app.ui.home
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,12 +19,16 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.seriando.app.model.Serie
 
+// Cartão visual de uma série, usado na lista de resultados da busca.
+// aoClicar é chamado quando o usuário toca no cartão, para navegar
+// até a tela de detalhes daquela série.
 @Composable
-fun SerieCard(serie: Serie) {
+fun SerieCard(serie: Serie, aoClicar: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp)
+            .clickable { aoClicar() } // torna o cartão inteiro clicável
     ) {
         Row(modifier = Modifier.padding(12.dp)) {
             AsyncImage(

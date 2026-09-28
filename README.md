@@ -6,13 +6,13 @@ Projeto desenvolvido em Kotlin com foco em aprendizado, consumo de APIs, autenti
 
 ## 📌 Versão Atual
 
-Versão: V0.3 (em desenvolvimento)
+Versão: V0.4 (em desenvolvimento)
 
-Novidades da V0.3
+Novidades da V0.4
 
-- Exibição da capa, ano de estreia e sinopse de cada série
-- Cartão visual para os resultados da pesquisa
-- Carregamento de imagens com Coil
+- Navegação entre telas com Navigation Compose
+- Separação da Home e da tela de Pesquisa
+- Tela de Detalhes da série, com capa, temporadas/episódios e sinopse completa
 
 ## 📖 Sobre o Projeto
 
@@ -24,17 +24,16 @@ O projeto está sendo desenvolvido de forma incremental, com o objetivo de prati
 
 ### Já implementado
 
-- Tela inicial com campo de pesquisa
+- Tela inicial (Home) com acesso à pesquisa e espaço para "Minhas séries"
+- Navegação entre telas (Home → Busca → Detalhes)
 - Pesquisa de séries pela API da TMDB
-- Exibição de capa, nome, ano de estreia e sinopse
+- Tela de detalhes com capa, ano de estreia, temporadas/episódios e sinopse completa
 - Chave da API protegida fora do repositório
 
 ### Planejado
 
 - Login com conta Google (Firebase Authentication)
 - Identificação do usuário autenticado e vínculo da lista à conta
-- Tela de detalhes da série
-- Visualização de temporadas e episódios
 - Adicionar séries à lista pessoal
 - Marcar episódios como assistidos
 - Acompanhar o progresso de cada série
@@ -45,6 +44,7 @@ O projeto está sendo desenvolvido de forma incremental, com o objetivo de prati
 
 - Kotlin
 - Jetpack Compose (Material 3)
+- Navigation Compose
 - Retrofit + Gson
 - Coil
 - TMDB API
@@ -58,18 +58,18 @@ O projeto está sendo desenvolvido de forma incremental, com o objetivo de prati
 com.seriando.app
 │
 ├── ui/
-│   ├── home/
-│   ├── search/
-│   ├── details/
-│   └── mylist/
+│   ├── home/           Home e cartão de série (SerieCard)
+│   ├── search/         Tela de pesquisa
+│   ├── details/        Tela de detalhes da série
+│   └── mylist/         (planejado) Minha lista
 │
 ├── data/
-│   ├── remote/        Retrofit e chamadas à TMDB
-│   ├── local/         Room
-│   └── repository/
+│   ├── remote/         Retrofit e chamadas à TMDB
+│   ├── local/          (planejado) Room
+│   └── repository/     (planejado)
 │
-├── model/             classes de dados
-├── navigation/        navegação entre telas
+├── model/              classes de dados (Serie, SerieDetalhe, TmdbSearchResponse)
+├── navigation/         rotas e NavHost
 └── MainActivity.kt
 ```
 
@@ -124,13 +124,13 @@ Requisitos: Android Studio atualizado e Android 7.0 (API 24) ou superior.
 - Exibição de capa, ano e sinopse
 - Cartão de série com Coil
 
-## 📌 Próximas Melhorias
-
 ### V0.4
 
-- Navegação entre telas
-- Tela de pesquisa dedicada
-- Tela de detalhes da série
+- Navegação entre telas com Navigation Compose
+- Separação da Home e da tela de Pesquisa
+- Tela de Detalhes da série (capa, temporadas/episódios, sinopse completa)
+
+## 📌 Próximas Melhorias
 
 ### V0.5
 
@@ -139,7 +139,7 @@ Requisitos: Android Studio atualizado e Android 7.0 (API 24) ou superior.
 
 ### V0.6
 
-- Minha lista de séries
+- Tela "Minha lista"
 - Salvar séries, episódios assistidos e progresso no Firestore
 - Cache local com Room
 
@@ -156,6 +156,7 @@ Este projeto está sendo utilizado para praticar:
 
 - Kotlin
 - Jetpack Compose
+- Navigation Compose
 - Consumo de APIs REST com Retrofit
 - Coroutines
 - Autenticação com Firebase e Google Sign-In
