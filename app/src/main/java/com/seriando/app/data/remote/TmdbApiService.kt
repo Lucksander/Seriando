@@ -1,29 +1,51 @@
 package com.seriando.app.data.remote
 
+import com.seriando.app.model.BuscaMultiResponse
+import com.seriando.app.model.MovieDetalhe
 import com.seriando.app.model.SerieDetalhe
-import com.seriando.app.model.TmdbSearchResponse
+import com.seriando.app.model.TemporadaDetalhe
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
 
-// Interface que descreve as chamadas à API da TMDB.
-// O Retrofit gera a implementação real por trás dessas anotações.
 interface TmdbApiService {
 
-    // Pesquisa séries por nome (usado na SearchScreen).
-    @GET("search/tv")
-    suspend fun buscarSeries(
+    @GET("search/multi")
+    suspend fun buscarMulti(
         @Query("api_key") apiKey: String,
-        @Query("query") nomeSerie: String,
+        @Query("query") texto: String,
         @Query("language") idioma: String = "pt-BR"
-    ): TmdbSearchResponse
+    ): BuscaMultiResponse
 
-    // Busca os detalhes completos de uma série específica pelo ID.
-    // {id} na URL é substituído pelo valor de serieId, graças ao @Path.
+    // append_to_response junta elenco (credits) e vídeos (videos) na mesma
+    // resposta, evitando precisar de 3 chamadas separadas à API.
     @GET("tv/{id}")
     suspend fun buscarDetalhesSerie(
         @Path("id") serieId: Int,
         @Query("api_key") apiKey: String,
-        @Query("language") idioma: String = "pt-BR"
+        @Query("language") idioma: String = "pt-BR",
+        @Query("append_to_response") extras: String = "credits,videos"
     ): SerieDetalhe
+
+    @GET("movie/{id}")
+    suspend fun buscarDetalhesFilme(
+        @Path("id") filmeId: Int,
+        @Query("api_key") apiKey: String,
+        @Query("language") idioma: String = "pt-BR",
+        @Query("append_to_response") extras: String = "credits,videos"
+    ): MovieDetalhe
+
+    @GET("tv/{id}/season/{numeroTemporada}")
+    suspend fun buscarTemporada(
+        @Path("id") serieId: Int,
+        @Path("numeroTemporada") numeroTemporada: Int,
+        @Query("api_key") apiKey: String,
+        @Query("language") idioma: String = "pt-BR"
+    ): TemporadaDetalhe
+
+    @GET("trending/all/week")
+    suspend fun buscarEmAlta(
+        @Query("api_key") apiKey: String,
+        @Query("language") idioma: String = "pt-BR"
+    ): BuscaMultiResponse
 }

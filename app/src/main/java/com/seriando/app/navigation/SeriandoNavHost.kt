@@ -8,10 +8,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.seriando.app.ui.details.DetailsScreen
-import com.seriando.app.ui.home.HomeScreen
 import com.seriando.app.ui.search.SearchScreen
 
-// Componente central de navegação do app.
 @Composable
 fun SeriandoNavHost(
     navController: NavHostController = rememberNavController()
@@ -21,30 +19,32 @@ fun SeriandoNavHost(
         startDestination = Rotas.HOME
     ) {
         composable(Rotas.HOME) {
-            HomeScreen(
-                aoClicarEmPesquisar = { navController.navigate(Rotas.BUSCA) }
+            MainScaffold(
+                aoClicarEmPesquisar = { navController.navigate(Rotas.BUSCA) },
+                aoClicarEmItem = { id, tipoMidia ->
+                    navController.navigate(Rotas.detalhesComId(tipoMidia, id))
+                }
             )
         }
 
         composable(Rotas.BUSCA) {
             SearchScreen(
-                // Ao clicar numa série, navega para a rota de detalhes
-                // já com o ID preenchido (ex: "detalhes/1399").
-                aoClicarEmSerie = { serieId ->
-                    navController.navigate(Rotas.detalhesComId(serieId))
+                aoClicarEmItem = { id, tipoMidia ->
+                    navController.navigate(Rotas.detalhesComId(tipoMidia, id))
                 }
             )
         }
 
-        // Declara a rota de detalhes, avisando que ela espera
-        // um argumento chamado "serieId" do tipo inteiro.
         composable(
             route = Rotas.DETALHES,
-            arguments = listOf(navArgument("serieId") { type = NavType.IntType })
+            arguments = listOf(
+                navArgument("tipoMidia") { type = NavType.StringType },
+                navArgument("serieId") { type = NavType.IntType }
+            )
         ) { backStackEntry ->
-            // Lê o serieId que veio na navegação e repassa para a tela.
+            val tipoMidia = backStackEntry.arguments?.getString("tipoMidia") ?: "tv"
             val serieId = backStackEntry.arguments?.getInt("serieId") ?: 0
-            DetailsScreen(serieId = serieId)
+            DetailsScreen(serieId = serieId, tipoMidia = tipoMidia)
         }
     }
 }

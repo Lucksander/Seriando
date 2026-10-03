@@ -21,19 +21,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.seriando.app.BuildConfig
+import com.seriando.app.data.cache.BuscaCache
 import com.seriando.app.data.remote.RetrofitInstance
-import com.seriando.app.model.Serie
-import com.seriando.app.ui.home.SerieCard
+import com.seriando.app.model.ResultadoBusca
+import com.seriando.app.ui.home.ResultadoCard
 import kotlinx.coroutines.launch
 
-// Tela de pesquisa: campo de busca + lista de resultados.
-// aoClicarEmSerie é chamado quando o usuário toca em um cartão,
-// passando o ID da série para a navegação decidir para onde ir.
 @Composable
-fun SearchScreen(aoClicarEmSerie: (Int) -> Unit) {
+fun SearchScreen(aoClicarEmItem: (Int, String) -> Unit) {
 
-    var textoPesquisa by remember { mutableStateOf("") }
-    var resultados by remember { mutableStateOf<List<Serie>>(emptyList()) }
+    // O valor inicial vem do cache, não de uma string vazia — assim,
+    // se o usuário já pesquisou algo antes e voltou para cá, o campo
+    // e os resultados aparecem como estavam.
+    var textoPesquisa by remember { mutableStateOf(BuscaCache.textoPesquisa) }
+    var resultados by remember { mutableStateOf(BuscaCache.resultados) }
     val scope = rememberCoroutineScope()
 
     Column(
@@ -44,9 +45,12 @@ fun SearchScreen(aoClicarEmSerie: (Int) -> Unit) {
     ) {
         OutlinedTextField(
             value = textoPesquisa,
-            onValueChange = { textoPesquisa = it },
+            onValueChange = {
+                textoPesquisa = it
+                BuscaCache.textoPesquisa = it // mantém o cache atualizado a cada letra digitada
+            },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Pesquisar série") }
+            label = { Text("Pesquisar série ou filme") }
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -55,11 +59,12 @@ fun SearchScreen(aoClicarEmSerie: (Int) -> Unit) {
             onClick = {
                 scope.launch {
                     try {
-                        val resposta = RetrofitInstance.api.buscarSeries(
+                        val resposta = RetrofitInstance.api.buscarMulti(
                             BuildConfig.TMDB_API_KEY,
                             textoPesquisa
                         )
-                        resultados = resposta.results
+                        resultados = resposta.results.filter { it.ehFilme || it.ehSerie }
+                        BuscaCache.resultados = resultados // salva o resultado também
                     } catch (e: Exception) {
                         Log.e("Seriando", "Erro na pesquisa", e)
                     }
@@ -72,9 +77,14 @@ fun SearchScreen(aoClicarEmSerie: (Int) -> Unit) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        resultados.forEach { serie ->
-            // Ao clicar no cartão, avisa a navegação com o ID da série.
-            SerieCard(serie = serie, aoClicar = { aoClicarEmSerie(serie.id) })
+        resultados.forEach { resultado ->
+            ResultadoCard(
+                resultado = resultado,
+                aoClicar = {
+                    val tipoMidia = if (resultado.ehFilme) "movie" else "tv"
+                    aoClicarEmItem(resultado.id, tipoMidia)
+                }
+            )
         }
     }
 }

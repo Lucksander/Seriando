@@ -1,22 +1,28 @@
 # 📺 Seriando
 
-Aplicativo Android para organizar as séries que você assiste. Pesquise séries, acompanhe temporadas e episódios, marque o que já viu e nunca perca onde parou.
+Aplicativo Android para organizar as séries e filmes que você assiste. Pesquise, acompanhe temporadas e episódios, marque o que já viu e nunca perca onde parou.
 
 Projeto desenvolvido em Kotlin com foco em aprendizado, consumo de APIs, autenticação, persistência de dados e boas práticas de desenvolvimento Android.
 
 ## 📌 Versão Atual
 
-Versão: V0.4 (em desenvolvimento)
+Versão: V0.8 (em desenvolvimento)
 
-Novidades da V0.4
+Novidades da V0.8
 
-- Navegação entre telas com Navigation Compose
-- Separação da Home e da tela de Pesquisa
-- Tela de Detalhes da série, com capa, temporadas/episódios e sinopse completa
+- Busca unificada: séries e filmes aparecem juntos nos resultados
+- Navegação por abas (Home / Minha Lista)
+- Home com grade de destaques aleatórios a cada abertura
+- Status de acompanhamento por item (diferente para série e para filme)
+- Nota da comunidade, elenco e trailer na tela de Detalhes
+- Botão para marcar uma temporada inteira como assistida
+- Botão de remover item da lista (na Minha Lista e nos Detalhes)
+- Pesquisa e aba selecionada preservadas ao navegar com o botão voltar
+- Saudação personalizada com o nome do usuário, editável
 
 ## 📖 Sobre o Projeto
 
-O Seriando é um aplicativo Android que utiliza a API da TMDB para buscar informações de séries. A ideia é que o usuário faça login com a conta Google, monte sua lista de séries e acompanhe o progresso de cada uma, episódio por episódio, com tudo salvo na nuvem.
+O Seriando é um aplicativo Android que utiliza a API da TMDB para buscar informações de séries e filmes. O usuário faz login com a conta Google, monta sua lista pessoal, acompanha o progresso de cada série episódio por episódio, e organiza tudo por status (quero assistir, assistindo, completo, etc.), com os dados salvos na nuvem.
 
 O projeto está sendo desenvolvido de forma incremental, com o objetivo de praticar Kotlin, Jetpack Compose, integração com APIs REST, Firebase, persistência de dados e versionamento com Git/GitHub.
 
@@ -24,21 +30,26 @@ O projeto está sendo desenvolvido de forma incremental, com o objetivo de prati
 
 ### Já implementado
 
-- Tela inicial (Home) com acesso à pesquisa e espaço para "Minhas séries"
-- Navegação entre telas (Home → Busca → Detalhes)
-- Pesquisa de séries pela API da TMDB
-- Tela de detalhes com capa, ano de estreia, temporadas/episódios e sinopse completa
+- Navegação por abas: Home e Minha Lista
+- Home com busca e grade de destaques aleatórios (séries e filmes em alta)
+- Busca unificada de séries e filmes (TMDB search/multi)
+- Tela de Detalhes com capa, nota, sinopse, elenco e trailer
+- Temporadas e episódios, com marcação individual ou por temporada inteira
+- Progresso de episódios assistidos por série
+- Login com conta Google (Firebase Authentication)
+- Apelido de exibição, sugerido automaticamente no primeiro login e editável depois
+- Adicionar/remover itens da lista pessoal (Firestore)
+- Status de acompanhamento por item, com conjuntos diferentes para série e filme
+- Filtro por status na Minha Lista
 - Chave da API protegida fora do repositório
 
 ### Planejado
 
-- Login com conta Google (Firebase Authentication)
-- Identificação do usuário autenticado e vínculo da lista à conta
-- Adicionar séries à lista pessoal
-- Marcar episódios como assistidos
-- Acompanhar o progresso de cada série
-- Sincronização na nuvem com Cloud Firestore
 - Cache local para uso offline com Room
+- Tratamento de erros e estados de carregamento mais completos
+- Tema visual próprio, ícone do app
+- Regras de segurança do Firestore para produção
+- Testes
 
 ## 🛠️ Tecnologias Utilizadas
 
@@ -48,8 +59,9 @@ O projeto está sendo desenvolvido de forma incremental, com o objetivo de prati
 - Retrofit + Gson
 - Coil
 - TMDB API
-- Firebase Authentication e Google Sign-In (planejado)
-- Cloud Firestore e Room (planejado)
+- Firebase Authentication (login com Google via Credential Manager)
+- Cloud Firestore
+- Room (planejado)
 - Git e GitHub
 
 ## 📂 Estrutura do Projeto
@@ -58,18 +70,20 @@ O projeto está sendo desenvolvido de forma incremental, com o objetivo de prati
 com.seriando.app
 │
 ├── ui/
-│   ├── home/           Home e cartão de série (SerieCard)
-│   ├── search/         Tela de pesquisa
-│   ├── details/        Tela de detalhes da série
-│   └── mylist/         (planejado) Minha lista
+│   ├── home/        Home, cartões de resultado/destaque/lista, edição de apelido
+│   ├── search/       Tela de pesquisa
+│   ├── details/      Tela de detalhes (série ou filme)
+│   ├── mylist/        Minha Lista, com filtro por status
+│   └── login/         Diálogo de login obrigatório
 │
 ├── data/
-│   ├── remote/         Retrofit e chamadas à TMDB
-│   ├── local/          (planejado) Room
-│   └── repository/     (planejado)
+│   ├── remote/        Retrofit e chamadas à TMDB
+│   ├── auth/          Autenticação (Firebase + Credential Manager)
+│   ├── repository/    Minha Lista, Progresso, Perfil (Firestore)
+│   └── cache/         Cache em memória (pesquisa e aba selecionada)
 │
-├── model/              classes de dados (Serie, SerieDetalhe, TmdbSearchResponse)
-├── navigation/         rotas e NavHost
+├── model/              classes de dados e modelos de status
+├── navigation/         rotas, NavHost e estrutura de abas (MainScaffold)
 └── MainActivity.kt
 ```
 
@@ -83,9 +97,11 @@ git clone https://github.com/Lucksander/seriando.git
 
 Abra a pasta do projeto no Android Studio e aguarde a sincronização do Gradle.
 
-## 🔧 Configuração da API Key
+## 🔧 Configuração
 
-O app precisa de uma chave da TMDB para funcionar.
+O app precisa de uma chave da TMDB e de um projeto Firebase para funcionar.
+
+**TMDB**
 
 1. Crie uma conta em https://www.themoviedb.org/
 2. Nas configurações da conta, acesse a aba API e solicite uma chave (opção Developer)
@@ -95,7 +111,19 @@ O app precisa de uma chave da TMDB para funcionar.
 TMDB_API_KEY=sua_chave_aqui
 ```
 
-O `local.properties` já é ignorado pelo Git, então a chave não vai para o repositório.
+**Firebase**
+
+1. Crie um projeto em https://console.firebase.google.com
+2. Registre o app Android com o pacote `com.seriando.app` e adicione o SHA-1 de debug
+3. Baixe o `google-services.json` e coloque na pasta `app/`
+4. Ative o login com Google em Authentication e crie o banco em Firestore Database
+5. Copie o Web Client ID (`client_type: 3` no `google-services.json`) para `app/src/main/res/values/strings.xml`:
+
+```xml
+<string name="default_web_client_id">SEU_WEB_CLIENT_ID</string>
+```
+
+Nenhum desses arquivos (`local.properties`, `google-services.json`) vai para o repositório — ambos estão no `.gitignore`.
 
 ## ▶️ Como Executar
 
@@ -130,23 +158,42 @@ Requisitos: Android Studio atualizado e Android 7.0 (API 24) ou superior.
 - Separação da Home e da tela de Pesquisa
 - Tela de Detalhes da série (capa, temporadas/episódios, sinopse completa)
 
-## 📌 Próximas Melhorias
-
 ### V0.5
 
-- Login com Google usando Firebase Authentication
-- Identificação do usuário autenticado
+- Login com Google usando Firebase Authentication e Credential Manager
 
 ### V0.6
 
-- Tela "Minha lista"
-- Salvar séries, episódios assistidos e progresso no Firestore
+- Integração com Cloud Firestore
+- Adicionar série/filme à lista pessoal
+
+### V0.7
+
+- Navegação por abas (Home / Minha Lista)
+- Grade de destaques aleatórios na Home
+- Busca unificada de séries e filmes
+- Progresso de episódios assistidos
+
+### V0.8
+
+- Status de acompanhamento (diferente para série e filme)
+- Nota, elenco e trailer na tela de Detalhes
+- Marcar temporada inteira como assistida
+- Remover item da lista
+- Pesquisa e aba preservadas ao voltar
+- Apelido de exibição do usuário
+
+## 📌 Próximas Melhorias
+
+### V0.9
+
+- Tratamento de erros e estados de carregamento (loading, offline, mensagens de erro)
 - Cache local com Room
 
 ### V1.0
 
-- Tratamento de erros, estado offline e loading
-- Melhorias de interface
+- Tema visual próprio e ícone do app
+- Regras de segurança do Firestore para produção
 - Testes
 - Publicação na Play Store (futuro)
 
@@ -160,7 +207,7 @@ Este projeto está sendo utilizado para praticar:
 - Consumo de APIs REST com Retrofit
 - Coroutines
 - Autenticação com Firebase e Google Sign-In
-- Cloud Firestore e Room
+- Cloud Firestore
 - Organização de projeto Android
 - Versionamento com Git
 - GitHub
@@ -171,7 +218,7 @@ Este projeto está sendo utilizado para praticar:
 
 Este projeto possui finalidade educacional e está em desenvolvimento.
 
-Este produto usa a API da TMDB, mas não é endossado nem certificado pela TMDB. Os dados e imagens das séries pertencem à TMDB e aos seus respectivos detentores de direitos.
+Este produto usa a API da TMDB, mas não é endossado nem certificado pela TMDB. Os dados e imagens pertencem à TMDB e aos seus respectivos detentores de direitos.
 
 ## 📄 Licença
 

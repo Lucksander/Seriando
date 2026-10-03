@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "877564476550",
+    "project_id": "seriando",
+    "storage_bucket": "seriando.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:877564476550:android:cb90182df7c8c960962507",
+        "android_client_info": {
+          "package_name": "com.seriando.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "877564476550-firllc3i2cepafmk18qavhajdjln7q9r.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.seriando.app",
+            "certificate_hash": "9b1e448f9d87766b7f2df864d88a3672008c0697"
+          }
+        },
+        {
+          "client_id": "877564476550-r7il175v60v864md6csr8mfpveeevbdn.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC0pe_gaq0se8ztfOaYfyAjL_1JlPScOC8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "877564476550-r7il175v60v864md6csr8mfpveeevbdn.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

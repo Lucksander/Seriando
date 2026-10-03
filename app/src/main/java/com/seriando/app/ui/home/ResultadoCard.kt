@@ -17,23 +17,21 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.seriando.app.model.Serie
+import com.seriando.app.model.ResultadoBusca
 
-// Cartão visual de uma série, usado na lista de resultados da busca.
-// aoClicar é chamado quando o usuário toca no cartão, para navegar
-// até a tela de detalhes daquela série.
+// Cartão genérico para um resultado de busca, seja série ou filme.
 @Composable
-fun SerieCard(serie: Serie, aoClicar: () -> Unit) {
+fun ResultadoCard(resultado: ResultadoBusca, aoClicar: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp)
-            .clickable { aoClicar() } // torna o cartão inteiro clicável
+            .clickable { aoClicar() }
     ) {
         Row(modifier = Modifier.padding(12.dp)) {
             AsyncImage(
-                model = serie.caminhoCapa?.let { "https://image.tmdb.org/t/p/w185$it" },
-                contentDescription = serie.nome,
+                model = resultado.caminhoCapa?.let { "https://image.tmdb.org/t/p/w185$it" },
+                contentDescription = resultado.nome,
                 modifier = Modifier
                     .width(90.dp)
                     .height(135.dp),
@@ -44,16 +42,17 @@ fun SerieCard(serie: Serie, aoClicar: () -> Unit) {
 
             Column {
                 Text(
-                    text = serie.nome,
+                    text = resultado.nome,
                     style = MaterialTheme.typography.titleMedium
                 )
                 Text(
-                    text = serie.dataEstreia?.take(4) ?: "Sem data",
+                    // Mostra se é filme ou série, já que a lista mistura os dois agora.
+                    text = (if (resultado.ehFilme) "Filme" else "Série") + " · " + (resultado.data?.take(4) ?: "Sem data"),
                     style = MaterialTheme.typography.bodySmall
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = serie.sinopse.ifBlank { "Sem sinopse disponível." },
+                    text = resultado.sinopse.ifBlank { "Sem sinopse disponível." },
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 4,
                     overflow = TextOverflow.Ellipsis
