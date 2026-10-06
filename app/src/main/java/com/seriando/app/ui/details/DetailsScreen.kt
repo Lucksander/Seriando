@@ -51,6 +51,7 @@ import com.seriando.app.model.nomeDoStatus
 import com.seriando.app.model.opcoesDeStatus
 import com.seriando.app.ui.login.DialogoLoginObrigatorio
 import kotlinx.coroutines.launch
+import com.seriando.app.data.repository.AvaliacaoRepository
 
 @Composable
 fun DetailsScreen(serieId: Int, tipoMidia: String) {
@@ -72,6 +73,10 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
     var temporadaSelecionada by remember { mutableStateOf<Int?>(null) }
     var episodiosDaTemporada by remember { mutableStateOf<List<EpisodioResumo>>(emptyList()) }
     var assistidos by remember { mutableStateOf<Set<String>>(emptySet()) }
+    val avaliacaoRepository = remember { AvaliacaoRepository() }
+    var minhaNota by remember { mutableStateOf(0) }
+    var mediaComunidade by remember { mutableStateOf(0.0) }
+    var totalAvaliacoes by remember { mutableStateOf(0) }
 
     LaunchedEffect(serieId, tipoMidia) {
         try {
@@ -103,6 +108,16 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
         if (tipoMidia == "tv" && uid != null) {
             assistidos = progressoRepository.buscarAssistidos(uid, serieId)
         }
+    }
+    // Busca a nota do usuário e a média da comunidade para esta obra.
+    LaunchedEffect(serieId, tipoMidia) {
+        val uid = authRepository.usuarioAtual()?.uid
+        if (uid != null) {
+            minhaNota = avaliacaoRepository.buscarMinhaAvaliacao(uid, tipoMidia, serieId)?.nota ?: 0
+        }
+        val todas = avaliacaoRepository.buscarTodasAvaliacoes(tipoMidia, serieId).filter { it.nota > 0 }
+        totalAvaliacoes = todas.size
+        mediaComunidade = if (todas.isEmpty()) 0.0 else todas.map { it.nota }.average()
     }
 
     fun adicionarAMinhaLista() {
@@ -283,6 +298,61 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
                     ) {
                         Text("Adicionar à minha lista")
                     }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(text = "Sua avaliação", style = MaterialTheme.typography.titleMedium)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                SeletorEstrelas(
+                    notaAtual = minhaNota,
+                    aoSelecionar = { notaEscolhida ->
+                        val uid = authRepository.usuarioAtual()?.uid
+                        if (uid == null) {
+                            mostrarDialogoLogin = true
+                        } else {
+                            scope.launch {
+                                avaliacaoRepository.salvarNota(uid, tipoMidia, serieId, notaEscolhida)
+                                minhaNota = notaEscolhida
+                                // Recalcula a média, já que a nota do usuário mudou.
+                                val todas = avaliacaoRepository.buscarTodasAvaliacoes(tipoMidia, serieId).filter { it.nota > 0 }
+                                totalAvaliacoes = todas.size
+                                mediaComunidade = if (todas.isEmpty()) 0.0 else todas.map { it.nota }.average()
+                            }
+                        }
+                    }
+                )
+
+                // Permite remover a própria avaliação (RF17), só aparece se já existir uma.
+                if (minhaNota > 0) {
+                    TextButton(onClick = {
+                        val uid = authRepository.usuarioAtual()?.uid ?: return@TextButton
+                        scope.launch {
+                            avaliacaoRepository.removerMinhaAvaliacao(uid, tipoMidia, serieId)
+                            minhaNota = 0
+                            val todas = avaliacaoRepository.buscarTodasAvaliacoes(tipoMidia, serieId).filter { it.nota > 0 }
+                            totalAvaliacoes = todas.size
+                            mediaComunidade = if (todas.isEmpty()) 0.0 else todas.map { it.nota }.average()
+                        }
+                    }) {
+                        Text("Remover minha avaliação")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Média da comunidade (RF18), só aparece se houver ao menos uma avaliação.
+                if (totalAvaliacoes > 0) {
+                    // Pluraliza corretamente: "1 avaliação" ou "N avaliações".
+                    val palavraAvaliacao = if (totalAvaliacoes == 1) "avaliação" else "avaliações"
+                    Text(
+                        text = "Média da comunidade: ${"%.1f".format(mediaComunidade)} ⭐ ($totalAvaliacoes $palavraAvaliacao)",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                } else {
+                    Text(
+                        text = "Ainda sem avaliações da comunidade.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 }
 
                 if (serieAtual != null) {

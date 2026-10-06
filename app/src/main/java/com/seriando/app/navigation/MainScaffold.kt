@@ -15,16 +15,13 @@ import androidx.compose.ui.Modifier
 import com.seriando.app.data.cache.AbaCache
 import com.seriando.app.ui.home.HomeScreen
 import com.seriando.app.ui.mylist.MinhaListaScreen
+import com.seriando.app.ui.usuario.UsuarioScreen
 
-// Estrutura com barra de navegação inferior, alternando entre
-// Home (destaques + pesquisa) e Minha Lista.
 @Composable
 fun MainScaffold(
     aoClicarEmPesquisar: () -> Unit,
     aoClicarEmItem: (Int, String) -> Unit
 ) {
-    // Começa com a aba que estava selecionada da última vez,
-    // em vez de sempre voltar para a Home (índice 0).
     var abaSelecionada by remember { mutableIntStateOf(AbaCache.abaSelecionada) }
 
     Scaffold(
@@ -48,11 +45,18 @@ fun MainScaffold(
                     icon = {},
                     label = { Text("Minha Lista") }
                 )
+                NavigationBarItem(
+                    selected = abaSelecionada == 2,
+                    onClick = {
+                        abaSelecionada = 2
+                        AbaCache.abaSelecionada = 2
+                    },
+                    icon = {},
+                    label = { Text("Usuário") }
+                )
             }
         }
     ) { paddingInterno ->
-        // Passa o padding do Scaffold para dentro das telas, para o conteúdo
-        // nunca ficar coberto pela bottomBar na parte de baixo da tela.
         Box(modifier = Modifier.padding(paddingInterno)) {
             when (abaSelecionada) {
                 0 -> HomeScreen(
@@ -60,6 +64,7 @@ fun MainScaffold(
                     aoClicarEmItem = aoClicarEmItem
                 )
                 1 -> MinhaListaScreen(aoClicarEmItem = aoClicarEmItem)
+                2 -> UsuarioScreen()
             }
         }
     }

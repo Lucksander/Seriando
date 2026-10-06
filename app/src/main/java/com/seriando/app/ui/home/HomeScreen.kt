@@ -3,15 +3,18 @@ package com.seriando.app.ui.home
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -25,17 +28,21 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.seriando.app.BuildConfig
 import com.seriando.app.R
 import com.seriando.app.data.auth.AuthRepository
 import com.seriando.app.data.remote.RetrofitInstance
 import com.seriando.app.data.repository.PerfilRepository
-import com.seriando.app.model.PerfilUsuario
+import com.seriando.app.model.PerfilPublico
 import com.seriando.app.model.ResultadoBusca
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.width
 
 @Composable
 fun HomeScreen(
@@ -50,8 +57,7 @@ fun HomeScreen(
 
     var usuario by remember { mutableStateOf(authRepository.usuarioAtual()) }
     var destaques by remember { mutableStateOf<List<ResultadoBusca>>(emptyList()) }
-    var apelido by remember { mutableStateOf<String?>(null) }
-    var mostrarDialogoApelido by remember { mutableStateOf(false) }
+    var perfilPublico by remember { mutableStateOf<PerfilPublico?>(null) }
 
     LaunchedEffect(Unit) {
         try {
@@ -64,10 +70,11 @@ fun HomeScreen(
         }
     }
 
-    // Busca o apelido salvo sempre que o usuário muda (login/logout).
+    // Busca o perfil público (apelido + avatar) sempre que o usuário muda.
+    // Mostrado aqui só para leitura; editar é só na aba Usuário.
     LaunchedEffect(usuario?.uid) {
         val uid = usuario?.uid
-        apelido = if (uid != null) perfilRepository.buscarPerfil(uid)?.apelido else null
+        perfilPublico = if (uid != null) perfilRepository.buscarPerfilPublico(uid) else null
     }
 
     Column(
@@ -91,6 +98,7 @@ fun HomeScreen(
                 TextButton(onClick = {
                     authRepository.sair()
                     usuario = null
+                    perfilPublico = null
                 }) {
                     Text("Sair")
                 }
@@ -100,7 +108,8 @@ fun HomeScreen(
                         try {
                             usuario = authRepository.entrarComGoogle(context, webClientId)
                         } catch (e: Exception) {
-                            Toast.makeText(context, "Não foi possível entrar.", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Não foi possível entrar.", Toast.LENGTH_SHORT)
+                                .show()
                         }
                     }
                 }) {
@@ -109,18 +118,32 @@ fun HomeScreen(
             }
         }
 
-        // Saudação personalizada, só aparece com usuário logado e apelido já carregado.
-        if (usuario != null && apelido != null) {
+        // Nome e foto do usuário logado, só leitura (editar fica na aba Usuário).
+        val publico = perfilPublico
+        if (usuario != null && publico != null) {
+            Spacer(modifier = Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
+                if (publico.avatarId == "google") {
+                    AsyncImage(
+                        model = usuario?.photoUrl,
+                        contentDescription = "Foto de perfil",
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Text(text = publico.avatarId, style = MaterialTheme.typography.headlineSmall)
+                }
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Olá, $apelido!",
+                    text = "Olá, ${publico.apelido}!",
                     style = MaterialTheme.typography.titleMedium
                 )
-                TextButton(onClick = { mostrarDialogoApelido = true }) {
-                    Text("Editar")
-                }
             }
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         Text(
             text = "Organize suas séries. Nunca perca onde parou.",
@@ -150,7 +173,7 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .weight(1f),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp)
+            contentPadding = PaddingValues(bottom = 24.dp)
         ) {
             items(destaques) { item ->
                 DestaqueCard(
@@ -162,25 +185,5 @@ fun HomeScreen(
                 )
             }
         }
-    }
-
-    if (mostrarDialogoApelido) {
-        val uid = usuario?.uid
-        DialogoEditarApelido(
-            valorInicial = apelido ?: "",
-            aoFechar = { mostrarDialogoApelido = false },
-            aoConfirmar = { novoApelido ->
-                if (uid != null) {
-                    scope.launch {
-                        perfilRepository.salvarPerfil(
-                            uid,
-                            PerfilUsuario(apelido = novoApelido, email = usuario?.email ?: "")
-                        )
-                        apelido = novoApelido
-                    }
-                }
-                mostrarDialogoApelido = false
-            }
-        )
     }
 }

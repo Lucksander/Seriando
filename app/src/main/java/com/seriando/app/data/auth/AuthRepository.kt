@@ -8,8 +8,11 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
+import com.seriando.app.data.cache.AbaCache
+import com.seriando.app.data.cache.BuscaCache
 import com.seriando.app.data.repository.PerfilRepository
-import com.seriando.app.model.PerfilUsuario
+import com.seriando.app.model.PerfilPrivado
+import com.seriando.app.model.PerfilPublico
 import kotlinx.coroutines.tasks.await
 
 class AuthRepository {
@@ -35,16 +38,19 @@ class AuthRepository {
         val resultadoLogin = firebaseAuth.signInWithCredential(credencialFirebase).await()
         val usuario = resultadoLogin.user
 
-        // Se for a primeira vez desse usuário (nenhum perfil salvo ainda),
-        // cria o perfil com o primeiro nome extraído do nome completo do Google.
+        // Primeira vez desse usuário: cria os dois documentos de perfil.
         if (usuario != null) {
-            val perfilExistente = perfilRepository.buscarPerfil(usuario.uid)
-            if (perfilExistente == null) {
+            val perfilPublicoExistente = perfilRepository.buscarPerfilPublico(usuario.uid)
+            if (perfilPublicoExistente == null) {
                 val nomeCompleto = usuario.displayName ?: "Usuário"
                 val primeiroNome = nomeCompleto.trim().split(" ").firstOrNull() ?: "Usuário"
-                perfilRepository.salvarPerfil(
+                perfilRepository.salvarPerfilPublico(
                     usuario.uid,
-                    PerfilUsuario(apelido = primeiroNome, email = usuario.email ?: "")
+                    PerfilPublico(apelido = primeiroNome, avatarId = "google")
+                )
+                perfilRepository.salvarPerfilPrivado(
+                    usuario.uid,
+                    PerfilPrivado(email = usuario.email ?: "", aniversario = null)
                 )
             }
         }
@@ -52,7 +58,13 @@ class AuthRepository {
         return usuario
     }
 
+    // RF27: ao sair, além de encerrar a sessão do Firebase, limpa o cache
+    // local (pesquisa e aba selecionada), para não vazar dados de um usuário
+    // para a sessão do próximo que logar no mesmo aparelho.
     fun sair() {
         firebaseAuth.signOut()
+        BuscaCache.textoPesquisa = ""
+        BuscaCache.resultados = emptyList()
+        AbaCache.abaSelecionada = 0
     }
 }
