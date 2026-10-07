@@ -56,6 +56,8 @@ import com.seriando.app.model.nomeDoStatus
 import com.seriando.app.model.opcoesDeStatus
 import com.seriando.app.ui.login.DialogoLoginObrigatorio
 import kotlinx.coroutines.launch
+import androidx.compose.ui.draw.clip
+import com.seriando.app.model.VotoResumo
 
 @Composable
 fun DetailsScreen(serieId: Int, tipoMidia: String) {
@@ -91,6 +93,11 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
     var opinioes by remember { mutableStateOf<List<Avaliacao>>(emptyList()) }
     var minhaOpiniaoExistente by remember { mutableStateOf<Avaliacao?>(null) }
     var editandoOpiniao by remember { mutableStateOf(false) }
+    var votosPorOpiniao by remember { mutableStateOf<Map<String, VotoResumo>>(emptyMap()) }
+    val denunciaRepository = remember { com.seriando.app.data.repository.DenunciaRepository() }
+    var mostrarDialogoDenuncia by remember { mutableStateOf<String?>(null) } // guarda o uid do autor sendo denunciado
+    var provedoresBrasil by remember { mutableStateOf<com.seriando.app.model.ProvedoresPais?>(null) }
+
 
     // Busca os detalhes (série ou filme, conforme o tipo).
     LaunchedEffect(serieId, tipoMidia) {
@@ -137,7 +144,8 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
         mediaComunidade = if (todas.isEmpty()) 0.0 else todas.map { it.nota }.average()
     }
 
-    // Opiniões da obra (RF21), e a opinião do próprio usuário, se existir.
+    // Opiniões da obra (RF21), a opinião do próprio usuário (se existir),
+    // e o resumo de votos de cada opinião (RF26).
     LaunchedEffect(serieId, tipoMidia) {
         val uid = authRepository.usuarioAtual()?.uid
         opinioes = avaliacaoRepository.buscarOpinioes(tipoMidia, serieId, uid)
@@ -147,6 +155,23 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
             spoilerMarcado = it.spoiler
             publicaMarcada = it.publica
             emocoesSelecionadas = it.emocoes
+        }
+        votosPorOpiniao = opinioes.associate {
+            it.autorUid to avaliacaoRepository.buscarResumoVotos(it.autorUid, tipoMidia, serieId, uid)
+        }
+    }
+
+    // Busca a disponibilidade de streaming para o Brasil (RF34, RN09).
+    LaunchedEffect(serieId, tipoMidia) {
+        try {
+            val resposta = if (tipoMidia == "movie") {
+                RetrofitInstance.api.buscarProvedoresFilme(serieId, BuildConfig.TMDB_API_KEY)
+            } else {
+                RetrofitInstance.api.buscarProvedoresSerie(serieId, BuildConfig.TMDB_API_KEY)
+            }
+            provedoresBrasil = resposta.results["BR"]
+        } catch (e: Exception) {
+            Log.e("Seriando", "Erro ao buscar provedores de streaming", e)
         }
     }
 
@@ -326,6 +351,11 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
                     }
                 }
 
+                Spacer(modifier = Modifier.height(20.dp))
+                Text(text = "Onde assistir", style = MaterialTheme.typography.headlineSmall)
+                Spacer(modifier = Modifier.height(8.dp))
+                SecaoOndeAssistir(provedoresBrasil)
+
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(text = "Sua avaliação", style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(8.dp))
@@ -456,6 +486,7 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
                         OpiniaoCard(
                             opiniao = opiniao,
                             ehMinha = opiniao.autorUid == authRepository.usuarioAtual()?.uid,
+                            resumoVotos = votosPorOpiniao[opiniao.autorUid] ?: VotoResumo(),
                             aoEditar = { editandoOpiniao = true },
                             aoRemover = {
                                 val uid = authRepository.usuarioAtual()?.uid ?: return@OpiniaoCard
@@ -467,6 +498,37 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
                                     spoilerMarcado = false
                                     publicaMarcada = true
                                     emocoesSelecionadas = emptyList()
+                                }
+                            },
+                            aoCurtir = {
+                                val votanteUid = authRepository.usuarioAtual()?.uid
+                                if (votanteUid == null) {
+                                    mostrarDialogoLogin = true
+                                } else {
+                                    scope.launch {
+                                        avaliacaoRepository.votar(opiniao.autorUid, tipoMidia, serieId, votanteUid, 1)
+                                        val novoResumo = avaliacaoRepository.buscarResumoVotos(opiniao.autorUid, tipoMidia, serieId, votanteUid)
+                                        votosPorOpiniao = votosPorOpiniao + (opiniao.autorUid to novoResumo)
+                                    }
+                                }
+                            },
+                            aoDescurtir = {
+                                val votanteUid = authRepository.usuarioAtual()?.uid
+                                if (votanteUid == null) {
+                                    mostrarDialogoLogin = true
+                                } else {
+                                    scope.launch {
+                                        avaliacaoRepository.votar(opiniao.autorUid, tipoMidia, serieId, votanteUid, -1)
+                                        val novoResumo = avaliacaoRepository.buscarResumoVotos(opiniao.autorUid, tipoMidia, serieId, votanteUid)
+                                        votosPorOpiniao = votosPorOpiniao + (opiniao.autorUid to novoResumo)
+                                    }
+                                }
+                            },
+                            aoDenunciar = {
+                                if (authRepository.usuarioAtual() == null) {
+                                    mostrarDialogoLogin = true
+                                } else {
+                                    mostrarDialogoDenuncia = opiniao.autorUid
                                 }
                             }
                         )
@@ -525,6 +587,21 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                // Thumbnail do episódio (RF47). Nem todo episódio tem imagem
+                                // na TMDB, então o AsyncImage simplesmente fica em branco
+                                // quando caminhoThumbnail é nulo, sem quebrar a tela.
+                                AsyncImage(
+                                    model = episodio.caminhoThumbnail?.let { "https://image.tmdb.org/t/p/w300$it" },
+                                    contentDescription = episodio.nome,
+                                    modifier = Modifier
+                                        .width(100.dp)
+                                        .aspectRatio(16f / 9f)
+                                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(6.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
                                 Checkbox(
                                     checked = assistido,
                                     onCheckedChange = { marcado ->
@@ -535,12 +612,18 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
                                             scope.launch {
                                                 if (marcado) {
                                                     progressoRepository.marcarAssistido(
-                                                        uid, serieId, numeroTemporadaAtual, episodio.numero
+                                                        uid,
+                                                        serieId,
+                                                        numeroTemporadaAtual,
+                                                        episodio.numero
                                                     )
                                                     assistidos = assistidos + chaveEpisodio
                                                 } else {
                                                     progressoRepository.desmarcarAssistido(
-                                                        uid, serieId, numeroTemporadaAtual, episodio.numero
+                                                        uid,
+                                                        serieId,
+                                                        numeroTemporadaAtual,
+                                                        episodio.numero
                                                     )
                                                     assistidos = assistidos - chaveEpisodio
                                                 }
@@ -548,7 +631,11 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
                                         }
                                     }
                                 )
-                                Text("${episodio.numero}. ${episodio.nome}")
+
+                                Text(
+                                    text = "${episodio.numero}. ${episodio.nome}",
+                                    modifier = Modifier.weight(1f) // deixa o texto ocupar o espaço restante, sem estourar a largura
+                                )
                             }
                         }
                     }
@@ -563,6 +650,30 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
             aoLogarComSucesso = {
                 mostrarDialogoLogin = false
                 adicionarAMinhaLista()
+            }
+        )
+    }
+
+    val autorDenunciado = mostrarDialogoDenuncia
+    if (autorDenunciado != null) {
+        DialogoDenuncia(
+            aoFechar = { mostrarDialogoDenuncia = null },
+            aoConfirmar = { motivo ->
+                val denuncianteUid = authRepository.usuarioAtual()?.uid
+                mostrarDialogoDenuncia = null
+                if (denuncianteUid != null) {
+                    scope.launch {
+                        try {
+                            denunciaRepository.denunciarOpiniao(
+                                autorDenunciado, tipoMidia, serieId, denuncianteUid, motivo
+                            )
+                            android.widget.Toast.makeText(context, "Denúncia enviada.", android.widget.Toast.LENGTH_SHORT).show()
+                        } catch (e: Exception) {
+                            android.util.Log.e("Seriando", "Erro ao denunciar", e)
+                            android.widget.Toast.makeText(context, "Não foi possível enviar a denúncia.", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
             }
         )
     }

@@ -4,12 +4,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,13 +29,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.seriando.app.model.Avaliacao
 import com.seriando.app.model.EMOCOES_DISPONIVEIS
+import com.seriando.app.model.VotoResumo
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun OpiniaoCard(
     opiniao: Avaliacao,
     ehMinha: Boolean,
+    resumoVotos: VotoResumo,
     aoEditar: () -> Unit,
-    aoRemover: () -> Unit
+    aoRemover: () -> Unit,
+    aoCurtir: () -> Unit,
+    aoDescurtir: () -> Unit,
+    aoDenunciar: () -> Unit
 ) {
     var revelado by remember { mutableStateOf(!opiniao.spoiler) }
 
@@ -52,8 +61,6 @@ fun OpiniaoCard(
                 Spacer(modifier = Modifier.padding(start = 6.dp))
                 Text(text = opiniao.apelidoAutor, style = MaterialTheme.typography.titleSmall)
 
-                // Mostra "Privada" só para o próprio autor, já que só ele
-                // consegue ver essa opinião quando ela está privada.
                 if (ehMinha && !opiniao.publica) {
                     Spacer(modifier = Modifier.padding(start = 6.dp))
                     Text(text = "(privada)", style = MaterialTheme.typography.labelSmall)
@@ -61,13 +68,20 @@ fun OpiniaoCard(
             }
 
             if (opiniao.emocoes.isNotEmpty()) {
-                Row(modifier = Modifier.padding(top = 6.dp)) {
+                FlowRow(
+                    modifier = Modifier.padding(top = 8.dp),
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp),
+                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp)
+                ) {
                     opiniao.emocoes.forEach { idEmocao ->
                         val emocao = EMOCOES_DISPONIVEIS.find { it.id == idEmocao }
                         if (emocao != null) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(end = 8.dp)
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(Color(emocao.cor).copy(alpha = 0.18f))
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
                             ) {
                                 Box(
                                     modifier = Modifier
@@ -75,14 +89,15 @@ fun OpiniaoCard(
                                         .clip(CircleShape)
                                         .background(Color(emocao.cor))
                                 )
-                                Text(text = " ${emocao.label}", style = MaterialTheme.typography.labelSmall)
+                                Spacer(modifier = Modifier.padding(start = 4.dp))
+                                Text(text = emocao.label, style = MaterialTheme.typography.labelMedium)
                             }
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.padding(top = 6.dp))
+            Spacer(modifier = Modifier.padding(top = 8.dp))
 
             if (opiniao.spoiler && !revelado) {
                 Text(
@@ -93,6 +108,29 @@ fun OpiniaoCard(
             } else {
                 Text(text = opiniao.texto, style = MaterialTheme.typography.bodyMedium)
             }
+
+            // RN04: o próprio autor não vota na própria opinião, então os
+            // botões de curtir/descurtir só aparecem para quem não é o autor.
+            if (!ehMinha) {
+                Row(modifier = Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = aoCurtir) {
+                        Text(
+                            text = "👍 ${resumoVotos.curtidas}",
+                            style = if (resumoVotos.meuVoto == 1) MaterialTheme.typography.labelLarge else MaterialTheme.typography.labelMedium
+                        )
+                    }
+                    TextButton(onClick = aoDescurtir) {
+                        Text(
+                            text = "👎 ${resumoVotos.descurtidas}",
+                            style = if (resumoVotos.meuVoto == -1) MaterialTheme.typography.labelLarge else MaterialTheme.typography.labelMedium
+                        )
+                    }
+                    TextButton(onClick = aoDenunciar) {
+                        Text("Denunciar", style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+            }
+
 
             if (ehMinha) {
                 Row(modifier = Modifier.padding(top = 6.dp)) {

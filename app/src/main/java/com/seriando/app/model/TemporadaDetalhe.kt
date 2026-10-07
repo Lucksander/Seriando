@@ -2,8 +2,6 @@ package com.seriando.app.model
 
 import com.google.gson.annotations.SerializedName
 
-// Resposta do endpoint tv/{id}/season/{numero}: a lista completa
-// de episódios daquela temporada.
 data class TemporadaDetalhe(
     @SerializedName("episodes") val episodios: List<EpisodioResumo>
 )
@@ -11,5 +9,6 @@ data class TemporadaDetalhe(
 data class EpisodioResumo(
     val id: Int,
     @SerializedName("episode_number") val numero: Int,
-    @SerializedName("name") val nome: String
+    @SerializedName("name") val nome: String,
+    @SerializedName("still_path") val caminhoThumbnail: String? = null // imagem do episódio (RF47); pode vir nula
 )

@@ -7,9 +7,23 @@ import com.seriando.app.model.TemporadaDetalhe
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
+import com.seriando.app.model.WatchProvidersResponse
 
 interface TmdbApiService {
 
+    // Onde assistir (RF34): disponibilidade de uma série por país.
+    @GET("tv/{id}/watch/providers")
+    suspend fun buscarProvedoresSerie(
+        @Path("id") serieId: Int,
+        @Query("api_key") apiKey: String
+    ): WatchProvidersResponse
+
+    // Onde assistir (RF34): disponibilidade de um filme por país.
+    @GET("movie/{id}/watch/providers")
+    suspend fun buscarProvedoresFilme(
+        @Path("id") filmeId: Int,
+        @Query("api_key") apiKey: String
+    ): WatchProvidersResponse
     @GET("search/multi")
     suspend fun buscarMulti(
         @Query("api_key") apiKey: String,

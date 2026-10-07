@@ -6,15 +6,14 @@ Projeto desenvolvido em Kotlin com foco em aprendizado, consumo de APIs, autenti
 
 ## 📌 Versão Atual
 
-Versão: V0.9 (em desenvolvimento — rumo à V1.0)
+Versão: V0.10 (em desenvolvimento — rumo à V1.0)
 
-Novidades da V0.9
+Novidades da V0.10
 
-- Avaliação por estrelas (1 a 5), com média da comunidade
-- Opiniões em texto sobre séries e filmes, públicas ou privadas
-- Aviso de spoiler, com texto oculto até o leitor tocar para revelar
-- Marcação de até 6 emoções por opinião (ex: Raiva, Curiosidade, Euforia), exibidas como bolinha colorida + nome
-- Editar e remover a própria opinião
+- Curtir/descurtir opiniões da comunidade, com contagem e opção de desfazer o voto
+- Denunciar uma opinião, com motivo selecionável
+- Thumbnail de cada episódio na lista de episódios
+- "Onde assistir": disponibilidade em serviços de streaming no Brasil (assinatura, aluguel e compra), com atribuição à JustWatch
 
 ## 📖 Sobre o Projeto
 
@@ -30,8 +29,9 @@ O projeto está sendo desenvolvido de forma incremental, com o objetivo de prati
 - Home com busca e grade de destaques aleatórios (séries e filmes em alta)
 - Busca unificada de séries e filmes (TMDB search/multi)
 - Tela de Detalhes com capa, nota da TMDB, sinopse, elenco e trailer
-- Temporadas e episódios, com marcação individual ou por temporada inteira
+- Temporadas e episódios, com thumbnail, marcação individual ou por temporada inteira
 - Progresso de episódios assistidos por série
+- Onde assistir: streaming disponível no Brasil, com atribuição à JustWatch
 - Login com conta Google (Firebase Authentication)
 - Perfil do usuário: apelido editável, avatar (foto do Google ou emoji), e-mail, aniversário (privado)
 - Adicionar/remover itens da lista pessoal (Firestore)
@@ -39,16 +39,14 @@ O projeto está sendo desenvolvido de forma incremental, com o objetivo de prati
 - Filtro por status na Minha Lista
 - Avaliação por estrelas (1 a 5) e média da comunidade
 - Opiniões públicas/privadas, com spoiler e emoções marcadas pelo autor
+- Curtir/descurtir opiniões, com contagem e voto desfazível
+- Denunciar uma opinião
 - Chave da API protegida fora do repositório
 
 ### Planejado (até a V1.0)
 
-- Curtir/descurtir opiniões da comunidade
-- Denunciar uma opinião
-- Onde assistir: disponibilidade em serviços de streaming no Brasil (TMDB + JustWatch)
 - Página do ator/atriz: biografia e filmografia
 - Home organizada por categorias de gênero, com "ver mais" por categoria
-- Thumbnail de cada episódio na tela de Detalhes
 - Regras de segurança do Firestore para produção
 - Tratamento de erros e estados de carregamento em todas as telas
 - Tema visual próprio e ícone do app
@@ -74,7 +72,7 @@ com.seriando.app
 ├── ui/
 │   ├── home/        Home, cartões de resultado/destaque/lista, edição de apelido
 │   ├── search/       Tela de pesquisa
-│   ├── details/      Detalhes (série/filme), avaliação, opiniões, emoções
+│   ├── details/      Detalhes (série/filme), avaliação, opiniões, emoções, onde assistir
 │   ├── mylist/        Minha Lista, com filtro por status
 │   ├── usuario/        Aba Usuário: perfil público e privado, avatar
 │   └── login/          Diálogo de login obrigatório
@@ -82,7 +80,7 @@ com.seriando.app
 ├── data/
 │   ├── remote/        Retrofit e chamadas à TMDB
 │   ├── auth/          Autenticação (Firebase + Credential Manager)
-│   ├── repository/    Minha Lista, Progresso, Perfil, Avaliação (Firestore)
+│   ├── repository/    Minha Lista, Progresso, Perfil, Avaliação, Denúncia (Firestore)
 │   └── cache/          Cache em memória (pesquisa e aba selecionada)
 │
 ├── model/              classes de dados, status e emoções
@@ -192,22 +190,19 @@ Requisitos: Android Studio atualizado e Android 7.0 (API 24) ou superior.
 - Opiniões públicas/privadas, com spoiler
 - Emoções marcadas pelo autor da opinião, com indicador colorido
 
-## 📌 Próximas Versões (rumo à V1.0)
-
 ### V0.10
 
-- Curtir/descurtir opiniões
+- Curtir/descurtir opiniões, com voto desfazível
 - Denunciar uma opinião
+- Thumbnail de cada episódio
+- Onde assistir (streaming no Brasil, com atribuição à JustWatch)
+
+## 📌 Próximas Versões (rumo à V1.0)
 
 ### V0.11
 
-- Onde assistir (streaming no Brasil, via TMDB + JustWatch)
 - Página do ator/atriz (biografia e filmografia)
-
-### V0.12
-
 - Home organizada por categorias de gênero, com "ver mais"
-- Thumbnail de cada episódio na tela de Detalhes
 
 ### V1.0 — Versão completa
 
@@ -238,7 +233,7 @@ Este projeto está sendo utilizado para praticar:
 
 Este projeto possui finalidade educacional e está em desenvolvimento.
 
-Este produto usa a API da TMDB, mas não é endossado nem certificado pela TMDB. Os dados e imagens pertencem à TMDB e aos seus respectivos detentores de direitos.
+Este produto usa a API da TMDB, mas não é endossado nem certificado pela TMDB. Os dados e imagens pertencem à TMDB e aos seus respectivos detentores de direitos. Os dados de disponibilidade em streaming são fornecidos por JustWatch.
 
 ## 📄 Licença
 
