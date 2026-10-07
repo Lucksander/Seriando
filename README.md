@@ -1,28 +1,24 @@
 # 📺 Seriando
 
-Aplicativo Android para organizar as séries e filmes que você assiste. Pesquise, acompanhe temporadas e episódios, marque o que já viu e nunca perca onde parou.
+Aplicativo Android para organizar as séries e filmes que você assiste, avaliar, comentar e acompanhar com uma comunidade. Pesquise, acompanhe temporadas e episódios, marque o que já viu e nunca perca onde parou.
 
 Projeto desenvolvido em Kotlin com foco em aprendizado, consumo de APIs, autenticação, persistência de dados e boas práticas de desenvolvimento Android.
 
 ## 📌 Versão Atual
 
-Versão: V0.8 (em desenvolvimento)
+Versão: V0.9 (em desenvolvimento — rumo à V1.0)
 
-Novidades da V0.8
+Novidades da V0.9
 
-- Busca unificada: séries e filmes aparecem juntos nos resultados
-- Navegação por abas (Home / Minha Lista)
-- Home com grade de destaques aleatórios a cada abertura
-- Status de acompanhamento por item (diferente para série e para filme)
-- Nota da comunidade, elenco e trailer na tela de Detalhes
-- Botão para marcar uma temporada inteira como assistida
-- Botão de remover item da lista (na Minha Lista e nos Detalhes)
-- Pesquisa e aba selecionada preservadas ao navegar com o botão voltar
-- Saudação personalizada com o nome do usuário, editável
+- Avaliação por estrelas (1 a 5), com média da comunidade
+- Opiniões em texto sobre séries e filmes, públicas ou privadas
+- Aviso de spoiler, com texto oculto até o leitor tocar para revelar
+- Marcação de até 6 emoções por opinião (ex: Raiva, Curiosidade, Euforia), exibidas como bolinha colorida + nome
+- Editar e remover a própria opinião
 
 ## 📖 Sobre o Projeto
 
-O Seriando é um aplicativo Android que utiliza a API da TMDB para buscar informações de séries e filmes. O usuário faz login com a conta Google, monta sua lista pessoal, acompanha o progresso de cada série episódio por episódio, e organiza tudo por status (quero assistir, assistindo, completo, etc.), com os dados salvos na nuvem.
+O Seriando é um aplicativo Android que utiliza a API da TMDB para buscar informações de séries e filmes. O usuário faz login com a conta Google, monta sua lista pessoal, acompanha o progresso de cada série episódio por episódio, organiza tudo por status, avalia e comenta publicamente, com os dados salvos na nuvem.
 
 O projeto está sendo desenvolvido de forma incremental, com o objetivo de praticar Kotlin, Jetpack Compose, integração com APIs REST, Firebase, persistência de dados e versionamento com Git/GitHub.
 
@@ -30,25 +26,32 @@ O projeto está sendo desenvolvido de forma incremental, com o objetivo de prati
 
 ### Já implementado
 
-- Navegação por abas: Home e Minha Lista
+- Navegação por abas: Home, Minha Lista e Usuário
 - Home com busca e grade de destaques aleatórios (séries e filmes em alta)
 - Busca unificada de séries e filmes (TMDB search/multi)
-- Tela de Detalhes com capa, nota, sinopse, elenco e trailer
+- Tela de Detalhes com capa, nota da TMDB, sinopse, elenco e trailer
 - Temporadas e episódios, com marcação individual ou por temporada inteira
 - Progresso de episódios assistidos por série
 - Login com conta Google (Firebase Authentication)
-- Apelido de exibição, sugerido automaticamente no primeiro login e editável depois
+- Perfil do usuário: apelido editável, avatar (foto do Google ou emoji), e-mail, aniversário (privado)
 - Adicionar/remover itens da lista pessoal (Firestore)
 - Status de acompanhamento por item, com conjuntos diferentes para série e filme
 - Filtro por status na Minha Lista
+- Avaliação por estrelas (1 a 5) e média da comunidade
+- Opiniões públicas/privadas, com spoiler e emoções marcadas pelo autor
 - Chave da API protegida fora do repositório
 
-### Planejado
+### Planejado (até a V1.0)
 
-- Cache local para uso offline com Room
-- Tratamento de erros e estados de carregamento mais completos
-- Tema visual próprio, ícone do app
+- Curtir/descurtir opiniões da comunidade
+- Denunciar uma opinião
+- Onde assistir: disponibilidade em serviços de streaming no Brasil (TMDB + JustWatch)
+- Página do ator/atriz: biografia e filmografia
+- Home organizada por categorias de gênero, com "ver mais" por categoria
+- Thumbnail de cada episódio na tela de Detalhes
 - Regras de segurança do Firestore para produção
+- Tratamento de erros e estados de carregamento em todas as telas
+- Tema visual próprio e ícone do app
 - Testes
 
 ## 🛠️ Tecnologias Utilizadas
@@ -61,7 +64,6 @@ O projeto está sendo desenvolvido de forma incremental, com o objetivo de prati
 - TMDB API
 - Firebase Authentication (login com Google via Credential Manager)
 - Cloud Firestore
-- Room (planejado)
 - Git e GitHub
 
 ## 📂 Estrutura do Projeto
@@ -72,18 +74,19 @@ com.seriando.app
 ├── ui/
 │   ├── home/        Home, cartões de resultado/destaque/lista, edição de apelido
 │   ├── search/       Tela de pesquisa
-│   ├── details/      Tela de detalhes (série ou filme)
+│   ├── details/      Detalhes (série/filme), avaliação, opiniões, emoções
 │   ├── mylist/        Minha Lista, com filtro por status
-│   └── login/         Diálogo de login obrigatório
+│   ├── usuario/        Aba Usuário: perfil público e privado, avatar
+│   └── login/          Diálogo de login obrigatório
 │
 ├── data/
 │   ├── remote/        Retrofit e chamadas à TMDB
 │   ├── auth/          Autenticação (Firebase + Credential Manager)
-│   ├── repository/    Minha Lista, Progresso, Perfil (Firestore)
-│   └── cache/         Cache em memória (pesquisa e aba selecionada)
+│   ├── repository/    Minha Lista, Progresso, Perfil, Avaliação (Firestore)
+│   └── cache/          Cache em memória (pesquisa e aba selecionada)
 │
-├── model/              classes de dados e modelos de status
-├── navigation/         rotas, NavHost e estrutura de abas (MainScaffold)
+├── model/              classes de dados, status e emoções
+├── navigation/          rotas, NavHost e estrutura de abas (MainScaffold)
 └── MainActivity.kt
 ```
 
@@ -181,19 +184,36 @@ Requisitos: Android Studio atualizado e Android 7.0 (API 24) ou superior.
 - Marcar temporada inteira como assistida
 - Remover item da lista
 - Pesquisa e aba preservadas ao voltar
-- Apelido de exibição do usuário
-
-## 📌 Próximas Melhorias
+- Aba Usuário: perfil público/privado, avatar, aniversário
 
 ### V0.9
 
-- Tratamento de erros e estados de carregamento (loading, offline, mensagens de erro)
-- Cache local com Room
+- Avaliação por estrelas e média da comunidade
+- Opiniões públicas/privadas, com spoiler
+- Emoções marcadas pelo autor da opinião, com indicador colorido
 
-### V1.0
+## 📌 Próximas Versões (rumo à V1.0)
 
-- Tema visual próprio e ícone do app
+### V0.10
+
+- Curtir/descurtir opiniões
+- Denunciar uma opinião
+
+### V0.11
+
+- Onde assistir (streaming no Brasil, via TMDB + JustWatch)
+- Página do ator/atriz (biografia e filmografia)
+
+### V0.12
+
+- Home organizada por categorias de gênero, com "ver mais"
+- Thumbnail de cada episódio na tela de Detalhes
+
+### V1.0 — Versão completa
+
 - Regras de segurança do Firestore para produção
+- Tratamento de erros e estados de carregamento em todas as telas
+- Tema visual próprio e ícone do app
 - Testes
 - Publicação na Play Store (futuro)
 

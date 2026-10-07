@@ -21,6 +21,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -39,8 +41,11 @@ import coil3.compose.AsyncImage
 import com.seriando.app.BuildConfig
 import com.seriando.app.data.auth.AuthRepository
 import com.seriando.app.data.remote.RetrofitInstance
+import com.seriando.app.data.repository.AvaliacaoRepository
 import com.seriando.app.data.repository.MinhaListaRepository
+import com.seriando.app.data.repository.PerfilRepository
 import com.seriando.app.data.repository.ProgressoRepository
+import com.seriando.app.model.Avaliacao
 import com.seriando.app.model.EpisodioResumo
 import com.seriando.app.model.MovieDetalhe
 import com.seriando.app.model.SerieDetalhe
@@ -51,7 +56,6 @@ import com.seriando.app.model.nomeDoStatus
 import com.seriando.app.model.opcoesDeStatus
 import com.seriando.app.ui.login.DialogoLoginObrigatorio
 import kotlinx.coroutines.launch
-import com.seriando.app.data.repository.AvaliacaoRepository
 
 @Composable
 fun DetailsScreen(serieId: Int, tipoMidia: String) {
@@ -60,6 +64,8 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
     val authRepository = remember { AuthRepository() }
     val minhaListaRepository = remember { MinhaListaRepository() }
     val progressoRepository = remember { ProgressoRepository() }
+    val avaliacaoRepository = remember { AvaliacaoRepository() }
+    val perfilRepository = remember { PerfilRepository() }
     val scope = rememberCoroutineScope()
 
     var detalheSerie by remember { mutableStateOf<SerieDetalhe?>(null) }
@@ -73,11 +79,20 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
     var temporadaSelecionada by remember { mutableStateOf<Int?>(null) }
     var episodiosDaTemporada by remember { mutableStateOf<List<EpisodioResumo>>(emptyList()) }
     var assistidos by remember { mutableStateOf<Set<String>>(emptySet()) }
-    val avaliacaoRepository = remember { AvaliacaoRepository() }
+
     var minhaNota by remember { mutableStateOf(0) }
     var mediaComunidade by remember { mutableStateOf(0.0) }
     var totalAvaliacoes by remember { mutableStateOf(0) }
 
+    var textoOpiniao by remember { mutableStateOf("") }
+    var spoilerMarcado by remember { mutableStateOf(false) }
+    var publicaMarcada by remember { mutableStateOf(true) }
+    var emocoesSelecionadas by remember { mutableStateOf<List<String>>(emptyList()) }
+    var opinioes by remember { mutableStateOf<List<Avaliacao>>(emptyList()) }
+    var minhaOpiniaoExistente by remember { mutableStateOf<Avaliacao?>(null) }
+    var editandoOpiniao by remember { mutableStateOf(false) }
+
+    // Busca os detalhes (série ou filme, conforme o tipo).
     LaunchedEffect(serieId, tipoMidia) {
         try {
             if (tipoMidia == "movie") {
@@ -91,7 +106,7 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
         }
     }
 
-    // Verifica se já está salvo e, se estiver, carrega o status salvo.
+    // Verifica se já está na minha lista e, se estiver, carrega o status salvo.
     LaunchedEffect(serieId) {
         val uid = authRepository.usuarioAtual()?.uid
         if (uid != null) {
@@ -103,13 +118,15 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
         }
     }
 
+    // Episódios assistidos, só para séries.
     LaunchedEffect(detalheSerie) {
         val uid = authRepository.usuarioAtual()?.uid
         if (tipoMidia == "tv" && uid != null) {
             assistidos = progressoRepository.buscarAssistidos(uid, serieId)
         }
     }
-    // Busca a nota do usuário e a média da comunidade para esta obra.
+
+    // Nota do usuário e média da comunidade.
     LaunchedEffect(serieId, tipoMidia) {
         val uid = authRepository.usuarioAtual()?.uid
         if (uid != null) {
@@ -118,6 +135,19 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
         val todas = avaliacaoRepository.buscarTodasAvaliacoes(tipoMidia, serieId).filter { it.nota > 0 }
         totalAvaliacoes = todas.size
         mediaComunidade = if (todas.isEmpty()) 0.0 else todas.map { it.nota }.average()
+    }
+
+    // Opiniões da obra (RF21), e a opinião do próprio usuário, se existir.
+    LaunchedEffect(serieId, tipoMidia) {
+        val uid = authRepository.usuarioAtual()?.uid
+        opinioes = avaliacaoRepository.buscarOpinioes(tipoMidia, serieId, uid)
+        minhaOpiniaoExistente = opinioes.find { it.autorUid == uid }
+        minhaOpiniaoExistente?.let {
+            textoOpiniao = it.texto
+            spoilerMarcado = it.spoiler
+            publicaMarcada = it.publica
+            emocoesSelecionadas = it.emocoes
+        }
     }
 
     fun adicionarAMinhaLista() {
@@ -173,6 +203,8 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
                 val elenco = detalheSerie?.credits?.cast ?: detalheFilme?.credits?.cast ?: emptyList()
                 val trailer = (detalheSerie?.videos?.results ?: detalheFilme?.videos?.results ?: emptyList())
                     .find { it.site == "YouTube" && it.type == "Trailer" }
+                val serieAtual = detalheSerie
+                val filmeAtual = detalheFilme
 
                 AsyncImage(
                     model = caminhoCapa?.let { "https://image.tmdb.org/t/p/w500$it" },
@@ -188,7 +220,6 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
 
                 Text(text = nome, style = MaterialTheme.typography.headlineMedium)
 
-                // Nota média da comunidade (TMDB usa escala de 0 a 10).
                 if (notaMedia > 0) {
                     Text(
                         text = "⭐ ${"%.1f".format(notaMedia)} / 10",
@@ -196,8 +227,6 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
                     )
                 }
 
-                val serieAtual = detalheSerie
-                val filmeAtual = detalheFilme
                 if (serieAtual != null) {
                     Text(
                         text = "${serieAtual.numeroTemporadas} temporada(s) · ${serieAtual.numeroEpisodios} episódio(s)",
@@ -221,7 +250,6 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
                     style = MaterialTheme.typography.bodyLarge
                 )
 
-                // Botão de trailer, só aparece se a TMDB tiver um disponível.
                 if (trailer != null) {
                     Spacer(modifier = Modifier.height(12.dp))
                     OutlinedButton(
@@ -238,7 +266,6 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
                     }
                 }
 
-                // Elenco principal, em fileira horizontal.
                 if (elenco.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(20.dp))
                     Text(text = "Elenco", style = MaterialTheme.typography.headlineSmall)
@@ -265,7 +292,6 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
                     Text(text = "Status", style = MaterialTheme.typography.titleMedium)
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Chips de status: a lista de opções muda conforme é série ou filme.
                     Row(modifier = Modifier.horizontalScroll(rememberScrollState())) {
                         opcoesDeStatus(tipoMidia).forEach { label ->
                             FilterChip(
@@ -299,6 +325,7 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
                         Text("Adicionar à minha lista")
                     }
                 }
+
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(text = "Sua avaliação", style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(8.dp))
@@ -313,7 +340,6 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
                             scope.launch {
                                 avaliacaoRepository.salvarNota(uid, tipoMidia, serieId, notaEscolhida)
                                 minhaNota = notaEscolhida
-                                // Recalcula a média, já que a nota do usuário mudou.
                                 val todas = avaliacaoRepository.buscarTodasAvaliacoes(tipoMidia, serieId).filter { it.nota > 0 }
                                 totalAvaliacoes = todas.size
                                 mediaComunidade = if (todas.isEmpty()) 0.0 else todas.map { it.nota }.average()
@@ -322,7 +348,6 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
                     }
                 )
 
-                // Permite remover a própria avaliação (RF17), só aparece se já existir uma.
                 if (minhaNota > 0) {
                     TextButton(onClick = {
                         val uid = authRepository.usuarioAtual()?.uid ?: return@TextButton
@@ -340,9 +365,7 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Média da comunidade (RF18), só aparece se houver ao menos uma avaliação.
                 if (totalAvaliacoes > 0) {
-                    // Pluraliza corretamente: "1 avaliação" ou "N avaliações".
                     val palavraAvaliacao = if (totalAvaliacoes == 1) "avaliação" else "avaliações"
                     Text(
                         text = "Média da comunidade: ${"%.1f".format(mediaComunidade)} ⭐ ($totalAvaliacoes $palavraAvaliacao)",
@@ -353,6 +376,101 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
                         text = "Ainda sem avaliações da comunidade.",
                         style = MaterialTheme.typography.bodyMedium
                     )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(text = "Opiniões da comunidade", style = MaterialTheme.typography.titleMedium)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (minhaOpiniaoExistente == null || editandoOpiniao) {
+                    OutlinedTextField(
+                        value = textoOpiniao,
+                        onValueChange = { if (it.length <= 500) textoOpiniao = it },
+                        label = { Text("Escreva sua opinião (máx. 500 caracteres)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Text(text = "${textoOpiniao.length}/500", style = MaterialTheme.typography.labelSmall)
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = spoilerMarcado,
+                            onCheckedChange = { spoilerMarcado = it }
+                        )
+                        Text("Contém spoiler")
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(
+                            checked = publicaMarcada,
+                            onCheckedChange = { publicaMarcada = it }
+                        )
+                        Text(if (publicaMarcada) "Pública" else "Privada")
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(text = "Como você se sentiu assistindo?", style = MaterialTheme.typography.labelMedium)
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    SeletorEmocoes(
+                        selecionadas = emocoesSelecionadas,
+                        aoMudar = { emocoesSelecionadas = it }
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Button(
+                        onClick = {
+                            val uid = authRepository.usuarioAtual()?.uid
+                            if (uid == null) {
+                                mostrarDialogoLogin = true
+                            } else if (textoOpiniao.isNotBlank()) {
+                                scope.launch {
+                                    val perfil = perfilRepository.buscarPerfilPublico(uid)
+                                    avaliacaoRepository.salvarOpiniao(
+                                        uid, tipoMidia, serieId,
+                                        textoOpiniao, spoilerMarcado, emocoesSelecionadas, publicaMarcada,
+                                        apelidoAutor = perfil?.apelido ?: "Usuário",
+                                        avatarAutor = perfil?.avatarId ?: "google"
+                                    )
+                                    opinioes = avaliacaoRepository.buscarOpinioes(tipoMidia, serieId, uid)
+                                    minhaOpiniaoExistente = opinioes.find { it.autorUid == uid }
+                                    editandoOpiniao = false
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Publicar opinião")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (opinioes.isEmpty()) {
+                    Text(
+                        text = "Nenhuma opinião ainda. Seja o primeiro a comentar!",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                } else {
+                    opinioes.forEach { opiniao ->
+                        OpiniaoCard(
+                            opiniao = opiniao,
+                            ehMinha = opiniao.autorUid == authRepository.usuarioAtual()?.uid,
+                            aoEditar = { editandoOpiniao = true },
+                            aoRemover = {
+                                val uid = authRepository.usuarioAtual()?.uid ?: return@OpiniaoCard
+                                scope.launch {
+                                    avaliacaoRepository.removerOpiniao(uid, tipoMidia, serieId)
+                                    opinioes = avaliacaoRepository.buscarOpinioes(tipoMidia, serieId, uid)
+                                    minhaOpiniaoExistente = null
+                                    textoOpiniao = ""
+                                    spoilerMarcado = false
+                                    publicaMarcada = true
+                                    emocoesSelecionadas = emptyList()
+                                }
+                            }
+                        )
+                    }
                 }
 
                 if (serieAtual != null) {
@@ -381,7 +499,6 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
 
                     val numeroTemporadaAtual = temporadaSelecionada
                     if (numeroTemporadaAtual != null && episodiosDaTemporada.isNotEmpty()) {
-                        // Botão para marcar a temporada toda de uma vez.
                         TextButton(onClick = {
                             val uid = authRepository.usuarioAtual()?.uid
                             if (uid == null) {
