@@ -59,8 +59,27 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.draw.clip
 import com.seriando.app.model.VotoResumo
 
+/**
+ * Tela de detalhes de uma mídia (série ou filme).
+ *
+ * Exibe informações completas da obra selecionada, como imagem de capa, títulos,
+ * sinopse, pontuação média, trailer e elenco principal.
+ *
+ * Principais funcionalidades integradas nesta tela:
+ * - Gerenciamento de lista pessoal: Adição e remoção da obra na "Minha Lista" e
+ *   atualização do status de acompanhamento (ex: "Assistindo", "Quero assistir").
+ * - Provedores de streaming: Exibição dos serviços de streaming disponíveis no Brasil.
+ * - Avaliação do usuário e comunidade: Atribuição de nota por estrelas, cálculo da média da
+ *   comunidade e registro de resenhas/opiniões detalhadas (com spoiler, reações emocionais e privacidade).
+ * - Interação social: Votação (curtir/descurtir) em opiniões de outros usuários e denúncia de conteúdos inadequados.
+ * - Controle de progresso (Séries): Seleção de temporadas e episódios com marcação de progresso individual ou por temporada completa.
+ *
+ * @param serieId Identificador único do item no TMDB (The Movie Database).
+ * @param tipoMidia Tipo do conteúdo: `"tv"` para séries ou `"movie"` para filmes.
+ * @param aoClicarEmAtor Callback disparado ao selecionar um integrante do elenco, repassando o ID do ator.
+ */
 @Composable
-fun DetailsScreen(serieId: Int, tipoMidia: String) {
+fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit) {
 
     val context = LocalContext.current
     val authRepository = remember { AuthRepository() }
@@ -175,6 +194,9 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
         }
     }
 
+    /**
+     * Adiciona a mídia atual à lista do usuário com o status inicial "Quero assistir".
+     */
     fun adicionarAMinhaLista() {
         val uid = authRepository.usuarioAtual()?.uid ?: return
         val nome = detalheSerie?.nome ?: detalheFilme?.nome ?: return
@@ -197,6 +219,9 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
         }
     }
 
+    /**
+     * Remove a mídia atual da lista do usuário.
+     */
     fun removerDaMinhaLista() {
         val uid = authRepository.usuarioAtual()?.uid ?: return
         scope.launch {
@@ -297,7 +322,7 @@ fun DetailsScreen(serieId: Int, tipoMidia: String) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(modifier = Modifier.horizontalScroll(rememberScrollState())) {
                         elenco.take(15).forEach { ator ->
-                            ElencoCard(ator)
+                            ElencoCard(ator = ator, aoClicar = { aoClicarEmAtor(ator.id) })
                         }
                     }
                 }

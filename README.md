@@ -1,246 +1,229 @@
 # 📺 Seriando
 
-Aplicativo Android para organizar as séries e filmes que você assiste, avaliar, comentar e acompanhar com uma comunidade. Pesquise, acompanhe temporadas e episódios, marque o que já viu e nunca perca onde parou.
+Aplicativo Android moderno e intuitivo para organizar as séries e filmes que você assiste, avaliar, comentar e acompanhar junto à comunidade. Pesquise títulos, acompanhe temporadas e episódios, veja a disponibilidade nos serviços de streaming, explore a biografia e filmografia de atores/atrizes e nunca mais perca onde parou.
 
-Projeto desenvolvido em Kotlin com foco em aprendizado, consumo de APIs, autenticação, persistência de dados e boas práticas de desenvolvimento Android.
+Projeto desenvolvido em **Kotlin** com **Jetpack Compose**, com foco em boas práticas de arquitetura Android, consumo de APIs REST, autenticação com Google Credential Manager, persistência em nuvem com Cloud Firestore e gerenciamento de estado.
+
+---
 
 ## 📌 Versão Atual
 
-Versão: V0.10 (em desenvolvimento — rumo à V1.0)
+**Versão: V0.11** *(em desenvolvimento — rumo à V1.0)*
 
-Novidades da V0.10
+### 🆕 Novidades da V0.11
+- **Página do Ator/Atriz**:
+  - Tela dedicada para exibição de foto de perfil, nome, data e local de nascimento.
+  - Biografia expansível ("Ler mais" / "Mostrar menos") com fallback automático para inglês caso a biografia em português não esteja disponível no TMDB.
+  - Filmografia completa apresentada em grade de 3 colunas, ordenada por popularidade, exibindo poster do título e nome do personagem interpretado.
+  - **Navegação bidirecional fluida**: Tocar em um ator no elenco de uma obra abre o perfil dele; tocar em qualquer título da sua filmografia navega para os detalhes daquele filme ou série.
 
-- Curtir/descurtir opiniões da comunidade, com contagem e opção de desfazer o voto
-- Denunciar uma opinião, com motivo selecionável
-- Thumbnail de cada episódio na lista de episódios
-- "Onde assistir": disponibilidade em serviços de streaming no Brasil (assinatura, aluguel e compra), com atribuição à JustWatch
+---
 
 ## 📖 Sobre o Projeto
 
-O Seriando é um aplicativo Android que utiliza a API da TMDB para buscar informações de séries e filmes. O usuário faz login com a conta Google, monta sua lista pessoal, acompanha o progresso de cada série episódio por episódio, organiza tudo por status, avalia e comenta publicamente, com os dados salvos na nuvem.
+O **Seriando** é um aplicativo Android desenvolvido para ajudar cinéfilos e maratonadores a organizarem seus conteúdos de entretenimento. Utilizando a API pública do **TMDB (The Movie Database)**, o aplicativo oferece informações detalhadas sobre séries, temporadas, episódios, filmes, elenco e provedores de streaming.
 
-O projeto está sendo desenvolvido de forma incremental, com o objetivo de praticar Kotlin, Jetpack Compose, integração com APIs REST, Firebase, persistência de dados e versionamento com Git/GitHub.
+Com integração ao **Firebase Authentication (Google Sign-In)** e **Cloud Firestore**, cada usuário mantém sua lista pessoal sincronizada na nuvem, pode marcar episódios e temporadas assistidas, classificar obras com notas de 1 a 5 estrelas, compartilhar opiniões públicas ou privadas com tags de emoções, curtir/descurtir comentários da comunidade e reportar conteúdos inadequados.
+
+---
 
 ## 🚀 Funcionalidades
 
-### Já implementado
+### 🔍 Navegação & Busca
+- **Aba Home**: Exibe destaques em alta na semana (*trending*) atualizados aleatoriamente e botão de acesso rápido à pesquisa.
+- **Busca Unificada**: Pesquisa integrada para séries e filmes utilizando a API `/search/multi` do TMDB.
+- **Cache de Navegação & Pesquisa**: Preservação do termo buscado, dos resultados obtidos e da aba ativa ao navegar entre telas, evitando requisições redundantes.
 
-- Navegação por abas: Home, Minha Lista e Usuário
-- Home com busca e grade de destaques aleatórios (séries e filmes em alta)
-- Busca unificada de séries e filmes (TMDB search/multi)
-- Tela de Detalhes com capa, nota da TMDB, sinopse, elenco e trailer
-- Temporadas e episódios, com thumbnail, marcação individual ou por temporada inteira
-- Progresso de episódios assistidos por série
-- Onde assistir: streaming disponível no Brasil, com atribuição à JustWatch
-- Login com conta Google (Firebase Authentication)
-- Perfil do usuário: apelido editável, avatar (foto do Google ou emoji), e-mail, aniversário (privado)
-- Adicionar/remover itens da lista pessoal (Firestore)
-- Status de acompanhamento por item, com conjuntos diferentes para série e filme
-- Filtro por status na Minha Lista
-- Avaliação por estrelas (1 a 5) e média da comunidade
-- Opiniões públicas/privadas, com spoiler e emoções marcadas pelo autor
-- Curtir/descurtir opiniões, com contagem e voto desfazível
-- Denunciar uma opinião
-- Chave da API protegida fora do repositório
+### 🎬 Detalhes da Obra & Mídia
+- **Informações Completas**: Capa/poster, nota média do TMDB, sinopse, ano de lançamento, elenco interativo e trailer oficial do YouTube.
+- **Gerenciamento de Temporadas e Episódios**:
+  - Lista de temporadas e episódios com thumbnails individuais.
+  - Marcação de episódios individuais ou de temporadas inteiras como assistidos.
+  - Barra de progresso visual de episódios assistidos por série.
+- **Onde Assistir (JustWatch Integration)**: Exibição dos serviços de streaming disponíveis no Brasil para assinatura, aluguel ou compra.
 
-### Planejado (até a V1.0)
+### 🎭 Página do Ator/Atriz *(Novo na V0.11)*
+- **Perfil do Artista**: Foto, nome completo, data e local de nascimento.
+- **Biografia Inteligente**: Leitura expansível e busca de biografia em inglês caso a tradução em português esteja ausente na API.
+- **Filmografia Interativa**: Grade com até 60 trabalhos mais populares do ator/atriz, exibindo poster, título e nome do personagem, com navegação direta para a obra escolhida.
 
-- Página do ator/atriz: biografia e filmografia
-- Home organizada por categorias de gênero, com "ver mais" por categoria
-- Regras de segurança do Firestore para produção
-- Tratamento de erros e estados de carregamento em todas as telas
-- Tema visual próprio e ícone do app
-- Testes
+### 👤 Autenticação & Perfil de Usuário
+- **Google Sign-In**: Autenticação via Firebase Auth combinada com o **Android Credential Manager API**.
+- **Perfil Personalizável**:
+  - Apelido do usuário.
+  - Escolha de avatar entre a foto da conta Google ou uma seleção de emojis divertidos.
+  - Informações de e-mail e data de aniversário (privada).
+- **Diálogo de Login Obrigatório**: Solicitado suavemente quando o usuário tenta realizar ações restritas (adicionar à lista, avaliar, comentar ou curtir).
 
-## 🛠️ Tecnologias Utilizadas
+### 📋 Minha Lista Pessoal
+- **Sincronização Cloud Firestore**: Lista pessoal salva na nuvem e acessível de qualquer dispositivo.
+- **Status Personalizado por Tipo de Mídia**:
+  - *Séries*: Assistindo, Quero Assistir, Pausado, Finalizado, Abandonado.
+  - *Filmes*: Quero Assistir, Já Assisti, Abandonado.
+- **Filtro por Status**: Organização rápida dos itens salvos por categoria de status.
 
-- Kotlin
-- Jetpack Compose (Material 3)
-- Navigation Compose
-- Retrofit + Gson
-- Coil
-- TMDB API
-- Firebase Authentication (login com Google via Credential Manager)
-- Cloud Firestore
-- Git e GitHub
+### ⭐ Avaliações, Opiniões & Comunidade
+- **Avaliação por Estrelas**: Sistema de classificação de 1 a 5 estrelas com cálculo e exibição da média das avaliações da comunidade.
+- **Opiniões Públicas & Privadas**: Publicação de críticas de obras com opção de alerta de *spoiler*.
+- **Indicadores de Emoção**: Marcação de sentimento predominante ao assistir (Amei, Empolgante, Triste, Chocante, Engraçado, Decepcionante) representado por ícones e cores temáticas.
+- **Interação Social (Curtidas & Descurtidas)**:
+  - Sistema de votos em opiniões com contagem pública.
+  - Possibilidade de alterar ou desfazer o voto a qualquer momento.
+- **Sistema de Denúncia**: Canal para reportar opiniões inadequada com seleção de motivo (ex: spoiler não sinalizado, discurso de ódio, spam/ofensa).
+
+---
+
+## 🛠️ Tecnologias & Bibliotecas
+
+- **Linguagem**: Kotlin
+- **Interface Gráfica**: Jetpack Compose com Material Design 3
+- **Navegação**: Navigation Compose
+- **Rede & Comunicação API**: Retrofit 2 + Gson Converter + OkHttp
+- **Carregamento de Imagens**: Coil 3 (AsyncImage)
+- **Autenticação**: Firebase Authentication + Android Credential Manager API + Google Identity
+- **Banco de Dados Cloud**: Cloud Firestore
+- **APIs Externas**:
+  - **TMDB (The Movie Database)**: Dados de filmes, séries, atores e imagens.
+  - **JustWatch**: Dados de disponibilidade em streaming no Brasil.
+- **Gerenciamento de Build**: Gradle com Version Catalogs (`libs.versions.toml`)
+
+---
 
 ## 📂 Estrutura do Projeto
 
 ```
 com.seriando.app
 │
-├── ui/
-│   ├── home/        Home, cartões de resultado/destaque/lista, edição de apelido
-│   ├── search/       Tela de pesquisa
-│   ├── details/      Detalhes (série/filme), avaliação, opiniões, emoções, onde assistir
-│   ├── mylist/        Minha Lista, com filtro por status
-│   ├── usuario/        Aba Usuário: perfil público e privado, avatar
-│   └── login/          Diálogo de login obrigatório
-│
 ├── data/
-│   ├── remote/        Retrofit e chamadas à TMDB
-│   ├── auth/          Autenticação (Firebase + Credential Manager)
-│   ├── repository/    Minha Lista, Progresso, Perfil, Avaliação, Denúncia (Firestore)
-│   └── cache/          Cache em memória (pesquisa e aba selecionada)
+│   ├── auth/          # AuthRepository (Firebase Auth + Credential Manager + Logout)
+│   ├── cache/         # AbaCache e BuscaCache (Preservação de estado em memória)
+│   ├── remote/        # RetrofitInstance e TmdbApiService (End-points REST do TMDB)
+│   └── repository/    # Repositórios Firestore (Avaliacao, Denuncia, MinhaLista, Perfil, Progresso)
 │
-├── model/              classes de dados, status e emoções
-├── navigation/          rotas, NavHost e estrutura de abas (MainScaffold)
-└── MainActivity.kt
+├── model/              # Data classes (Movie, Serie, Pessoa, Avaliacao, Emocao, Status, WatchProviders, etc.)
+│
+├── navigation/
+│   ├── MainScaffold.kt # Scaffold principal com BottomNavigation (Home, Minha Lista, Usuário)
+│   ├── Rotas.kt        # Definição centralizada de rotas e argumentos
+│   └── SeriandoNavHost.kt # Grafo de navegação do aplicativo
+│
+├── ui/
+│   ├── details/       # DetailsScreen, ElencoCard, OpiniaoCard, SecaoOndeAssistir, SeletorEmocoes, SeletorEstrelas, DialogoDenuncia
+│   ├── home/          # HomeScreen, DestaqueCard, ResultadoCard, SerieCardSalva, DialogoEditarApelido
+│   ├── login/         # DialogoLoginObrigatorio
+│   ├── mylist/        # MinhaListaScreen (Lista com filtro de status)
+│   ├── pessoa/        # PessoaScreen (Página do ator/atriz, biografia e filmografia)
+│   ├── search/        # SearchScreen (Campo de busca e resultados)
+│   ├── theme/         # Color, Theme e Type (Material 3)
+│   └── usuario/       # UsuarioScreen e SeletorAvatar
+│
+└── MainActivity.kt    # Ponto de entrada do aplicativo
 ```
 
-## ⚙️ Instalação
+---
 
-Clone o repositório:
+## ⚙️ Instalação e Configuração
 
-```
+### Requisitos Prévios
+- Android Studio Ladybug ou superior
+- JDK 11 ou superior
+- Dispositivo físico com Android 7.0 (API 24)+ ou Emulador Android
+
+### 1. Clonar o Repositório
+
+```bash
 git clone https://github.com/Lucksander/seriando.git
 ```
 
-Abra a pasta do projeto no Android Studio e aguarde a sincronização do Gradle.
+### 2. Configurar Chave da API TMDB
 
-## 🔧 Configuração
+1. Crie uma conta em [The Movie Database (TMDB)](https://www.themoviedb.org/).
+2. Vá em **Configurações da Conta > API** e solicite uma chave de API (*Developer*).
+3. Crie (ou edite) o arquivo `local.properties` na raiz do projeto e insira a seguinte chave:
 
-O app precisa de uma chave da TMDB e de um projeto Firebase para funcionar.
-
-**TMDB**
-
-1. Crie uma conta em https://www.themoviedb.org/
-2. Nas configurações da conta, acesse a aba API e solicite uma chave (opção Developer)
-3. No arquivo `local.properties`, na raiz do projeto, adicione (sem aspas):
-
-```
+```properties
 TMDB_API_KEY=sua_chave_aqui
 ```
 
-**Firebase**
+### 3. Configurar o Firebase
 
-1. Crie um projeto em https://console.firebase.google.com
-2. Registre o app Android com o pacote `com.seriando.app` e adicione o SHA-1 de debug
-3. Baixe o `google-services.json` e coloque na pasta `app/`
-4. Ative o login com Google em Authentication e crie o banco em Firestore Database
-5. Copie o Web Client ID (`client_type: 3` no `google-services.json`) para `app/src/main/res/values/strings.xml`:
+1. Acesse o [Console do Firebase](https://console.firebase.google.com/) e crie um novo projeto.
+2. Adicione um app Android com o pacote `com.seriando.app` e insira a impressão digital SHA-1 da sua chave de depuração (*debug keystore*).
+3. Faça o download do arquivo `google-services.json` e coloque-o na pasta `app/` do projeto.
+4. No console do Firebase:
+   - Em **Authentication**, ative o provedor **Google**.
+   - Em **Firestore Database**, crie o banco de dados.
+5. Copie o **Web Client ID** (encontrado no `google-services.json` no nó `client_type: 3`) e adicione no arquivo `app/src/main/res/values/strings.xml`:
 
 ```xml
 <string name="default_web_client_id">SEU_WEB_CLIENT_ID</string>
 ```
 
-Nenhum desses arquivos (`local.properties`, `google-services.json`) vai para o repositório — ambos estão no `.gitignore`.
+> ⚠️ *Nota: O arquivo `local.properties` e o `google-services.json` estão inclusos no `.gitignore` por motivos de segurança e nunca devem ser commitados no repositório público.*
 
-## ▶️ Como Executar
+### 4. Executar o Aplicativo
 
-1. Clique em Sync Now, se o Android Studio pedir
-2. Escolha um emulador ou conecte um dispositivo Android
-3. Clique em Run
+1. Abra o projeto no Android Studio.
+2. Sincronize os arquivos do Gradle (*Sync Project with Gradle Files*).
+3. Selecione o dispositivo/emulador e clique em **Run** (`Shift + F10`).
 
-Requisitos: Android Studio atualizado e Android 7.0 (API 24) ou superior.
+---
 
 ## 📈 Histórico de Versões
 
-### V0.1
+- **V0.1**: Configuração inicial do projeto Android com Jetpack Compose, estrutura básica de pastas e integração com Git/GitHub.
+- **V0.2**: Integração inicial com a API TMDB via Retrofit e pesquisa simples de séries. Proteção de API Key em `local.properties`.
+- **V0.3**: Exibição de capas, sinopses e dados das séries obtidos do TMDB usando Coil.
+- **V0.4**: Implementação do Navigation Compose, separação de Home, Pesquisa e tela de Detalhes da Série (com temporadas e episódios).
+- **V0.5**: Implementação do Login com Google utilizando Firebase Authentication e Credential Manager API.
+- **V0.6**: Integração com Cloud Firestore e funcionalidade de salvar séries/filmes na lista pessoal do usuário.
+- **V0.7**: Navegação por abas com `MainScaffold`, grade de destaques aleatórios em alta na Home, busca unificada de filmes e séries, e controle de episódios assistidos.
+- **V0.8**: Status de acompanhamento diferenciados para séries e filmes, nota do TMDB, elenco, trailers do YouTube, marcação de temporada inteira, remoção de itens da lista, preservação de estado da busca e aba Usuário com perfil público/privado.
+- **V0.9**: Sistema de avaliação por estrelas (1 a 5), cálculo da média da comunidade, opiniões públicas e privadas com aviso de spoiler, e seletor de emoções.
+- **V0.10**: Sistema de curtidas e descurtidas em opiniões, funcionalidade de denunciar comentários com motivos, thumbnails de episódios e exibição de provedores de streaming ("Onde Assistir") via JustWatch.
+- **V0.11**: **(Atual)** Página do ator/atriz com foto, nome, data/local de nascimento, biografia expansível (com fallback em inglês) e filmografia completa interativa em grade ordenada por popularidade.
 
-- Criação do projeto Android com Jetpack Compose
-- Tela inicial com campo de pesquisa
-- Configuração do Git/GitHub e estrutura de pastas
+---
 
-### V0.2
+## 📌 Planejamento Futuro (Rumo à V1.0)
 
-- Integração com a API da TMDB usando Retrofit
-- Primeira requisição e pesquisa de séries
-- Proteção da API Key com local.properties
+- [ ] **Home Organizada por Categorias**: Seções divididas por gêneros cinematográficos com opção de "Ver Mais".
+- [ ] **Regras de Segurança do Firestore**: Configuração de regras rígidas no Firestore para ambiente de produção.
+- [ ] **Tratamento Global de Erros**: Melhoria nos estados de carregamento, *shimmers* e tratamento de exceções de rede.
+- [ ] **Identidade Visual & Ícone**: Design System proprietário com paleta de cores customizada e ícone exclusivo do app.
+- [ ] **Testes Automatizados**: Implementação de testes unitários de repositórios e testes de UI com Compose.
+- [ ] **Lançamento na Google Play Store**.
 
-### V0.3
-
-- Exibição de capa, ano e sinopse
-- Cartão de série com Coil
-
-### V0.4
-
-- Navegação entre telas com Navigation Compose
-- Separação da Home e da tela de Pesquisa
-- Tela de Detalhes da série (capa, temporadas/episódios, sinopse completa)
-
-### V0.5
-
-- Login com Google usando Firebase Authentication e Credential Manager
-
-### V0.6
-
-- Integração com Cloud Firestore
-- Adicionar série/filme à lista pessoal
-
-### V0.7
-
-- Navegação por abas (Home / Minha Lista)
-- Grade de destaques aleatórios na Home
-- Busca unificada de séries e filmes
-- Progresso de episódios assistidos
-
-### V0.8
-
-- Status de acompanhamento (diferente para série e filme)
-- Nota, elenco e trailer na tela de Detalhes
-- Marcar temporada inteira como assistida
-- Remover item da lista
-- Pesquisa e aba preservadas ao voltar
-- Aba Usuário: perfil público/privado, avatar, aniversário
-
-### V0.9
-
-- Avaliação por estrelas e média da comunidade
-- Opiniões públicas/privadas, com spoiler
-- Emoções marcadas pelo autor da opinião, com indicador colorido
-
-### V0.10
-
-- Curtir/descurtir opiniões, com voto desfazível
-- Denunciar uma opinião
-- Thumbnail de cada episódio
-- Onde assistir (streaming no Brasil, com atribuição à JustWatch)
-
-## 📌 Próximas Versões (rumo à V1.0)
-
-### V0.11
-
-- Página do ator/atriz (biografia e filmografia)
-- Home organizada por categorias de gênero, com "ver mais"
-
-### V1.0 — Versão completa
-
-- Regras de segurança do Firestore para produção
-- Tratamento de erros e estados de carregamento em todas as telas
-- Tema visual próprio e ícone do app
-- Testes
-- Publicação na Play Store (futuro)
+---
 
 ## 🎯 Objetivos de Aprendizado
 
-Este projeto está sendo utilizado para praticar:
+Este projeto serve como portfólio prático e estudo contínuo cobrindo:
+- Desenvolvendo UIs declarativas com **Jetpack Compose** e **Material 3**.
+- Arquitetura Android limpa e orientada a componentes.
+- Consumo e tratamento de APIs REST com **Retrofit 2** e **Coroutines**.
+- Integração com serviços de nuvem da suíte **Firebase** (Auth e Firestore).
+- Implementação da nova API **Android Credential Manager**.
+- Gerenciamento de estado e cache em memória.
+- Documentação técnica e versionamento de software.
 
-- Kotlin
-- Jetpack Compose
-- Navigation Compose
-- Consumo de APIs REST com Retrofit
-- Coroutines
-- Autenticação com Firebase e Google Sign-In
-- Cloud Firestore
-- Organização de projeto Android
-- Versionamento com Git
-- GitHub
-- Documentação técnica
-- Boas práticas de programação
+---
 
-## ⚠️ Aviso
+## ⚠️ Avisos e Isenções de Responsabilidade
 
-Este projeto possui finalidade educacional e está em desenvolvimento.
+- Este projeto tem fins **estritamente educacionais e não comerciais**.
+- Este produto utiliza a API do TMDB, mas não é endossado nem certificado pelo **TMDB (The Movie Database)**. Todos os dados e imagens pertencem ao TMDB e aos seus respectivos detentores de direitos.
+- Os dados de disponibilidade em serviços de streaming são fornecidos por **JustWatch**.
 
-Este produto usa a API da TMDB, mas não é endossado nem certificado pela TMDB. Os dados e imagens pertencem à TMDB e aos seus respectivos detentores de direitos. Os dados de disponibilidade em streaming são fornecidos por JustWatch.
+---
 
 ## 📄 Licença
 
-Distribuído sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
+Distribuído sob a licença **MIT**. Veja o arquivo `LICENSE` para mais detalhes.
 
-## 👨‍💻 Autoria
+---
 
-Lucas Santos
+## 👨‍💻 Autores
 
-Erika Passos
+- **Lucas Santos**
+- **Erika Passos**

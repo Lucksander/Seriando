@@ -8,6 +8,8 @@ import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
 import com.seriando.app.model.WatchProvidersResponse
+import com.seriando.app.model.CreditosPessoaResponse
+import com.seriando.app.model.PessoaDetalhe
 
 interface TmdbApiService {
 
@@ -62,4 +64,20 @@ interface TmdbApiService {
         @Query("api_key") apiKey: String,
         @Query("language") idioma: String = "pt-BR"
     ): BuscaMultiResponse
+
+    // Detalhes de uma pessoa (RF41): nome, foto, biografia, nascimento.
+    @GET("person/{id}")
+    suspend fun buscarPessoa(
+        @Path("id") pessoaId: Int,
+        @Query("api_key") apiKey: String,
+        @Query("language") idioma: String = "pt-BR"
+    ): PessoaDetalhe
+
+    // Filmografia (RF42): filmes e séries em que a pessoa atuou.
+    @GET("person/{id}/combined_credits")
+    suspend fun buscarCreditosPessoa(
+        @Path("id") pessoaId: Int,
+        @Query("api_key") apiKey: String,
+        @Query("language") idioma: String = "pt-BR"
+    ): CreditosPessoaResponse
 }

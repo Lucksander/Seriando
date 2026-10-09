@@ -1,5 +1,6 @@
 package com.seriando.app.ui.details
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.padding
@@ -14,13 +15,15 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.seriando.app.model.ElencoItem
 
-// Cartão compacto de um ator/atriz, usado na fileira horizontal de elenco.
+// Cartão compacto de um ator/atriz na fileira de elenco.
+// aoClicar abre a página da pessoa (RF40).
 @Composable
-fun ElencoCard(ator: ElencoItem) {
+fun ElencoCard(ator: ElencoItem, aoClicar: () -> Unit) {
     Column(
         modifier = Modifier
             .width(80.dp)
             .padding(end = 12.dp)
+            .clickable { aoClicar() }
     ) {
         AsyncImage(
             model = ator.caminhoFoto?.let { "https://image.tmdb.org/t/p/w185$it" },
