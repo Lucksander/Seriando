@@ -1,0 +1,194 @@
+// Regras de segurança do Firestore do Seriando (RNF01, RNF03, RNF04).
+// Princípio: tudo é NEGADO por padrão. Só o que está liberado abaixo funciona.
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- Funções auxiliares ----------
+
+    // Verdadeiro se há um usuário autenticado (RN08).
+    function logado() {
+      return request.auth != null;
+    }
+
+    // Verdadeiro se o usuário autenticado é o dono do uid informado.
+    function dono(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // ---------- usuarios/{uid}: dados PRIVADOS (RNF03) ----------
+    // Só o dono lê e escreve. Guarda apenas e-mail e aniversário.
+    match /usuarios/{uid} {
+      allow read: if dono(uid);
+      allow delete: if dono(uid); // prepara a futura exclusão de conta (RF29)
+      allow create, update: if dono(uid)
+        // Só estes dois campos podem existir no documento
+        && request.resource.data.keys().hasOnly(['email', 'aniversario'])
+        && request.resource.data.get('email', '') is string
+        && request.resource.data.get('email', '').size() <= 254
+        // Aniversário é opcional: pode ser nulo ou texto curto
+        && (request.resource.data.get('aniversario', null) == null
+            || (request.resource.data.aniversario is string
+                && request.resource.data.aniversario.size() <= 20));
+
+      // Lista pessoal e status (RF07, RF08): só o dono, com validação dos campos (RNF01).
+      match /series/{serieId} {
+        allow read, delete: if dono(uid);
+        allow create, update: if dono(uid)
+          // Só os campos do model SerieSalva podem existir no documento
+          && request.resource.data.keys().hasOnly(
+               ['id', 'nome', 'sinopse', 'caminhoCapa', 'tipoMidia', 'status', 'dataAdicao'])
+          && request.resource.data.get('id', null) is int
+          && request.resource.data.get('nome', null) is string
+          && request.resource.data.nome.size() <= 300
+          // Sinopse e capa são opcionais
+          && request.resource.data.get('sinopse', '') is string
+          && request.resource.data.get('sinopse', '').size() <= 5000
+          && (request.resource.data.get('caminhoCapa', null) == null
+              || (request.resource.data.caminhoCapa is string
+                  && request.resource.data.caminhoCapa.size() <= 200))
+          // Tipo da obra: só filme ou série
+          && request.resource.data.get('tipoMidia', null) in ['tv', 'movie']
+          // Status: só os nomes dos enums StatusSerie e StatusFilme.
+          // Se criar um status novo no app, acrescente-o aqui também.
+          && request.resource.data.get('status', null) in
+               ['QUERO_ASSISTIR', 'ASSISTINDO', 'COMPLETO', 'ABANDONEI', 'ASSISTIDO']
+          && request.resource.data.get('dataAdicao', 0) is int;
+
+        // Progresso de episódios (RF09): só o dono.
+        match /episodiosAssistidos/{docId} {
+          allow read, write: if dono(uid);
+        }
+      }
+
+      // Opinião PRIVADA (RF48, RN12): só o dono lê e escreve.
+      // Fica fora de avaliacoes/ justamente para o texto não ser legível por outros.
+      match /opinioesPrivadas/{obraId} {
+        allow read, delete: if dono(uid);
+        allow create, update: if dono(uid)
+          && request.resource.data.keys().hasOnly(
+               ['autorUid', 'apelidoAutor', 'avatarAutor', 'texto',
+                'spoiler', 'emocoes', 'publica', 'data'])
+          && request.resource.data.get('autorUid', null) == uid
+          && request.resource.data.get('publica', null) == false
+          && request.resource.data.get('texto', null) is string
+          && request.resource.data.texto.size() <= 500          // RN03
+          && request.resource.data.get('spoiler', null) is bool
+          && request.resource.data.get('emocoes', null) is list
+          && request.resource.data.emocoes.size() <= 6;         // RN10
+      }
+    }
+
+    // ---------- perfisPublicos/{uid}: apelido e avatar ----------
+    // Qualquer usuário logado lê (aparece ao lado das opiniões); só o dono escreve.
+    match /perfisPublicos/{uid} {
+      allow read: if logado();
+      allow delete: if dono(uid);
+      allow create, update: if dono(uid)
+        && request.resource.data.keys().hasOnly(['apelido', 'avatarId'])
+        && request.resource.data.get('apelido', null) is string
+        && request.resource.data.apelido.size() >= 1
+        && request.resource.data.apelido.size() <= 40
+        && request.resource.data.get('avatarId', null) is string
+        && request.resource.data.avatarId.size() >= 1
+        && request.resource.data.avatarId.size() <= 20;
+    }
+
+    // ---------- avaliacoes/{obra}/opinioes/{autorUid}: nota + opinião PÚBLICA ----------
+    match /avaliacoes/{obraId}/opinioes/{autorUid} {
+
+      // Valida o documento que ficará gravado depois da operação
+      // (o app usa merge, então request.resource.data já é o resultado final).
+      function opiniaoPublicaValida() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(
+                 ['autorUid', 'nota', 'data', 'apelidoAutor', 'avatarAutor',
+                  'texto', 'spoiler', 'emocoes', 'publica'])
+          // O autor gravado tem de ser quem está logado, e o id do documento também (RN01, RN06)
+          && d.get('autorUid', null) == autorUid
+          // Nota opcional (pode haver só texto), mas se existir é inteiro de 1 a 5 (RN02)
+          && (!('nota' in d) || (d.nota is int && d.nota >= 1 && d.nota <= 5))
+          // Texto opcional, até 500 caracteres (RN03)
+          && (!('texto' in d) || (d.texto is string && d.texto.size() <= 500))
+          && (!('spoiler' in d) || d.spoiler is bool)
+          // No máximo 6 emoções (RN10). A lista fixa de 24 não é imposta aqui.
+          && (!('emocoes' in d) || (d.emocoes is list && d.emocoes.size() <= 6))
+          // Este documento só guarda opinião PÚBLICA: privada vai para usuarios/.../opinioesPrivadas
+          && (!('publica' in d) || d.publica == true)
+          && (!('data' in d) || d.data is int)
+          && apelidoOk(d) && avatarOk(d);
+      }
+
+      // Impede forjar o apelido de outra pessoa: o apelido gravado precisa ser o
+      // do perfil público do próprio autor. Só é conferido quando o campo MUDA,
+      // para uma nota dada depois de trocar de apelido não ser bloqueada.
+      function apelidoOk(d) {
+        return !('apelidoAutor' in d)
+          || (resource != null && resource.data.get('apelidoAutor', null) == d.apelidoAutor)
+          || d.apelidoAutor == get(/databases/$(database)/documents/perfisPublicos/$(autorUid)).data.apelido;
+      }
+
+      // Mesma ideia para o avatar copiado na opinião.
+      function avatarOk(d) {
+        return !('avatarAutor' in d)
+          || (resource != null && resource.data.get('avatarAutor', null) == d.avatarAutor)
+          || d.avatarAutor == get(/databases/$(database)/documents/perfisPublicos/$(autorUid)).data.avatarId;
+      }
+
+      // Qualquer usuário logado lê as notas e opiniões públicas (RF18, RF21).
+      // Não dá para filtrar por campo aqui sem quebrar a consulta da coleção inteira,
+      // por isso a privacidade vem da separação em opinioesPrivadas.
+      allow read: if logado();
+
+      // Só o autor cria, edita ou apaga a própria avaliação/opinião (RN06).
+      allow create, update: if dono(autorUid) && opiniaoPublicaValida();
+      allow delete: if dono(autorUid);
+
+      // ---------- votos/{votanteUid}: curtir e descurtir (RF23 a RF26) ----------
+      match /votos/{votanteUid} {
+        allow read: if logado();
+
+        // O id do documento é o uid de quem vota: isso garante UM voto por
+        // pessoa por opinião (RNF04). Também exige:
+        //  - voto de +1 ou -1 (RN05)
+        //  - votante diferente do autor da opinião (RN04)
+        //  - nenhum campo além de "valor"
+        allow create, update: if dono(votanteUid)
+          && votanteUid != autorUid
+          && request.resource.data.keys().hasOnly(['valor'])
+          && request.resource.data.get('valor', null) in [1, -1];
+
+        // Cada um desfaz apenas o próprio voto (RF25).
+        allow delete: if dono(votanteUid);
+      }
+    }
+
+    // ---------- denuncias/{id}: só criar (RF28) ----------
+    // O app nunca lê, edita nem apaga denúncias: a leitura é só pelo console
+    // do Firebase (administrador).
+    match /denuncias/{denunciaId} {
+      allow read, update, delete: if false;
+      allow create: if logado()
+        && request.resource.data.keys().hasOnly(
+             ['autorOpiniaoUid', 'tipoMidia', 'tmdbId', 'denuncianteUid', 'motivo', 'data'])
+        // Não dá para denunciar "em nome de outra pessoa"
+        && request.resource.data.get('denuncianteUid', null) == request.auth.uid
+        && request.resource.data.get('autorOpiniaoUid', null) is string
+        && request.resource.data.get('tipoMidia', null) in ['movie', 'tv']
+        && request.resource.data.get('tmdbId', null) is int
+        && request.resource.data.get('data', null) is int
+        // Motivo precisa ser um dos fixos de MOTIVOS_DENUNCIA (Denuncia.kt).
+        // Se mudar a lista no app, atualize aqui também.
+        && request.resource.data.get('motivo', null) in [
+             'Conteúdo ofensivo ou discurso de ódio',
+             'Spam ou propaganda',
+             'Assédio ou bullying',
+             'Informação falsa',
+             'Outro'
+           ];
+    }
+
+    // Qualquer outro caminho não listado acima fica NEGADO (comportamento padrão).
+  }
+}
