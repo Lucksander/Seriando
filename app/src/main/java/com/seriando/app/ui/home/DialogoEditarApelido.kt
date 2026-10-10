@@ -27,8 +27,11 @@ fun DialogoEditarApelido(
         text = {
             OutlinedTextField(
                 value = texto,
-                onValueChange = { texto = it },
-                label = { Text("Apelido") }
+                // Máximo de 40 caracteres: é o limite aceito pelas regras do Firestore (RNF01)
+                onValueChange = { if (it.length <= 40) texto = it },
+                label = { Text("Apelido") },
+                singleLine = true,
+                supportingText = { Text("${texto.length}/40") }
             )
         },
         confirmButton = {

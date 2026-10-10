@@ -8,14 +8,13 @@ Projeto desenvolvido em **Kotlin** com **Jetpack Compose**, com foco em boas pr�
 
 ## 📌 Versão Atual
 
-**Versão: V0.11** *(em desenvolvimento — rumo à V1.0)*
+**Versão: V0.12** *(em desenvolvimento — rumo à V1.0)*
 
-### 🆕 Novidades da V0.11
-- **Página do Ator/Atriz**:
-  - Tela dedicada para exibição de foto de perfil, nome, data e local de nascimento.
-  - Biografia expansível ("Ler mais" / "Mostrar menos") com fallback automático para inglês caso a biografia em português não esteja disponível no TMDB.
-  - Filmografia completa apresentada em grade de 3 colunas, ordenada por popularidade, exibindo poster do título e nome do personagem interpretado.
-  - **Navegação bidirecional fluida**: Tocar em um ator no elenco de uma obra abre o perfil dele; tocar em qualquer título da sua filmografia navega para os detalhes daquele filme ou série.
+### 🆕 Novidades da V0.12
+- **Home por Categorias**: a Home passou a ter uma fileira horizontal para cada gênero (Em alta, Ação, Comédia, Suspense, Drama, Ficção científica, Terror, Romance, Animação, Crime, Documentário e Família), misturando filmes e séries. No fim de cada fileira, o cartão "Ver mais" abre a lista completa da categoria, em grade de 3 colunas com o botão "Carregar mais".
+- **Regras de Segurança do Firestore**: o banco saiu do modo de teste. As regras (arquivo `firestore.rules`) limitam cada usuário aos próprios dados, validam os campos gravados, garantem um único voto por usuário por opinião e impedem votar na própria opinião.
+- **Opinião privada separada**: a opinião privada passou a ser gravada em um local que só o próprio autor consegue ler, em vez de apenas ficar escondida pelo app.
+- **Tratamento de erros e carregamento**: todas as telas mostram indicador de carregamento e mensagem de erro, com botão para tentar de novo quando faz sentido, e uma falha de rede ou de permissão não derruba mais o app.
 
 ---
 
@@ -30,7 +29,7 @@ Com integração ao **Firebase Authentication (Google Sign-In)** e **Cloud Fires
 ## 🚀 Funcionalidades
 
 ### 🔍 Navegação & Busca
-- **Aba Home**: Exibe destaques em alta na semana (*trending*) atualizados aleatoriamente e botão de acesso rápido à pesquisa.
+- **Aba Home**: Fileiras horizontais por gênero (incluindo "Em alta" na semana), com o cartão "Ver mais" que abre a lista completa da categoria, e botão de acesso rápido à pesquisa.
 - **Busca Unificada**: Pesquisa integrada para séries e filmes utilizando a API `/search/multi` do TMDB.
 - **Cache de Navegação & Pesquisa**: Preservação do termo buscado, dos resultados obtidos e da aba ativa ao navegar entre telas, evitando requisições redundantes.
 
@@ -71,6 +70,13 @@ Com integração ao **Firebase Authentication (Google Sign-In)** e **Cloud Fires
   - Possibilidade de alterar ou desfazer o voto a qualquer momento.
 - **Sistema de Denúncia**: Canal para reportar opiniões inadequada com seleção de motivo (ex: spoiler não sinalizado, discurso de ódio, spam/ofensa).
 
+### 🔒 Segurança e Privacidade *(Novo na V0.12)*
+- **Regras do Firestore por usuário**: lista pessoal, e-mail e aniversário só podem ser lidos e gravados pelo próprio dono.
+- **Comunidade apenas para quem entrou**: avaliações e opiniões só são lidas por usuários autenticados; sem login, o app mostra um aviso no lugar.
+- **Validação no servidor**: nota de 1 a 5, opinião de até 500 caracteres, no máximo 6 emoções, voto de +1 ou -1 e campos permitidos em cada coleção.
+- **Denúncias protegidas**: o app só cria denúncias; elas não podem ser lidas, alteradas nem apagadas pelo aplicativo.
+- **Chaves fora do repositório**: chave da TMDB em `local.properties` e `google-services.json` no `.gitignore`.
+
 ---
 
 ## 🛠️ Tecnologias & Bibliotecas
@@ -96,11 +102,11 @@ com.seriando.app
 │
 ├── data/
 │   ├── auth/          # AuthRepository (Firebase Auth + Credential Manager + Logout)
-│   ├── cache/         # AbaCache e BuscaCache (Preservação de estado em memória)
+│   ├── cache/         # AbaCache, BuscaCache e CatalogoCache (Preservação de estado em memória)
 │   ├── remote/        # RetrofitInstance e TmdbApiService (End-points REST do TMDB)
-│   └── repository/    # Repositórios Firestore (Avaliacao, Denuncia, MinhaLista, Perfil, Progresso)
+│   └── repository/    # Repositórios (Avaliacao, Catalogo, Denuncia, MinhaLista, Perfil, Progresso)
 │
-├── model/              # Data classes (Movie, Serie, Pessoa, Avaliacao, Emocao, Status, WatchProviders, etc.)
+├── model/              # Data classes (Movie, Serie, Pessoa, Avaliacao, Categoria, Emocao, Status, WatchProviders, etc.)
 │
 ├── navigation/
 │   ├── MainScaffold.kt # Scaffold principal com BottomNavigation (Home, Minha Lista, Usuário)
@@ -109,7 +115,7 @@ com.seriando.app
 │
 ├── ui/
 │   ├── details/       # DetailsScreen, ElencoCard, OpiniaoCard, SecaoOndeAssistir, SeletorEmocoes, SeletorEstrelas, DialogoDenuncia
-│   ├── home/          # HomeScreen, DestaqueCard, ResultadoCard, SerieCardSalva, DialogoEditarApelido
+│   ├── home/          # HomeScreen, CategoriaRow, CategoriaScreen, DestaqueCard, ResultadoCard, SerieCardSalva, DialogoEditarApelido
 │   ├── login/         # DialogoLoginObrigatorio
 │   ├── mylist/        # MinhaListaScreen (Lista com filtro de status)
 │   ├── pessoa/        # PessoaScreen (Página do ator/atriz, biografia e filmografia)
@@ -151,8 +157,9 @@ TMDB_API_KEY=sua_chave_aqui
 2. Adicione um app Android com o pacote `com.seriando.app` e insira a impressão digital SHA-1 da sua chave de depuração (*debug keystore*).
 3. Faça o download do arquivo `google-services.json` e coloque-o na pasta `app/` do projeto.
 4. No console do Firebase:
-   - Em **Authentication**, ative o provedor **Google**.
-   - Em **Firestore Database**, crie o banco de dados.
+  - Em **Authentication**, ative o provedor **Google**.
+  - Em **Firestore Database**, crie o banco de dados.
+  - Em **Firestore Database > Regras**, cole o conteúdo do arquivo `firestore.rules` (na raiz do repositório) e publique.
 5. Copie o **Web Client ID** (encontrado no `google-services.json` no nó `client_type: 3`) e adicione no arquivo `app/src/main/res/values/strings.xml`:
 
 ```xml
@@ -181,15 +188,16 @@ TMDB_API_KEY=sua_chave_aqui
 - **V0.8**: Status de acompanhamento diferenciados para séries e filmes, nota do TMDB, elenco, trailers do YouTube, marcação de temporada inteira, remoção de itens da lista, preservação de estado da busca e aba Usuário com perfil público/privado.
 - **V0.9**: Sistema de avaliação por estrelas (1 a 5), cálculo da média da comunidade, opiniões públicas e privadas com aviso de spoiler, e seletor de emoções.
 - **V0.10**: Sistema de curtidas e descurtidas em opiniões, funcionalidade de denunciar comentários com motivos, thumbnails de episódios e exibição de provedores de streaming ("Onde Assistir") via JustWatch.
-- **V0.11**: **(Atual)** Página do ator/atriz com foto, nome, data/local de nascimento, biografia expansível (com fallback em inglês) e filmografia completa interativa em grade ordenada por popularidade.
+- **V0.11**: Página do ator/atriz com foto, nome, data/local de nascimento, biografia expansível (com fallback em inglês) e filmografia completa interativa em grade ordenada por popularidade.
+- **V0.12**: **(Atual)** Home organizada por categorias de gênero com "Ver mais" e lista completa paginada, regras de segurança do Firestore com validação de campos, opinião privada em local de leitura restrita, e tratamento de erros e carregamento em todas as telas.
 
 ---
 
 ## 📌 Planejamento Futuro (Rumo à V1.0)
 
-- [ ] **Home Organizada por Categorias**: Seções divididas por gêneros cinematográficos com opção de "Ver Mais".
-- [ ] **Regras de Segurança do Firestore**: Configuração de regras rígidas no Firestore para ambiente de produção.
-- [ ] **Tratamento Global de Erros**: Melhoria nos estados de carregamento, *shimmers* e tratamento de exceções de rede.
+- [x] **Home Organizada por Categorias**: Seções divididas por gêneros cinematográficos com opção de "Ver Mais".
+- [x] **Regras de Segurança do Firestore**: Configuração de regras rígidas no Firestore para ambiente de produção.
+- [x] **Tratamento Global de Erros**: Melhoria nos estados de carregamento, *shimmers* e tratamento de exceções de rede.
 - [ ] **Identidade Visual & Ícone**: Design System proprietário com paleta de cores customizada e ícone exclusivo do app.
 - [ ] **Testes Automatizados**: Implementação de testes unitários de repositórios e testes de UI com Compose.
 - [ ] **Lançamento na Google Play Store**.

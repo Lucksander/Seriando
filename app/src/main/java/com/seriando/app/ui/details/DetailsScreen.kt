@@ -3,6 +3,7 @@ package com.seriando.app.ui.details
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -74,6 +75,9 @@ import com.seriando.app.model.VotoResumo
  * - Interação social: Votação (curtir/descurtir) em opiniões de outros usuários e denúncia de conteúdos inadequados.
  * - Controle de progresso (Séries): Seleção de temporadas e episódios com marcação de progresso individual ou por temporada completa.
  *
+ * A comunidade (média, opiniões, votos) só é lida com o usuário logado (RN08):
+ * as regras do Firestore recusam a leitura de quem não está autenticado.
+ *
  * @param serieId Identificador único do item no TMDB (The Movie Database).
  * @param tipoMidia Tipo do conteúdo: `"tv"` para séries ou `"movie"` para filmes.
  * @param aoClicarEmAtor Callback disparado ao selecionar um integrante do elenco, repassando o ID do ator.
@@ -88,6 +92,10 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
     val avaliacaoRepository = remember { AvaliacaoRepository() }
     val perfilRepository = remember { PerfilRepository() }
     val scope = rememberCoroutineScope()
+
+    // Lido a cada recomposição. Serve de chave dos efeitos da comunidade abaixo:
+    // quando o usuário entra (pelo diálogo) ou sai, os efeitos rodam de novo.
+    val logado = authRepository.usuarioAtual() != null
 
     var detalheSerie by remember { mutableStateOf<SerieDetalhe?>(null) }
     var detalheFilme by remember { mutableStateOf<MovieDetalhe?>(null) }
@@ -104,6 +112,8 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
     var minhaNota by remember { mutableStateOf(0) }
     var mediaComunidade by remember { mutableStateOf(0.0) }
     var totalAvaliacoes by remember { mutableStateOf(0) }
+    // true quando a leitura da comunidade falhou (rede ou permissão): mostra aviso em vez de "sem avaliações"
+    var erroComunidade by remember { mutableStateOf(false) }
 
     var textoOpiniao by remember { mutableStateOf("") }
     var spoilerMarcado by remember { mutableStateOf(false) }
@@ -116,7 +126,28 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
     val denunciaRepository = remember { com.seriando.app.data.repository.DenunciaRepository() }
     var mostrarDialogoDenuncia by remember { mutableStateOf<String?>(null) } // guarda o uid do autor sendo denunciado
     var provedoresBrasil by remember { mutableStateOf<com.seriando.app.model.ProvedoresPais?>(null) }
+    // true só quando o login foi pedido pelo botão "Adicionar à minha lista":
+    // assim, depois de entrar, a obra só é adicionada nesse caso (e não ao avaliar, votar etc.)
+    var adicionarAposLogin by remember { mutableStateOf(false) }
 
+    /**
+     * Registra a falha no Logcat e avisa o usuário com um Toast.
+     * Usada em toda ação que pode falhar silenciosamente (rede, permissão).
+     */
+    fun avisarErro(mensagem: String, e: Exception) {
+        Log.e("Seriando", mensagem, e)
+        Toast.makeText(context, mensagem, Toast.LENGTH_SHORT).show()
+    }
+
+    /**
+     * Recalcula a média e o total de avaliações da comunidade.
+     * Pode lançar exceção: quem chama deve estar dentro de um try/catch.
+     */
+    suspend fun atualizarMedia() {
+        val todas = avaliacaoRepository.buscarTodasAvaliacoes(tipoMidia, serieId).filter { it.nota > 0 }
+        totalAvaliacoes = todas.size
+        mediaComunidade = if (todas.isEmpty()) 0.0 else todas.map { it.nota }.average()
+    }
 
     // Busca os detalhes (série ou filme, conforme o tipo).
     LaunchedEffect(serieId, tipoMidia) {
@@ -133,50 +164,90 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
     }
 
     // Verifica se já está na minha lista e, se estiver, carrega o status salvo.
-    LaunchedEffect(serieId) {
+    LaunchedEffect(serieId, logado) {
         val uid = authRepository.usuarioAtual()?.uid
         if (uid != null) {
-            val serieSalva = minhaListaRepository.buscarSeries(uid).find { it.id == serieId }
-            if (serieSalva != null) {
-                adicionada = true
-                statusAtualLabel = labelDoStatus(tipoMidia, serieSalva.status)
+            try {
+                val serieSalva = minhaListaRepository.buscarSeries(uid).find { it.id == serieId }
+                if (serieSalva != null) {
+                    adicionada = true
+                    statusAtualLabel = labelDoStatus(tipoMidia, serieSalva.status)
+                }
+            } catch (e: Exception) {
+                Log.e("Seriando", "Erro ao buscar minha lista", e)
             }
+        } else {
+            // Sem login: nada na lista
+            adicionada = false
+            statusAtualLabel = "Quero assistir"
         }
     }
 
     // Episódios assistidos, só para séries.
-    LaunchedEffect(detalheSerie) {
+    LaunchedEffect(detalheSerie, logado) {
         val uid = authRepository.usuarioAtual()?.uid
         if (tipoMidia == "tv" && uid != null) {
-            assistidos = progressoRepository.buscarAssistidos(uid, serieId)
+            try {
+                assistidos = progressoRepository.buscarAssistidos(uid, serieId)
+            } catch (e: Exception) {
+                Log.e("Seriando", "Erro ao buscar episódios assistidos", e)
+            }
+        } else {
+            assistidos = emptySet()
         }
     }
 
-    // Nota do usuário e média da comunidade.
-    LaunchedEffect(serieId, tipoMidia) {
+    // Nota do usuário e média da comunidade. A leitura da comunidade exige login (RN08).
+    LaunchedEffect(serieId, tipoMidia, logado) {
         val uid = authRepository.usuarioAtual()?.uid
-        if (uid != null) {
-            minhaNota = avaliacaoRepository.buscarMinhaAvaliacao(uid, tipoMidia, serieId)?.nota ?: 0
+        if (uid == null) {
+            // Sem login: limpa tudo e NÃO consulta o Firestore
+            minhaNota = 0
+            mediaComunidade = 0.0
+            totalAvaliacoes = 0
+            erroComunidade = false
+            return@LaunchedEffect
         }
-        val todas = avaliacaoRepository.buscarTodasAvaliacoes(tipoMidia, serieId).filter { it.nota > 0 }
-        totalAvaliacoes = todas.size
-        mediaComunidade = if (todas.isEmpty()) 0.0 else todas.map { it.nota }.average()
+        try {
+            erroComunidade = false
+            minhaNota = avaliacaoRepository.buscarMinhaAvaliacao(uid, tipoMidia, serieId)?.nota ?: 0
+            atualizarMedia()
+        } catch (e: Exception) {
+            Log.e("Seriando", "Erro ao buscar avaliações da comunidade", e)
+            erroComunidade = true
+        }
     }
 
     // Opiniões da obra (RF21), a opinião do próprio usuário (se existir),
-    // e o resumo de votos de cada opinião (RF26).
-    LaunchedEffect(serieId, tipoMidia) {
+    // e o resumo de votos de cada opinião (RF26). Exige login (RN08).
+    LaunchedEffect(serieId, tipoMidia, logado) {
         val uid = authRepository.usuarioAtual()?.uid
-        opinioes = avaliacaoRepository.buscarOpinioes(tipoMidia, serieId, uid)
-        minhaOpiniaoExistente = opinioes.find { it.autorUid == uid }
-        minhaOpiniaoExistente?.let {
-            textoOpiniao = it.texto
-            spoilerMarcado = it.spoiler
-            publicaMarcada = it.publica
-            emocoesSelecionadas = it.emocoes
+        if (uid == null) {
+            // Sem login: esvazia a comunidade e o formulário, sem consultar o Firestore
+            opinioes = emptyList()
+            minhaOpiniaoExistente = null
+            votosPorOpiniao = emptyMap()
+            textoOpiniao = ""
+            spoilerMarcado = false
+            publicaMarcada = true
+            emocoesSelecionadas = emptyList()
+            return@LaunchedEffect
         }
-        votosPorOpiniao = opinioes.associate {
-            it.autorUid to avaliacaoRepository.buscarResumoVotos(it.autorUid, tipoMidia, serieId, uid)
+        try {
+            opinioes = avaliacaoRepository.buscarOpinioes(tipoMidia, serieId, uid)
+            minhaOpiniaoExistente = opinioes.find { it.autorUid == uid }
+            minhaOpiniaoExistente?.let {
+                textoOpiniao = it.texto
+                spoilerMarcado = it.spoiler
+                publicaMarcada = it.publica
+                emocoesSelecionadas = it.emocoes
+            }
+            votosPorOpiniao = opinioes.associate {
+                it.autorUid to avaliacaoRepository.buscarResumoVotos(it.autorUid, tipoMidia, serieId, uid)
+            }
+        } catch (e: Exception) {
+            Log.e("Seriando", "Erro ao buscar opiniões", e)
+            erroComunidade = true
         }
     }
 
@@ -203,19 +274,23 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
         val sinopse = detalheSerie?.sinopse ?: detalheFilme?.sinopse ?: ""
         val capa = detalheSerie?.caminhoCapa ?: detalheFilme?.caminhoCapa
         scope.launch {
-            minhaListaRepository.adicionarSerie(
-                uid,
-                SerieSalva(
-                    id = serieId,
-                    nome = nome,
-                    sinopse = sinopse,
-                    caminhoCapa = capa,
-                    tipoMidia = tipoMidia,
-                    status = StatusSerie.QUERO_ASSISTIR.name
+            try {
+                minhaListaRepository.adicionarSerie(
+                    uid,
+                    SerieSalva(
+                        id = serieId,
+                        nome = nome,
+                        sinopse = sinopse,
+                        caminhoCapa = capa,
+                        tipoMidia = tipoMidia,
+                        status = StatusSerie.QUERO_ASSISTIR.name
+                    )
                 )
-            )
-            adicionada = true
-            statusAtualLabel = "Quero assistir"
+                adicionada = true
+                statusAtualLabel = "Quero assistir"
+            } catch (e: Exception) {
+                avisarErro("Não foi possível adicionar à lista.", e)
+            }
         }
     }
 
@@ -225,8 +300,12 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
     fun removerDaMinhaLista() {
         val uid = authRepository.usuarioAtual()?.uid ?: return
         scope.launch {
-            minhaListaRepository.removerSerie(uid, serieId)
-            adicionada = false
+            try {
+                minhaListaRepository.removerSerie(uid, serieId)
+                adicionada = false
+            } catch (e: Exception) {
+                avisarErro("Não foi possível remover da lista.", e)
+            }
         }
     }
 
@@ -350,9 +429,13 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                                     val uid = authRepository.usuarioAtual()?.uid
                                     if (uid != null) {
                                         scope.launch {
-                                            val nomeStatus = nomeDoStatus(tipoMidia, label)
-                                            minhaListaRepository.atualizarStatusTexto(uid, serieId, nomeStatus)
-                                            statusAtualLabel = label
+                                            try {
+                                                val nomeStatus = nomeDoStatus(tipoMidia, label)
+                                                minhaListaRepository.atualizarStatusTexto(uid, serieId, nomeStatus)
+                                                statusAtualLabel = label
+                                            } catch (e: Exception) {
+                                                avisarErro("Não foi possível atualizar o status.", e)
+                                            }
                                         }
                                     }
                                 },
@@ -367,6 +450,7 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                             if (authRepository.usuarioAtual() != null) {
                                 adicionarAMinhaLista()
                             } else {
+                                adicionarAposLogin = true
                                 mostrarDialogoLogin = true
                             }
                         },
@@ -393,11 +477,13 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                             mostrarDialogoLogin = true
                         } else {
                             scope.launch {
-                                avaliacaoRepository.salvarNota(uid, tipoMidia, serieId, notaEscolhida)
-                                minhaNota = notaEscolhida
-                                val todas = avaliacaoRepository.buscarTodasAvaliacoes(tipoMidia, serieId).filter { it.nota > 0 }
-                                totalAvaliacoes = todas.size
-                                mediaComunidade = if (todas.isEmpty()) 0.0 else todas.map { it.nota }.average()
+                                try {
+                                    avaliacaoRepository.salvarNota(uid, tipoMidia, serieId, notaEscolhida)
+                                    minhaNota = notaEscolhida
+                                    atualizarMedia()
+                                } catch (e: Exception) {
+                                    avisarErro("Não foi possível salvar a avaliação.", e)
+                                }
                             }
                         }
                     }
@@ -407,11 +493,13 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                     TextButton(onClick = {
                         val uid = authRepository.usuarioAtual()?.uid ?: return@TextButton
                         scope.launch {
-                            avaliacaoRepository.removerMinhaAvaliacao(uid, tipoMidia, serieId)
-                            minhaNota = 0
-                            val todas = avaliacaoRepository.buscarTodasAvaliacoes(tipoMidia, serieId).filter { it.nota > 0 }
-                            totalAvaliacoes = todas.size
-                            mediaComunidade = if (todas.isEmpty()) 0.0 else todas.map { it.nota }.average()
+                            try {
+                                avaliacaoRepository.removerMinhaAvaliacao(uid, tipoMidia, serieId)
+                                minhaNota = 0
+                                atualizarMedia()
+                            } catch (e: Exception) {
+                                avisarErro("Não foi possível remover a avaliação.", e)
+                            }
                         }
                     }) {
                         Text("Remover minha avaliação")
@@ -420,7 +508,18 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                if (totalAvaliacoes > 0) {
+                // Média da comunidade: três situações (sem login, falha na leitura, normal)
+                if (!logado) {
+                    Text(
+                        text = "Entre na sua conta para ver as avaliações e opiniões da comunidade.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                } else if (erroComunidade) {
+                    Text(
+                        text = "Não foi possível carregar as avaliações da comunidade.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                } else if (totalAvaliacoes > 0) {
                     val palavraAvaliacao = if (totalAvaliacoes == 1) "avaliação" else "avaliações"
                     Text(
                         text = "Média da comunidade: ${"%.1f".format(mediaComunidade)} ⭐ ($totalAvaliacoes $palavraAvaliacao)",
@@ -433,130 +532,149 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                     )
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
-                Text(text = "Opiniões da comunidade", style = MaterialTheme.typography.titleMedium)
-                Spacer(modifier = Modifier.height(8.dp))
-
-                if (minhaOpiniaoExistente == null || editandoOpiniao) {
-                    OutlinedTextField(
-                        value = textoOpiniao,
-                        onValueChange = { if (it.length <= 500) textoOpiniao = it },
-                        label = { Text("Escreva sua opinião (máx. 500 caracteres)") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Text(text = "${textoOpiniao.length}/500", style = MaterialTheme.typography.labelSmall)
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(
-                            checked = spoilerMarcado,
-                            onCheckedChange = { spoilerMarcado = it }
-                        )
-                        Text("Contém spoiler")
-                    }
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Switch(
-                            checked = publicaMarcada,
-                            onCheckedChange = { publicaMarcada = it }
-                        )
-                        Text(if (publicaMarcada) "Pública" else "Privada")
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = "Como você se sentiu assistindo?", style = MaterialTheme.typography.labelMedium)
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    SeletorEmocoes(
-                        selecionadas = emocoesSelecionadas,
-                        aoMudar = { emocoesSelecionadas = it }
-                    )
-
+                // Opiniões: só para usuário logado (RN08). Sem login, o aviso acima já explica.
+                if (logado) {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Text(text = "Opiniões da comunidade", style = MaterialTheme.typography.titleMedium)
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    Button(
-                        onClick = {
-                            val uid = authRepository.usuarioAtual()?.uid
-                            if (uid == null) {
-                                mostrarDialogoLogin = true
-                            } else if (textoOpiniao.isNotBlank()) {
-                                scope.launch {
-                                    val perfil = perfilRepository.buscarPerfilPublico(uid)
-                                    avaliacaoRepository.salvarOpiniao(
-                                        uid, tipoMidia, serieId,
-                                        textoOpiniao, spoilerMarcado, emocoesSelecionadas, publicaMarcada,
-                                        apelidoAutor = perfil?.apelido ?: "Usuário",
-                                        avatarAutor = perfil?.avatarId ?: "google"
-                                    )
-                                    opinioes = avaliacaoRepository.buscarOpinioes(tipoMidia, serieId, uid)
-                                    minhaOpiniaoExistente = opinioes.find { it.autorUid == uid }
-                                    editandoOpiniao = false
-                                }
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Publicar opinião")
-                    }
-                }
+                    if (minhaOpiniaoExistente == null || editandoOpiniao) {
+                        OutlinedTextField(
+                            value = textoOpiniao,
+                            onValueChange = { if (it.length <= 500) textoOpiniao = it },
+                            label = { Text("Escreva sua opinião (máx. 500 caracteres)") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Text(text = "${textoOpiniao.length}/500", style = MaterialTheme.typography.labelSmall)
 
-                Spacer(modifier = Modifier.height(16.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(
+                                checked = spoilerMarcado,
+                                onCheckedChange = { spoilerMarcado = it }
+                            )
+                            Text("Contém spoiler")
+                        }
 
-                if (opinioes.isEmpty()) {
-                    Text(
-                        text = "Nenhuma opinião ainda. Seja o primeiro a comentar!",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                } else {
-                    opinioes.forEach { opiniao ->
-                        OpiniaoCard(
-                            opiniao = opiniao,
-                            ehMinha = opiniao.autorUid == authRepository.usuarioAtual()?.uid,
-                            resumoVotos = votosPorOpiniao[opiniao.autorUid] ?: VotoResumo(),
-                            aoEditar = { editandoOpiniao = true },
-                            aoRemover = {
-                                val uid = authRepository.usuarioAtual()?.uid ?: return@OpiniaoCard
-                                scope.launch {
-                                    avaliacaoRepository.removerOpiniao(uid, tipoMidia, serieId)
-                                    opinioes = avaliacaoRepository.buscarOpinioes(tipoMidia, serieId, uid)
-                                    minhaOpiniaoExistente = null
-                                    textoOpiniao = ""
-                                    spoilerMarcado = false
-                                    publicaMarcada = true
-                                    emocoesSelecionadas = emptyList()
-                                }
-                            },
-                            aoCurtir = {
-                                val votanteUid = authRepository.usuarioAtual()?.uid
-                                if (votanteUid == null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Switch(
+                                checked = publicaMarcada,
+                                onCheckedChange = { publicaMarcada = it }
+                            )
+                            Text(if (publicaMarcada) "Pública" else "Privada")
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(text = "Como você se sentiu assistindo?", style = MaterialTheme.typography.labelMedium)
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        SeletorEmocoes(
+                            selecionadas = emocoesSelecionadas,
+                            aoMudar = { emocoesSelecionadas = it }
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Button(
+                            onClick = {
+                                val uid = authRepository.usuarioAtual()?.uid
+                                if (uid == null) {
                                     mostrarDialogoLogin = true
-                                } else {
+                                } else if (textoOpiniao.isNotBlank()) {
                                     scope.launch {
-                                        avaliacaoRepository.votar(opiniao.autorUid, tipoMidia, serieId, votanteUid, 1)
-                                        val novoResumo = avaliacaoRepository.buscarResumoVotos(opiniao.autorUid, tipoMidia, serieId, votanteUid)
-                                        votosPorOpiniao = votosPorOpiniao + (opiniao.autorUid to novoResumo)
+                                        try {
+                                            val perfil = perfilRepository.buscarPerfilPublico(uid)
+                                            avaliacaoRepository.salvarOpiniao(
+                                                uid, tipoMidia, serieId,
+                                                textoOpiniao, spoilerMarcado, emocoesSelecionadas, publicaMarcada,
+                                                apelidoAutor = perfil?.apelido ?: "Usuário",
+                                                avatarAutor = perfil?.avatarId ?: "google"
+                                            )
+                                            opinioes = avaliacaoRepository.buscarOpinioes(tipoMidia, serieId, uid)
+                                            minhaOpiniaoExistente = opinioes.find { it.autorUid == uid }
+                                            editandoOpiniao = false
+                                        } catch (e: Exception) {
+                                            avisarErro("Não foi possível publicar a opinião.", e)
+                                        }
                                     }
                                 }
                             },
-                            aoDescurtir = {
-                                val votanteUid = authRepository.usuarioAtual()?.uid
-                                if (votanteUid == null) {
-                                    mostrarDialogoLogin = true
-                                } else {
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Publicar opinião")
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    if (opinioes.isEmpty()) {
+                        Text(
+                            text = "Nenhuma opinião ainda. Seja o primeiro a comentar!",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    } else {
+                        opinioes.forEach { opiniao ->
+                            OpiniaoCard(
+                                opiniao = opiniao,
+                                ehMinha = opiniao.autorUid == authRepository.usuarioAtual()?.uid,
+                                resumoVotos = votosPorOpiniao[opiniao.autorUid] ?: VotoResumo(),
+                                aoEditar = { editandoOpiniao = true },
+                                aoRemover = {
+                                    val uid = authRepository.usuarioAtual()?.uid ?: return@OpiniaoCard
                                     scope.launch {
-                                        avaliacaoRepository.votar(opiniao.autorUid, tipoMidia, serieId, votanteUid, -1)
-                                        val novoResumo = avaliacaoRepository.buscarResumoVotos(opiniao.autorUid, tipoMidia, serieId, votanteUid)
-                                        votosPorOpiniao = votosPorOpiniao + (opiniao.autorUid to novoResumo)
+                                        try {
+                                            avaliacaoRepository.removerOpiniao(uid, tipoMidia, serieId)
+                                            opinioes = avaliacaoRepository.buscarOpinioes(tipoMidia, serieId, uid)
+                                            minhaOpiniaoExistente = null
+                                            textoOpiniao = ""
+                                            spoilerMarcado = false
+                                            publicaMarcada = true
+                                            emocoesSelecionadas = emptyList()
+                                        } catch (e: Exception) {
+                                            avisarErro("Não foi possível remover a opinião.", e)
+                                        }
+                                    }
+                                },
+                                aoCurtir = {
+                                    val votanteUid = authRepository.usuarioAtual()?.uid
+                                    if (votanteUid == null) {
+                                        mostrarDialogoLogin = true
+                                    } else {
+                                        scope.launch {
+                                            try {
+                                                avaliacaoRepository.votar(opiniao.autorUid, tipoMidia, serieId, votanteUid, 1)
+                                                val novoResumo = avaliacaoRepository.buscarResumoVotos(opiniao.autorUid, tipoMidia, serieId, votanteUid)
+                                                votosPorOpiniao = votosPorOpiniao + (opiniao.autorUid to novoResumo)
+                                            } catch (e: Exception) {
+                                                avisarErro("Não foi possível registrar o voto.", e)
+                                            }
+                                        }
+                                    }
+                                },
+                                aoDescurtir = {
+                                    val votanteUid = authRepository.usuarioAtual()?.uid
+                                    if (votanteUid == null) {
+                                        mostrarDialogoLogin = true
+                                    } else {
+                                        scope.launch {
+                                            try {
+                                                avaliacaoRepository.votar(opiniao.autorUid, tipoMidia, serieId, votanteUid, -1)
+                                                val novoResumo = avaliacaoRepository.buscarResumoVotos(opiniao.autorUid, tipoMidia, serieId, votanteUid)
+                                                votosPorOpiniao = votosPorOpiniao + (opiniao.autorUid to novoResumo)
+                                            } catch (e: Exception) {
+                                                avisarErro("Não foi possível registrar o voto.", e)
+                                            }
+                                        }
+                                    }
+                                },
+                                aoDenunciar = {
+                                    if (authRepository.usuarioAtual() == null) {
+                                        mostrarDialogoLogin = true
+                                    } else {
+                                        mostrarDialogoDenuncia = opiniao.autorUid
                                     }
                                 }
-                            },
-                            aoDenunciar = {
-                                if (authRepository.usuarioAtual() == null) {
-                                    mostrarDialogoLogin = true
-                                } else {
-                                    mostrarDialogoDenuncia = opiniao.autorUid
-                                }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
 
@@ -570,11 +688,15 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                             TextButton(onClick = {
                                 temporadaSelecionada = temporada.numero
                                 scope.launch {
-                                    episodiosDaTemporada = RetrofitInstance.api.buscarTemporada(
-                                        serieId,
-                                        temporada.numero,
-                                        BuildConfig.TMDB_API_KEY
-                                    ).episodios
+                                    try {
+                                        episodiosDaTemporada = RetrofitInstance.api.buscarTemporada(
+                                            serieId,
+                                            temporada.numero,
+                                            BuildConfig.TMDB_API_KEY
+                                        ).episodios
+                                    } catch (e: Exception) {
+                                        avisarErro("Não foi possível carregar a temporada.", e)
+                                    }
                                 }
                             }) {
                                 Text(temporada.nome)
@@ -592,11 +714,15 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                                 mostrarDialogoLogin = true
                             } else {
                                 scope.launch {
-                                    progressoRepository.marcarTemporadaComoAssistida(
-                                        uid, serieId, numeroTemporadaAtual, episodiosDaTemporada
-                                    )
-                                    assistidos = assistidos + episodiosDaTemporada.map {
-                                        "${numeroTemporadaAtual}_${it.numero}"
+                                    try {
+                                        progressoRepository.marcarTemporadaComoAssistida(
+                                            uid, serieId, numeroTemporadaAtual, episodiosDaTemporada
+                                        )
+                                        assistidos = assistidos + episodiosDaTemporada.map {
+                                            "${numeroTemporadaAtual}_${it.numero}"
+                                        }
+                                    } catch (e: Exception) {
+                                        avisarErro("Não foi possível marcar a temporada.", e)
                                     }
                                 }
                             }
@@ -635,22 +761,26 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                                             mostrarDialogoLogin = true
                                         } else {
                                             scope.launch {
-                                                if (marcado) {
-                                                    progressoRepository.marcarAssistido(
-                                                        uid,
-                                                        serieId,
-                                                        numeroTemporadaAtual,
-                                                        episodio.numero
-                                                    )
-                                                    assistidos = assistidos + chaveEpisodio
-                                                } else {
-                                                    progressoRepository.desmarcarAssistido(
-                                                        uid,
-                                                        serieId,
-                                                        numeroTemporadaAtual,
-                                                        episodio.numero
-                                                    )
-                                                    assistidos = assistidos - chaveEpisodio
+                                                try {
+                                                    if (marcado) {
+                                                        progressoRepository.marcarAssistido(
+                                                            uid,
+                                                            serieId,
+                                                            numeroTemporadaAtual,
+                                                            episodio.numero
+                                                        )
+                                                        assistidos = assistidos + chaveEpisodio
+                                                    } else {
+                                                        progressoRepository.desmarcarAssistido(
+                                                            uid,
+                                                            serieId,
+                                                            numeroTemporadaAtual,
+                                                            episodio.numero
+                                                        )
+                                                        assistidos = assistidos - chaveEpisodio
+                                                    }
+                                                } catch (e: Exception) {
+                                                    avisarErro("Não foi possível atualizar o episódio.", e)
                                                 }
                                             }
                                         }
@@ -671,10 +801,17 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
 
     if (mostrarDialogoLogin) {
         DialogoLoginObrigatorio(
-            aoFechar = { mostrarDialogoLogin = false },
+            aoFechar = {
+                mostrarDialogoLogin = false
+                adicionarAposLogin = false // cancelou: descarta a ação pendente
+            },
             aoLogarComSucesso = {
                 mostrarDialogoLogin = false
-                adicionarAMinhaLista()
+                // Só adiciona à lista se foi isso que o usuário pediu antes do login
+                if (adicionarAposLogin) {
+                    adicionarAposLogin = false
+                    adicionarAMinhaLista()
+                }
             }
         )
     }
@@ -692,10 +829,9 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                             denunciaRepository.denunciarOpiniao(
                                 autorDenunciado, tipoMidia, serieId, denuncianteUid, motivo
                             )
-                            android.widget.Toast.makeText(context, "Denúncia enviada.", android.widget.Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Denúncia enviada.", Toast.LENGTH_SHORT).show()
                         } catch (e: Exception) {
-                            android.util.Log.e("Seriando", "Erro ao denunciar", e)
-                            android.widget.Toast.makeText(context, "Não foi possível enviar a denúncia.", android.widget.Toast.LENGTH_SHORT).show()
+                            avisarErro("Não foi possível enviar a denúncia.", e)
                         }
                     }
                 }

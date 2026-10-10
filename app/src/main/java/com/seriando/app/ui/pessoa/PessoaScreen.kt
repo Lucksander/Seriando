@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -20,6 +21,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -41,37 +43,65 @@ private fun formatarData(iso: String?): String? {
     return if (partes.size == 3) "${partes[2]}/${partes[1]}/${partes[0]}" else null
 }
 
-// Página do ator/atriz (RF41, RF42, RF43): foto, nome, dados de nascimento,
-// biografia e filmografia. Tocar num título leva à tela de Detalhes dele.
+/**
+ * Página do ator/atriz (RF41, RF42, RF43): foto, nome, dados de nascimento,
+ * biografia e filmografia. Tocar num título leva à tela de Detalhes dele.
+ *
+ * As falhas são tratadas por etapa: se só a biografia em inglês ou só a
+ * filmografia falhar, o resto da página continua visível.
+ */
 @Composable
 fun PessoaScreen(pessoaId: Int, aoClicarEmItem: (Int, String) -> Unit) {
 
     var pessoa by remember { mutableStateOf<PessoaDetalhe?>(null) }
     var creditos by remember { mutableStateOf<List<CreditoPessoa>>(emptyList()) }
-    var erro by remember { mutableStateOf(false) }
+    var erro by remember { mutableStateOf(false) }           // falha ao carregar a pessoa (página inteira)
+    var erroCreditos by remember { mutableStateOf(false) }   // falha só na filmografia
     var biografiaExpandida by remember { mutableStateOf(false) }
 
-    LaunchedEffect(pessoaId) {
-        try {
-            var dados = RetrofitInstance.api.buscarPessoa(pessoaId, BuildConfig.TMDB_API_KEY)
+    // Incrementar este número refaz todas as buscas (botão "Tentar novamente")
+    var tentativa by remember { mutableIntStateOf(0) }
 
-            // Muitas pessoas não têm biografia em português na TMDB. Nesse caso,
-            // buscamos a versão em inglês, para o campo não ficar vazio.
-            if (dados.biografia.isBlank()) {
+    LaunchedEffect(pessoaId, tentativa) {
+        // Zera o estado para mostrar o indicador de carregamento de novo
+        erro = false
+        erroCreditos = false
+        pessoa = null
+
+        // Etapa 1: dados da pessoa. Sem eles não há página, então a falha é "de tela cheia".
+        var dados: PessoaDetalhe
+        try {
+            dados = RetrofitInstance.api.buscarPessoa(pessoaId, BuildConfig.TMDB_API_KEY)
+        } catch (e: Exception) {
+            Log.e("Seriando", "Erro ao buscar pessoa", e)
+            erro = true
+            return@LaunchedEffect
+        }
+
+        // Etapa 2: muitas pessoas não têm biografia em português na TMDB. Nesse caso,
+        // buscamos a versão em inglês. Se essa busca falhar, seguimos sem biografia
+        // (a tela mostra "Biografia não disponível.") em vez de derrubar a página.
+        if (dados.biografia.isBlank()) {
+            try {
                 val emIngles = RetrofitInstance.api.buscarPessoa(pessoaId, BuildConfig.TMDB_API_KEY, "en-US")
                 dados = dados.copy(biografia = emIngles.biografia)
+            } catch (e: Exception) {
+                Log.e("Seriando", "Erro ao buscar biografia em inglês", e)
             }
-            pessoa = dados
+        }
+        pessoa = dados
 
-            // Filmografia: só filmes/séries com capa, sem repetição, dos mais
-            // populares para os menos, para os títulos conhecidos virem primeiro.
+        // Etapa 3: filmografia. Só filmes/séries com capa, sem repetição, dos mais
+        // populares para os menos, para os títulos conhecidos virem primeiro.
+        // Falha aqui só afeta esta seção.
+        try {
             creditos = RetrofitInstance.api.buscarCreditosPessoa(pessoaId, BuildConfig.TMDB_API_KEY).cast
                 .filter { it.caminhoCapa != null && (it.tipoMidia == "movie" || it.tipoMidia == "tv") }
                 .distinctBy { "${it.tipoMidia}_${it.id}" }
                 .sortedByDescending { it.popularity }
         } catch (e: Exception) {
-            Log.e("Seriando", "Erro ao buscar pessoa", e)
-            erro = true
+            Log.e("Seriando", "Erro ao buscar filmografia", e)
+            erroCreditos = true
         }
     }
 
@@ -83,7 +113,14 @@ fun PessoaScreen(pessoaId: Int, aoClicarEmItem: (Int, String) -> Unit) {
     ) {
         val dados = pessoa
         when {
-            erro -> Text("Não foi possível carregar os dados desta pessoa.")
+            // Falha ao carregar a pessoa: mensagem e botão para tentar de novo
+            erro -> {
+                Text("Não foi possível carregar os dados desta pessoa.")
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(onClick = { tentativa++ }) {
+                    Text("Tentar novamente")
+                }
+            }
 
             dados == null -> CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
 
@@ -135,25 +172,40 @@ fun PessoaScreen(pessoaId: Int, aoClicarEmItem: (Int, String) -> Unit) {
                 Text(text = "Filmografia", style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(8.dp))
 
-                if (creditos.isEmpty()) {
-                    Text(text = "Nenhum título encontrado.", style = MaterialTheme.typography.bodyMedium)
-                } else {
-                    // Grade de 3 colunas montada à mão (linhas de 3), porque uma
-                    // lista "lazy" não pode ficar dentro de uma Column que já rola.
-                    // Limitamos a 60 títulos para não pesar a tela em carreiras longas.
-                    creditos.take(60).chunked(3).forEach { linha ->
-                        Row(modifier = Modifier.fillMaxWidth()) {
-                            linha.forEach { credito ->
-                                CreditoCard(
-                                    credito = credito,
-                                    modifier = Modifier.weight(1f),
-                                    aoClicar = { aoClicarEmItem(credito.id, credito.tipoMidia ?: "movie") }
-                                )
-                            }
-                            // Preenche as células vazias da última linha, para os
-                            // cartões não esticarem quando sobram menos de 3.
-                            repeat(3 - linha.size) {
-                                Spacer(modifier = Modifier.weight(1f))
+                when {
+                    // Falha só na filmografia: o resto da página continua visível
+                    erroCreditos -> {
+                        Text(
+                            text = "Não foi possível carregar a filmografia.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        TextButton(onClick = { tentativa++ }) {
+                            Text("Tentar novamente")
+                        }
+                    }
+
+                    creditos.isEmpty() -> {
+                        Text(text = "Nenhum título encontrado.", style = MaterialTheme.typography.bodyMedium)
+                    }
+
+                    else -> {
+                        // Grade de 3 colunas montada à mão (linhas de 3), porque uma
+                        // lista "lazy" não pode ficar dentro de uma Column que já rola.
+                        // Limitamos a 60 títulos para não pesar a tela em carreiras longas.
+                        creditos.take(60).chunked(3).forEach { linha ->
+                            Row(modifier = Modifier.fillMaxWidth()) {
+                                linha.forEach { credito ->
+                                    CreditoCard(
+                                        credito = credito,
+                                        modifier = Modifier.weight(1f),
+                                        aoClicar = { aoClicarEmItem(credito.id, credito.tipoMidia ?: "movie") }
+                                    )
+                                }
+                                // Preenche as células vazias da última linha, para os
+                                // cartões não esticarem quando sobram menos de 3.
+                                repeat(3 - linha.size) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
                             }
                         }
                     }

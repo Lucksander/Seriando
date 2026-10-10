@@ -20,7 +20,8 @@ import com.seriando.app.ui.usuario.UsuarioScreen
 @Composable
 fun MainScaffold(
     aoClicarEmPesquisar: () -> Unit,
-    aoClicarEmItem: (Int, String) -> Unit
+    aoClicarEmItem: (Int, String) -> Unit,
+    aoClicarEmVerMais: (String) -> Unit // recebe o id da categoria
 ) {
     var abaSelecionada by remember { mutableIntStateOf(AbaCache.abaSelecionada) }
 
@@ -61,7 +62,8 @@ fun MainScaffold(
             when (abaSelecionada) {
                 0 -> HomeScreen(
                     aoClicarEmPesquisar = aoClicarEmPesquisar,
-                    aoClicarEmItem = aoClicarEmItem
+                    aoClicarEmItem = aoClicarEmItem,
+                    aoClicarEmVerMais = aoClicarEmVerMais
                 )
                 1 -> MinhaListaScreen(aoClicarEmItem = aoClicarEmItem)
                 2 -> UsuarioScreen()

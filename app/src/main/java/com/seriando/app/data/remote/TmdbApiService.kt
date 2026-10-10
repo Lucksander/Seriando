@@ -1,16 +1,20 @@
 package com.seriando.app.data.remote
 
 import com.seriando.app.model.BuscaMultiResponse
+import com.seriando.app.model.CreditosPessoaResponse
 import com.seriando.app.model.MovieDetalhe
+import com.seriando.app.model.PessoaDetalhe
 import com.seriando.app.model.SerieDetalhe
 import com.seriando.app.model.TemporadaDetalhe
+import com.seriando.app.model.WatchProvidersResponse
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
-import com.seriando.app.model.WatchProvidersResponse
-import com.seriando.app.model.CreditosPessoaResponse
-import com.seriando.app.model.PessoaDetalhe
 
+/**
+ * Contrato Retrofit com a API da TMDB.
+ * Cada função suspend é uma chamada HTTP; o Retrofit gera a implementação.
+ */
 interface TmdbApiService {
 
     // Onde assistir (RF34): disponibilidade de uma série por país.
@@ -26,6 +30,8 @@ interface TmdbApiService {
         @Path("id") filmeId: Int,
         @Query("api_key") apiKey: String
     ): WatchProvidersResponse
+
+    // Pesquisa unificada de filmes e séries (RF03).
     @GET("search/multi")
     suspend fun buscarMulti(
         @Query("api_key") apiKey: String,
@@ -51,6 +57,7 @@ interface TmdbApiService {
         @Query("append_to_response") extras: String = "credits,videos"
     ): MovieDetalhe
 
+    // Episódios de uma temporada (RF06).
     @GET("tv/{id}/season/{numeroTemporada}")
     suspend fun buscarTemporada(
         @Path("id") serieId: Int,
@@ -59,10 +66,38 @@ interface TmdbApiService {
         @Query("language") idioma: String = "pt-BR"
     ): TemporadaDetalhe
 
+    // Categoria "Em alta" (RF45). O parâmetro page permite paginar na tela
+    // "Ver mais" (RF46); o valor padrão 1 preserva as chamadas já existentes.
     @GET("trending/all/week")
     suspend fun buscarEmAlta(
         @Query("api_key") apiKey: String,
-        @Query("language") idioma: String = "pt-BR"
+        @Query("language") idioma: String = "pt-BR",
+        @Query("page") pagina: Int = 1
+    ): BuscaMultiResponse
+
+    // Filmes de um gênero (RF44), ordenados por popularidade.
+    // with_genres recebe o id do gênero de FILMES da TMDB (ex.: 28 = Ação).
+    // ATENÇÃO: discover/movie NÃO devolve o campo media_type; o repositório
+    // precisa definir o tipo manualmente depois.
+    @GET("discover/movie")
+    suspend fun descobrirFilmes(
+        @Query("api_key") apiKey: String,
+        @Query("with_genres") generoId: Int,
+        @Query("sort_by") ordenacao: String = "popularity.desc",
+        @Query("language") idioma: String = "pt-BR",
+        @Query("page") pagina: Int = 1
+    ): BuscaMultiResponse
+
+    // Séries de um gênero (RF44), ordenadas por popularidade.
+    // with_genres recebe o id do gênero de SÉRIES (ex.: 10759 = Ação e Aventura).
+    // Também não devolve media_type.
+    @GET("discover/tv")
+    suspend fun descobrirSeries(
+        @Query("api_key") apiKey: String,
+        @Query("with_genres") generoId: Int,
+        @Query("sort_by") ordenacao: String = "popularity.desc",
+        @Query("language") idioma: String = "pt-BR",
+        @Query("page") pagina: Int = 1
     ): BuscaMultiResponse
 
     // Detalhes de uma pessoa (RF41): nome, foto, biografia, nascimento.

@@ -10,6 +10,7 @@ import androidx.navigation.navArgument
 import com.seriando.app.ui.details.DetailsScreen
 import com.seriando.app.ui.pessoa.PessoaScreen
 import com.seriando.app.ui.search.SearchScreen
+import com.seriando.app.ui.home.CategoriaScreen
 
 // Grafo de navegação do app: declara as telas e como elas se conectam.
 @Composable
@@ -25,12 +26,33 @@ fun SeriandoNavHost(
                 aoClicarEmPesquisar = { navController.navigate(Rotas.BUSCA) },
                 aoClicarEmItem = { id, tipoMidia ->
                     navController.navigate(Rotas.detalhesComId(tipoMidia, id))
+                },
+                // "Ver mais" de uma fileira da Home abre a lista completa da categoria (RF46)
+                aoClicarEmVerMais = { categoriaId ->
+                    navController.navigate(Rotas.categoriaComId(categoriaId))
                 }
             )
         }
 
         composable(Rotas.BUSCA) {
             SearchScreen(
+                aoClicarEmItem = { id, tipoMidia ->
+                    navController.navigate(Rotas.detalhesComId(tipoMidia, id))
+                }
+            )
+        }
+
+        // Lista completa de uma categoria da Home (RF46).
+        // O id da categoria (ex.: "acao") chega pela rota e é repassado à tela.
+        composable(
+            route = Rotas.CATEGORIA,
+            arguments = listOf(navArgument("categoriaId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            // Se o argumento vier ausente, usa "" e a tela mostra "Categoria não encontrada."
+            val categoriaId = backStackEntry.arguments?.getString("categoriaId") ?: ""
+            CategoriaScreen(
+                categoriaId = categoriaId,
+                // Tocar num pôster abre os Detalhes, igual às outras telas
                 aoClicarEmItem = { id, tipoMidia ->
                     navController.navigate(Rotas.detalhesComId(tipoMidia, id))
                 }

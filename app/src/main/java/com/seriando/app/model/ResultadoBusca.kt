@@ -31,5 +31,6 @@ data class ResultadoBusca(
 // que já usávamos, só que com ResultadoBusca em vez de Serie.
 data class BuscaMultiResponse(
     val page: Int,
-    val results: List<ResultadoBusca>
+    val results: List<ResultadoBusca>,
+    @SerializedName("total_pages") val totalPaginas: Int = 1
 )
