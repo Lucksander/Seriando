@@ -10,10 +10,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -30,9 +34,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.credentials.exceptions.GetCredentialCancellationException
 import coil3.compose.AsyncImage
+import com.seriando.app.R
 import com.seriando.app.data.auth.AuthRepository
+import com.seriando.app.data.repository.ContaRepository
 import com.seriando.app.data.repository.PerfilRepository
 import com.seriando.app.model.PerfilPrivado
 import com.seriando.app.model.PerfilPublico
@@ -40,7 +48,8 @@ import com.seriando.app.ui.home.DialogoEditarApelido
 import kotlinx.coroutines.launch
 
 /**
- * Aba Usuário (RF12 a RF15): apelido, foto/avatar, e-mail e aniversário.
+ * Aba Usuário (RF12 a RF15, RF29): apelido, foto/avatar, e-mail, aniversário
+ * e exclusão da conta.
  * Toda gravação no Firestore tem try/catch com Log e Toast, porque as regras
  * de segurança podem recusá-la (RNF01) e a falha não pode derrubar o app.
  */
@@ -48,9 +57,11 @@ import kotlinx.coroutines.launch
 fun UsuarioScreen() {
 
     val authRepository = remember { AuthRepository() }
+    val contaRepository = remember { ContaRepository() }
     val context = LocalContext.current
     val perfilRepository = remember { PerfilRepository() }
     val scope = rememberCoroutineScope()
+    val webClientId = stringResource(R.string.default_web_client_id)
     val usuario = authRepository.usuarioAtual()
 
     // Começa com um valor padrão (não nulo), em vez de null — assim a tela
@@ -60,6 +71,10 @@ fun UsuarioScreen() {
     var mostrarDialogoApelido by remember { mutableStateOf(false) }
     var aniversario by remember { mutableStateOf("") }
     var carregando by remember { mutableStateOf(true) }
+
+    // Exclusão de conta (RF29)
+    var mostrarDialogoExcluir by remember { mutableStateOf(false) } // diálogo de confirmação aberto
+    var excluindo by remember { mutableStateOf(false) }             // exclusão em andamento
 
     /**
      * Salva o perfil público (apelido/avatar) mostrando a mudança na tela na hora.
@@ -76,6 +91,34 @@ fun UsuarioScreen() {
                 Log.e("Seriando", "Erro ao salvar perfil público", e)
                 perfilPublico = anterior
                 Toast.makeText(context, "Não foi possível salvar.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    /**
+     * Exclui a conta e todos os dados (RF29).
+     * O ContaRepository pede o login do Google de novo ANTES de apagar qualquer coisa:
+     * se o usuário cancelar ali, nada foi apagado.
+     * No sucesso, limpa os caches locais (RF27); ao terminar, "excluindo" volta a false,
+     * a tela recompõe e, sem usuário, mostra o aviso de login.
+     */
+    fun excluirConta() {
+        excluindo = true
+        scope.launch {
+            try {
+                contaRepository.excluirConta(context, webClientId)
+                authRepository.sair() // limpa os caches locais
+                Toast.makeText(context, "Conta excluída.", Toast.LENGTH_LONG).show()
+            } catch (e: GetCredentialCancellationException) {
+                // O usuário fechou o seletor de contas do Google: nada foi apagado
+                Log.d("Seriando", "Exclusão de conta cancelada pelo usuário")
+                Toast.makeText(context, "Exclusão cancelada. Nada foi apagado.", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                // Pode ter apagado só parte dos dados; tentar de novo termina o serviço
+                Log.e("Seriando", "Erro ao excluir a conta", e)
+                Toast.makeText(context, "Não foi possível excluir a conta. Tente novamente.", Toast.LENGTH_LONG).show()
+            } finally {
+                excluindo = false
             }
         }
     }
@@ -206,6 +249,15 @@ fun UsuarioScreen() {
             TextButton(onClick = { authRepository.sair() }) {
                 Text("Sair da conta")
             }
+
+            // Exclusão da conta (RF29): em vermelho, separada dos outros botões
+            Spacer(modifier = Modifier.height(24.dp))
+            TextButton(
+                onClick = { mostrarDialogoExcluir = true },
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text("Excluir minha conta")
+            }
         }
     }
 
@@ -217,6 +269,55 @@ fun UsuarioScreen() {
                 salvarPublico(usuario.uid, perfilPublico.copy(apelido = novoApelido))
                 mostrarDialogoApelido = false
             }
+        )
+    }
+
+    // Confirmação da exclusão: explica o que será apagado e o que é mantido
+    if (mostrarDialogoExcluir) {
+        AlertDialog(
+            onDismissRequest = { mostrarDialogoExcluir = false },
+            title = { Text("Excluir sua conta?") },
+            text = {
+                Text(
+                    "Isto apaga de forma permanente seu perfil, sua lista, seu progresso, " +
+                            "suas avaliações, suas opiniões e seus votos. Não tem como desfazer.\n\n" +
+                            "As denúncias que você enviou são mantidas para a moderação.\n\n" +
+                            "Para confirmar, você vai entrar com sua conta Google de novo."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        mostrarDialogoExcluir = false
+                        excluirConta()
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Continuar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { mostrarDialogoExcluir = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    // Progresso da exclusão: não fecha (nem com o botão voltar) até terminar,
+    // para o usuário não sair da tela no meio e deixar a exclusão pela metade
+    if (excluindo) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text("Excluindo sua conta...") },
+            text = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text("Aguarde, isso pode levar alguns instantes.")
+                }
+            },
+            confirmButton = { }
         )
     }
 }

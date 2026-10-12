@@ -59,6 +59,7 @@ import com.seriando.app.ui.login.DialogoLoginObrigatorio
 import kotlinx.coroutines.launch
 import androidx.compose.ui.draw.clip
 import com.seriando.app.model.VotoResumo
+import com.seriando.app.ui.home.DialogoRemoverDaLista
 
 /**
  * Tela de detalhes de uma mídia (série ou filme).
@@ -101,6 +102,7 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
     var detalheFilme by remember { mutableStateOf<MovieDetalhe?>(null) }
     var erro by remember { mutableStateOf(false) }
     var mostrarDialogoLogin by remember { mutableStateOf(false) }
+    var mostrarDialogoRemover by remember { mutableStateOf(false) } // confirmação de "remover da lista"
 
     var adicionada by remember { mutableStateOf(false) }
     var statusAtualLabel by remember { mutableStateOf("Quero assistir") }
@@ -303,10 +305,46 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
             try {
                 minhaListaRepository.removerSerie(uid, serieId)
                 adicionada = false
+                // O progresso foi apagado junto: zera o contador e o status na tela
+                assistidos = emptySet()
+                statusAtualLabel = "Quero assistir"
             } catch (e: Exception) {
                 avisarErro("Não foi possível remover da lista.", e)
             }
         }
+    }
+
+    /**
+     * Garante que a série esteja na lista antes de gravar progresso nela (RF29).
+     * Sem isso, marcar episódios de uma série fora da lista criaria progresso sem
+     * documento pai, que o app não consegue achar nem apagar depois.
+     * Entra com o status "Assistindo", já que o usuário está marcando episódios.
+     * Pode lançar exceção: quem chama deve estar dentro de try/catch (como nos pontos abaixo).
+     */
+    suspend fun garantirSerieNaLista(uid: String) {
+        if (adicionada) return
+
+        // Se já está na lista mas a tela ainda não sabia, só atualiza o estado
+        // (set() com a série inteira apagaria o status que o usuário já tinha)
+        if (minhaListaRepository.contemSerie(uid, serieId)) {
+            adicionada = true
+            return
+        }
+
+        val nome = detalheSerie?.nome ?: throw IllegalStateException("Detalhes da série não carregados")
+        minhaListaRepository.adicionarSerie(
+            uid,
+            SerieSalva(
+                id = serieId,
+                nome = nome,
+                sinopse = detalheSerie?.sinopse ?: "",
+                caminhoCapa = detalheSerie?.caminhoCapa,
+                tipoMidia = tipoMidia,
+                status = StatusSerie.ASSISTINDO.name
+            )
+        )
+        adicionada = true
+        statusAtualLabel = StatusSerie.ASSISTINDO.label
     }
 
     Column(
@@ -410,7 +448,7 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
 
                 if (adicionada) {
                     OutlinedButton(
-                        onClick = { removerDaMinhaLista() },
+                        onClick = { mostrarDialogoRemover = true }, // pede confirmação antes
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Remover da minha lista")
@@ -715,6 +753,7 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                             } else {
                                 scope.launch {
                                     try {
+                                        garantirSerieNaLista(uid) // série fora da lista entra como "Assistindo"
                                         progressoRepository.marcarTemporadaComoAssistida(
                                             uid, serieId, numeroTemporadaAtual, episodiosDaTemporada
                                         )
@@ -763,6 +802,7 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                                             scope.launch {
                                                 try {
                                                     if (marcado) {
+                                                        garantirSerieNaLista(uid) // série fora da lista entra como "Assistindo"
                                                         progressoRepository.marcarAssistido(
                                                             uid,
                                                             serieId,
@@ -812,6 +852,18 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                     adicionarAposLogin = false
                     adicionarAMinhaLista()
                 }
+            }
+        )
+    }
+
+    // Confirmação de remover da lista: avisa que o progresso será perdido
+    if (mostrarDialogoRemover) {
+        DialogoRemoverDaLista(
+            tipoMidia = tipoMidia,
+            aoFechar = { mostrarDialogoRemover = false },
+            aoConfirmar = {
+                mostrarDialogoRemover = false
+                removerDaMinhaLista()
             }
         )
     }

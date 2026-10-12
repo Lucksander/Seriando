@@ -189,6 +189,15 @@ service cloud.firestore {
            ];
     }
 
+    // ---------- Consulta em todas as obras: "opinioes" (RF29) ----------
+    // Permite ao app listar as opiniões de todas as obras com uma única consulta
+    // (collectionGroup), usada ao excluir a conta para achar o que é do usuário.
+    // É a mesma permissão que já existe por obra: só quem está logado lê.
+    // Não alcança "opinioesPrivadas", que é outra coleção, nem "votos".
+    match /{path=**}/opinioes/{opiniaoId} {
+      allow read: if logado();
+    }
+
     // Qualquer outro caminho não listado acima fica NEGADO (comportamento padrão).
   }
 }

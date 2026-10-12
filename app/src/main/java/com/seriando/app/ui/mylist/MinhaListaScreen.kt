@@ -35,6 +35,7 @@ import com.seriando.app.model.SerieSalva
 import com.seriando.app.model.labelDoStatus
 import com.seriando.app.ui.home.SerieCardSalva
 import kotlinx.coroutines.launch
+import com.seriando.app.ui.home.DialogoRemoverDaLista
 
 /**
  * Aba Minha Lista (RF07, RF08): séries e filmes salvos, com filtro por status.
@@ -61,6 +62,9 @@ fun MinhaListaScreen(aoClicarEmItem: (Int, String) -> Unit) {
     // já que a lista mistura os rótulos de StatusSerie e StatusFilme).
     var filtroLabel by remember { mutableStateOf<String?>(null) }
 
+    // Item que o usuário tocou em "remover" e ainda não confirmou (null = nenhum diálogo aberto)
+    var serieParaRemover by remember { mutableStateOf<SerieSalva?>(null) }
+
     // Busca a lista ao abrir, quando o login muda ou quando o usuário tenta de novo.
     LaunchedEffect(uid, tentativa) {
         falhou = false
@@ -79,6 +83,27 @@ fun MinhaListaScreen(aoClicarEmItem: (Int, String) -> Unit) {
         } finally {
             carregando = false
         }
+    }
+
+    // Confirmação antes de remover: avisa que o progresso será perdido
+    val aRemover = serieParaRemover
+    if (aRemover != null && uid != null) {
+        DialogoRemoverDaLista(
+            tipoMidia = aRemover.tipoMidia,
+            aoFechar = { serieParaRemover = null },
+            aoConfirmar = {
+                serieParaRemover = null
+                scope.launch {
+                    try {
+                        minhaListaRepository.removerSerie(uid, aRemover.id)
+                        minhasSeries = minhasSeries.filter { it.id != aRemover.id }
+                    } catch (e: Exception) {
+                        Log.e("MinhaListaScreen", "Falha ao remover da lista", e)
+                        Toast.makeText(context, "Não foi possível remover.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        )
     }
 
     // Monta a lista de rótulos realmente presentes na lista do usuário,
@@ -165,17 +190,8 @@ fun MinhaListaScreen(aoClicarEmItem: (Int, String) -> Unit) {
                     SerieCardSalva(
                         serie = serie,
                         aoClicar = { aoClicarEmItem(serie.id, serie.tipoMidia) },
-                        aoRemover = {
-                            scope.launch {
-                                try {
-                                    minhaListaRepository.removerSerie(uid, serie.id)
-                                    minhasSeries = minhasSeries.filter { it.id != serie.id }
-                                } catch (e: Exception) {
-                                    Log.e("MinhaListaScreen", "Falha ao remover da lista", e)
-                                    Toast.makeText(context, "Não foi possível remover.", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        }
+                        // Em vez de remover direto, pede confirmação (o diálogo fica acima)
+                        aoRemover = { serieParaRemover = serie }
                     )
                 }
             }

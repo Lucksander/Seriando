@@ -15,6 +15,7 @@ Projeto desenvolvido em **Kotlin** com **Jetpack Compose**, com foco em boas pr�
 - **Regras de Segurança do Firestore**: o banco saiu do modo de teste. As regras (arquivo `firestore.rules`) limitam cada usuário aos próprios dados, validam os campos gravados, garantem um único voto por usuário por opinião e impedem votar na própria opinião.
 - **Opinião privada separada**: a opinião privada passou a ser gravada em um local que só o próprio autor consegue ler, em vez de apenas ficar escondida pelo app.
 - **Tratamento de erros e carregamento**: todas as telas mostram indicador de carregamento e mensagem de erro, com botão para tentar de novo quando faz sentido, e uma falha de rede ou de permissão não derruba mais o app.
+- **Exclusão de conta e LGPD (RF29)**: funcionalidade para apagar permanentemente a conta e todos os dados vinculados no Firestore em lotes idempotentes, exigindo confirmação de identidade prévia via Credential Manager.
 
 ---
 
@@ -53,6 +54,7 @@ Com integração ao **Firebase Authentication (Google Sign-In)** e **Cloud Fires
   - Escolha de avatar entre a foto da conta Google ou uma seleção de emojis divertidos.
   - Informações de e-mail e data de aniversário (privada).
 - **Diálogo de Login Obrigatório**: Solicitado suavemente quando o usuário tenta realizar ações restritas (adicionar à lista, avaliar, comentar ou curtir).
+- **Exclusão Permanente de Conta (RF29 / LGPD)**: Permite ao usuário excluir permanentemente sua conta e todos os dados vinculados no Firestore (lista pessoal, progresso de episódios, avaliações, opiniões e votos) em lotes seguros, exigindo reautenticação via Credential Manager para confirmação de identidade.
 
 ### 📋 Minha Lista Pessoal
 - **Sincronização Cloud Firestore**: Lista pessoal salva na nuvem e acessível de qualquer dispositivo.
@@ -75,6 +77,7 @@ Com integração ao **Firebase Authentication (Google Sign-In)** e **Cloud Fires
 - **Comunidade apenas para quem entrou**: avaliações e opiniões só são lidas por usuários autenticados; sem login, o app mostra um aviso no lugar.
 - **Validação no servidor**: nota de 1 a 5, opinião de até 500 caracteres, no máximo 6 emoções, voto de +1 ou -1 e campos permitidos em cada coleção.
 - **Denúncias protegidas**: o app só cria denúncias; elas não podem ser lidas, alteradas nem apagadas pelo aplicativo.
+- **Exclusão de conta em lotes**: deleção idempotente no Firestore em etapas (filhos -> pais -> conta) em lotes de até 400 documentos, mediante reautenticação com o Google.
 - **Chaves fora do repositório**: chave da TMDB em `local.properties` e `google-services.json` no `.gitignore`.
 
 ---
@@ -104,7 +107,7 @@ com.seriando.app
 │   ├── auth/          # AuthRepository (Firebase Auth + Credential Manager + Logout)
 │   ├── cache/         # AbaCache, BuscaCache e CatalogoCache (Preservação de estado em memória)
 │   ├── remote/        # RetrofitInstance e TmdbApiService (End-points REST do TMDB)
-│   └── repository/    # Repositórios (Avaliacao, Catalogo, Denuncia, MinhaLista, Perfil, Progresso)
+│   └── repository/    # Repositórios (Avaliacao, Catalogo, Conta, Denuncia, MinhaLista, Perfil, Progresso)
 │
 ├── model/              # Data classes (Movie, Serie, Pessoa, Avaliacao, Categoria, Emocao, Status, WatchProviders, etc.)
 │
@@ -115,7 +118,7 @@ com.seriando.app
 │
 ├── ui/
 │   ├── details/       # DetailsScreen, ElencoCard, OpiniaoCard, SecaoOndeAssistir, SeletorEmocoes, SeletorEstrelas, DialogoDenuncia
-│   ├── home/          # HomeScreen, CategoriaRow, CategoriaScreen, DestaqueCard, ResultadoCard, SerieCardSalva, DialogoEditarApelido
+│   ├── home/          # HomeScreen, CategoriaRow, CategoriaScreen, DestaqueCard, ResultadoCard, SerieCardSalva, DialogoEditarApelido, DialogoRemoverDaLista
 │   ├── login/         # DialogoLoginObrigatorio
 │   ├── mylist/        # MinhaListaScreen (Lista com filtro de status)
 │   ├── pessoa/        # PessoaScreen (Página do ator/atriz, biografia e filmografia)
@@ -145,7 +148,7 @@ git clone https://github.com/Lucksander/seriando.git
 
 1. Crie uma conta em [The Movie Database (TMDB)](https://www.themoviedb.org/).
 2. Vá em **Configurações da Conta > API** e solicite uma chave de API (*Developer*).
-3. Crie (ou edite) o arquivo `local.properties` na raiz do projeto e insira a seguinte chave:
+3. Crie (or edite) o arquivo `local.properties` na raiz do projeto e insira a seguinte chave:
 
 ```properties
 TMDB_API_KEY=sua_chave_aqui
@@ -189,7 +192,7 @@ TMDB_API_KEY=sua_chave_aqui
 - **V0.9**: Sistema de avaliação por estrelas (1 a 5), cálculo da média da comunidade, opiniões públicas e privadas com aviso de spoiler, e seletor de emoções.
 - **V0.10**: Sistema de curtidas e descurtidas em opiniões, funcionalidade de denunciar comentários com motivos, thumbnails de episódios e exibição de provedores de streaming ("Onde Assistir") via JustWatch.
 - **V0.11**: Página do ator/atriz com foto, nome, data/local de nascimento, biografia expansível (com fallback em inglês) e filmografia completa interativa em grade ordenada por popularidade.
-- **V0.12**: **(Atual)** Home organizada por categorias de gênero com "Ver mais" e lista completa paginada, regras de segurança do Firestore com validação de campos, opinião privada em local de leitura restrita, e tratamento de erros e carregamento em todas as telas.
+- **V0.12**: **(Atual)** Home organizada por categorias de gênero com "Ver mais" e lista completa paginada, regras de segurança do Firestore com validação de campos, opinião privada em local de leitura restrita, tratamento de erros e carregamento em todas as telas, e exclusão permanente de conta com remoção de dados em lotes (RF29 / LGPD).
 
 ---
 
