@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.Seriando" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Tema da janela no modo claro. O windowBackground evita o flash de cor errada ao abrir
+         o app e nas transições entre telas; as cores do app em si vêm do SeriandoTheme. -->
+    <style name="Theme.Seriando" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/seriando_fundo</item>
+    </style>
 </resources>

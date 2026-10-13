@@ -21,7 +21,9 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.seriando.app.model.SerieSalva
 import com.seriando.app.model.labelDoStatus
+import com.seriando.app.ui.theme.capaDeObra
 
+// Cartão de um item da Minha Lista: capa, nome, status, sinopse e botão de remover.
 @Composable
 fun SerieCardSalva(serie: SerieSalva, aoClicar: () -> Unit, aoRemover: () -> Unit) {
     Card(
@@ -40,7 +42,8 @@ fun SerieCardSalva(serie: SerieSalva, aoClicar: () -> Unit, aoRemover: () -> Uni
                     contentDescription = serie.nome,
                     modifier = Modifier
                         .width(90.dp)
-                        .height(135.dp),
+                        .height(135.dp)
+                        .capaDeObra(),
                     contentScale = ContentScale.Crop
                 )
 

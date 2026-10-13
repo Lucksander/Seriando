@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Tema da janela no modo escuro: base escura do Android e o fundo Midnight -->
+    <style name="Theme.Seriando" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/seriando_fundo</item>
+    </style>
+</resources>

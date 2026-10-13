@@ -57,9 +57,12 @@ import com.seriando.app.model.nomeDoStatus
 import com.seriando.app.model.opcoesDeStatus
 import com.seriando.app.ui.login.DialogoLoginObrigatorio
 import kotlinx.coroutines.launch
-import androidx.compose.ui.draw.clip
 import com.seriando.app.model.VotoResumo
 import com.seriando.app.ui.home.DialogoRemoverDaLista
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import com.seriando.app.ui.theme.capaDeObra
 
 /**
  * Tela de detalhes de uma mídia (série ou filme).
@@ -379,6 +382,7 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                     modifier = Modifier
                         .width(200.dp)
                         .aspectRatio(2f / 3f)
+                        .capaDeObra()
                         .align(Alignment.CenterHorizontally),
                     contentScale = ContentScale.Crop
                 )
@@ -769,32 +773,15 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                             Text("Marcar temporada inteira como assistida")
                         }
 
-                        episodiosDaTemporada.forEach { episodio ->
-                            val chaveEpisodio = "${numeroTemporadaAtual}_${episodio.numero}"
-                            val assistido = assistidos.contains(chaveEpisodio)
+                        // Episódios (RF47, RF57): fileira horizontal de cartões grandes
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            items(episodiosDaTemporada, key = { it.numero }) { episodio ->
+                                val chaveEpisodio = "${numeroTemporadaAtual}_${episodio.numero}"
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // Thumbnail do episódio (RF47). Nem todo episódio tem imagem
-                                // na TMDB, então o AsyncImage simplesmente fica em branco
-                                // quando caminhoThumbnail é nulo, sem quebrar a tela.
-                                AsyncImage(
-                                    model = episodio.caminhoThumbnail?.let { "https://image.tmdb.org/t/p/w300$it" },
-                                    contentDescription = episodio.nome,
-                                    modifier = Modifier
-                                        .width(100.dp)
-                                        .aspectRatio(16f / 9f)
-                                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(6.dp)),
-                                    contentScale = ContentScale.Crop
-                                )
-
-                                Spacer(modifier = Modifier.width(8.dp))
-
-                                Checkbox(
-                                    checked = assistido,
-                                    onCheckedChange = { marcado ->
+                                CartaoEpisodio(
+                                    episodio = episodio,
+                                    assistido = assistidos.contains(chaveEpisodio),
+                                    aoMarcar = { marcado ->
                                         val uid = authRepository.usuarioAtual()?.uid
                                         if (uid == null) {
                                             mostrarDialogoLogin = true
@@ -802,20 +789,15 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                                             scope.launch {
                                                 try {
                                                     if (marcado) {
-                                                        garantirSerieNaLista(uid) // série fora da lista entra como "Assistindo"
+                                                        // Série fora da lista entra como "Assistindo" (RF29)
+                                                        garantirSerieNaLista(uid)
                                                         progressoRepository.marcarAssistido(
-                                                            uid,
-                                                            serieId,
-                                                            numeroTemporadaAtual,
-                                                            episodio.numero
+                                                            uid, serieId, numeroTemporadaAtual, episodio.numero
                                                         )
                                                         assistidos = assistidos + chaveEpisodio
                                                     } else {
                                                         progressoRepository.desmarcarAssistido(
-                                                            uid,
-                                                            serieId,
-                                                            numeroTemporadaAtual,
-                                                            episodio.numero
+                                                            uid, serieId, numeroTemporadaAtual, episodio.numero
                                                         )
                                                         assistidos = assistidos - chaveEpisodio
                                                     }
@@ -825,11 +807,6 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                                             }
                                         }
                                     }
-                                )
-
-                                Text(
-                                    text = "${episodio.numero}. ${episodio.nome}",
-                                    modifier = Modifier.weight(1f) // deixa o texto ocupar o espaço restante, sem estourar a largura
                                 )
                             }
                         }

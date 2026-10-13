@@ -18,6 +18,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.seriando.app.model.ResultadoBusca
+import com.seriando.app.ui.theme.capaDeObra
 
 // Cartão genérico para um resultado de busca, seja série ou filme.
 @Composable
@@ -34,7 +35,8 @@ fun ResultadoCard(resultado: ResultadoBusca, aoClicar: () -> Unit) {
                 contentDescription = resultado.nome,
                 modifier = Modifier
                     .width(90.dp)
-                    .height(135.dp),
+                    .height(135.dp)
+                    .capaDeObra(),
                 contentScale = ContentScale.Crop
             )
 

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fundo da janela no modo claro (igual ao fundo do tema claro) -->
+    <color name="seriando_fundo">#FBF9FF</color>
+</resources>

@@ -35,6 +35,7 @@ import com.seriando.app.BuildConfig
 import com.seriando.app.data.remote.RetrofitInstance
 import com.seriando.app.model.CreditoPessoa
 import com.seriando.app.model.PessoaDetalhe
+import com.seriando.app.ui.theme.capaDeObra
 
 // Converte "AAAA-MM-DD" (formato da TMDB) em "DD/MM/AAAA".
 // Retorna null se a data estiver ausente ou fora do formato esperado.
@@ -228,7 +229,8 @@ private fun CreditoCard(credito: CreditoPessoa, modifier: Modifier = Modifier, a
             contentDescription = credito.titulo,
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(2f / 3f),
+                .aspectRatio(2f / 3f)
+                .capaDeObra(),
             contentScale = ContentScale.Crop
         )
         Text(

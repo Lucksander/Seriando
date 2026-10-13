@@ -6,34 +6,39 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.seriando.app.model.Categoria
 import com.seriando.app.model.ResultadoBusca
+import com.seriando.app.ui.theme.capaDeObra
 
 // Largura de cada cartão dentro da fileira. O DestaqueCard ocupa a largura
 // inteira do espaço que recebe, então fixamos o tamanho aqui, por fora.
 private val larguraCartao = 110.dp
 
 /**
- * Uma fileira horizontal de uma categoria da Home (RF44, RF45, RF46):
- * título, cartões com rolagem horizontal e, no fim, o cartão "Ver mais".
+ * Uma fileira horizontal de uma categoria da Home (RF44, RF45, RF46, RF55, RF56):
+ * título tocável, cartões com rolagem horizontal e, no fim, o cartão "Ver mais".
  *
  * É um componente "burro": não busca dados, só desenha o que a HomeScreen
  * entrega. A busca e o estado ficam na tela.
@@ -42,23 +47,38 @@ private val larguraCartao = 110.dp
  * @param itens              itens da fileira. null = ainda carregando;
  *                           lista vazia = falha ou nada para mostrar.
  * @param aoClicarEmItem     toque em um cartão: recebe o id e o tipo ("movie" ou "tv").
- * @param aoClicarEmVerMais  toque no cartão final: abre a lista completa da categoria.
+ * @param aoClicarEmVerMais  toque no título ou no cartão final: abre a lista completa
+ *                           da categoria (mesmo destino nos dois).
  */
 @Composable
 fun CategoriaRow(
     categoria: Categoria,
     itens: List<ResultadoBusca>?,
     aoClicarEmItem: (Int, String) -> Unit,
-    aoClicarEmVerMais: () -> Unit
+    aoClicarEmVerMais: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = modifier.fillMaxWidth()) {
 
-        // Título da categoria, alinhado com o resto da Home (margem de 24dp)
-        Text(
-            text = categoria.nome,
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.padding(horizontal = 24.dp)
-        )
+        // Título tocável (RF55): a seta ao lado indica que dá para tocar.
+        // O padding fica DENTRO do clickable para a área de toque incluir as margens.
+        Row(
+            modifier = Modifier
+                .clickable { aoClicarEmVerMais() }
+                .padding(horizontal = 24.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = categoria.nome,
+                style = MaterialTheme.typography.headlineSmall
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = "Ver todos de ${categoria.nome}",
+                modifier = Modifier.size(20.dp)
+            )
+        }
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -106,7 +126,7 @@ fun CategoriaRow(
                         }
                     }
 
-                    // Último item da fileira: cartão "Ver mais" (RF46)
+                    // Último item da fileira: cartão "Ver mais" (RF46, RF56)
                     item {
                         CartaoVerMais(aoClicar = aoClicarEmVerMais)
                     }
@@ -119,26 +139,46 @@ fun CategoriaRow(
 }
 
 /**
- * Cartão final da fileira. Tem a mesma proporção dos pôsteres (2:3) para
- * parecer mais um item da fila, e o mesmo padding de 4dp do DestaqueCard
- * para alinhar com eles.
+ * Cartão final da fileira (RF56). Tem o tamanho das capas (mesma largura e proporção 2:3,
+ * com o mesmo padding de 4dp do DestaqueCard): no centro, uma seta dentro de um círculo
+ * e, embaixo dela, o texto "Ver mais".
  */
 @Composable
-private fun CartaoVerMais(aoClicar: () -> Unit) {
+private fun CartaoVerMais(
+    aoClicar: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .width(larguraCartao)
             .padding(4.dp)
             .aspectRatio(2f / 3f)
-            .clip(RoundedCornerShape(8.dp))
+            .capaDeObra()
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable { aoClicar() },
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = "Ver mais",
-            style = MaterialTheme.typography.titleSmall,
-            textAlign = TextAlign.Center
-        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            // Círculo com a seta dentro
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null, // decorativo: o texto abaixo já diz o que é
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Ver mais",
+                style = MaterialTheme.typography.titleSmall
+            )
+        }
     }
 }

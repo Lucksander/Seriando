@@ -4,17 +4,32 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Modifier
 import com.seriando.app.navigation.SeriandoNavHost
+import com.seriando.app.ui.theme.SeriandoTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Tela de ponta a ponta; os ícones da barra de status acompanham o modo claro/escuro do aparelho
         enableEdgeToEdge()
 
         setContent {
-            // A partir de agora, quem decide qual tela mostrar
-            // é o SeriandoNavHost, não mais uma chamada fixa.
-            SeriandoNavHost()
+            // O tema envolve todo o app. A Surface na raiz dá o fundo e a cor padrão do texto
+            // às telas que não ficam dentro de um Scaffold (Busca, Detalhes, Pessoa e Categoria);
+            // sem ela, o texto ficaria preto sobre o fundo escuro.
+            SeriandoTheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    // Quem decide qual tela mostrar é o SeriandoNavHost
+                    SeriandoNavHost()
+                }
+            }
         }
     }
 }

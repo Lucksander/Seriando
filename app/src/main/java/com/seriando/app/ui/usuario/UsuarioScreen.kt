@@ -163,7 +163,7 @@ fun UsuarioScreen() {
             .verticalScroll(rememberScrollState())
             .padding(24.dp)
     ) {
-        Text(text = "Usuário", style = MaterialTheme.typography.headlineLarge)
+        Text(text = "Conta", style = MaterialTheme.typography.headlineLarge)
         Spacer(modifier = Modifier.height(24.dp))
 
         if (usuario == null) {

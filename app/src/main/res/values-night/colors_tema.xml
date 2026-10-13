@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fundo da janela no modo escuro (igual ao Midnight do tema escuro) -->
+    <color name="seriando_fundo">#17151F</color>
+</resources>
