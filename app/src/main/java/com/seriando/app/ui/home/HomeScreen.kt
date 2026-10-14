@@ -112,7 +112,12 @@ fun HomeScreen(
     // Mostrado aqui só para leitura; editar é só na aba Usuário.
     LaunchedEffect(usuario?.uid) {
         val uid = usuario?.uid
-        perfilPublico = if (uid != null) perfilRepository.buscarPerfilPublico(uid) else null
+        if (uid == null) {
+            perfilPublico = null
+        } else {
+            // Observa o banco local: o nome e a foto aparecem sozinhos quando o perfil chega
+            perfilRepository.observarPerfilPublico(uid).collect { perfilPublico = it }
+        }
     }
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {

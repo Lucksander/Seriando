@@ -38,7 +38,7 @@ service cloud.firestore {
         allow create, update: if dono(uid)
           // Só os campos do model SerieSalva podem existir no documento
           && request.resource.data.keys().hasOnly(
-               ['id', 'nome', 'sinopse', 'caminhoCapa', 'tipoMidia', 'status', 'dataAdicao'])
+               ['id', 'nome', 'sinopse', 'caminhoCapa', 'tipoMidia', 'status', 'dataAdicao', 'atualizadoEm'])
           && request.resource.data.get('id', null) is int
           && request.resource.data.get('nome', null) is string
           && request.resource.data.nome.size() <= 300
@@ -54,7 +54,8 @@ service cloud.firestore {
           // Se criar um status novo no app, acrescente-o aqui também.
           && request.resource.data.get('status', null) in
                ['QUERO_ASSISTIR', 'ASSISTINDO', 'COMPLETO', 'ABANDONEI', 'ASSISTIDO']
-          && request.resource.data.get('dataAdicao', 0) is int;
+          && request.resource.data.get('dataAdicao', 0) is int
+          && request.resource.data.get('atualizadoEm', 0) is int;
 
         // Progresso de episódios (RF09): só o dono.
         match /episodiosAssistidos/{docId} {
@@ -86,13 +87,14 @@ service cloud.firestore {
       allow read: if logado();
       allow delete: if dono(uid);
       allow create, update: if dono(uid)
-        && request.resource.data.keys().hasOnly(['apelido', 'avatarId'])
+        && request.resource.data.keys().hasOnly(['apelido', 'avatarId', 'atualizadoEm'])
         && request.resource.data.get('apelido', null) is string
         && request.resource.data.apelido.size() >= 1
         && request.resource.data.apelido.size() <= 40
         && request.resource.data.get('avatarId', null) is string
         && request.resource.data.avatarId.size() >= 1
-        && request.resource.data.avatarId.size() <= 20;
+        && request.resource.data.avatarId.size() <= 20
+        && request.resource.data.get('atualizadoEm', 0) is int;
     }
 
     // ---------- avaliacoes/{obra}/opinioes/{autorUid}: nota + opinião PÚBLICA ----------

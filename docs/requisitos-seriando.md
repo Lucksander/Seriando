@@ -77,7 +77,7 @@ Os blocos A a J e o bloco M foram concluídos. Faltam os blocos K, L e N.
 |----|-----------|----------|
 | RF52 | Exibir telas de introdução na primeira abertura do app (ícone do Seriando, "seu cantinho para registrar e organizar suas séries no seu ritmo" e "descubra em que streaming sua série ou filme está"), mostradas apenas uma vez | A implementar |
 | RF53 | Exibir, depois da introdução, uma tela de entrada com o botão de login com Google e a opção de entrar sem fazer login | A implementar |
-| RF54 | Modo visitante: permitir pesquisar, ver detalhes, onde assistir, elenco e página da pessoa; ao tentar adicionar à lista, avaliar, opinar, votar ou ver a comunidade, pedir o login | A implementar |
+| RF54 | Modo visitante: permitir pesquisar, ver detalhes, onde assistir, elenco e página da pessoa; ao tentar adicionar à lista, avaliar, opinar, votar ou ver a comunidade, pedir o login por meio de uma folha inferior (BottomSheet) que mostra os benefícios de ter uma conta: salvar o progresso, avaliar e participar da comunidade | A implementar |
 
 **Bloco N — Modo offline (offline-first)**
 
@@ -86,7 +86,7 @@ Promovido de opcional para obrigatório (antes RF33), por orientação do profes
 | ID | Requisito | Situação |
 |----|-----------|----------|
 | RF33 | Modo offline com persistência local (Room): a lista pessoal, os status, o progresso de episódios, o perfil do próprio usuário e os dados das obras da lista ficam salvos no aparelho; o app abre, permite consultar a lista e marcar episódios sem internet e sincroniza com o Firestore quando a conexão voltar | A implementar |
-| RF62 | Avisar o usuário quando o app estiver sem conexão e indicar que há alterações ainda não sincronizadas | A implementar |
+| RF62 | Avisar o usuário quando o app estiver sem conexão e indicar que há alterações ainda não sincronizadas; as telas que dependem de internet (Home, busca e comunidade) mostram uma mensagem com ícone explicando a falta de conexão e a ação possível (tentar de novo) | A implementar |
 
 ### 1.3 Opcionais (se sobrar tempo, por ordem de prioridade)
 
@@ -97,14 +97,25 @@ Promovido de opcional para obrigatório (antes RF33), por orientação do profes
 | RF32 | Login próprio com e-mail e senha (Firebase Authentication) | Opcional |
 | RF60 | Versão iOS do aplicativo em Compose Multiplatform, reaproveitando o código compartilhado (ui, ViewModels, Repository e model) | Opcional |
 | RF61 | Publicação na Apple App Store: distribuição de testes pelo TestFlight e envio para revisão | Opcional |
+| RF68 | Ocultar imediatamente, para quem denunciou, a opinião denunciada, com o aviso "Opinião denunciada e oculta" (RN26) | Opcional |
+| RF66 | Buscar por nome e ordenar (data de adição, nome ou status) dentro da Minha Lista | Opcional |
+| RF65 | Modo "O que assistir hoje?": sugestão aleatória com base nos filtros escolhidos na aba Descobrir | Opcional |
+| RF63 | Nova aba "Descobrir" (a navegação inferior passa a ter 4 itens) com filtros combinados: gênero, ano ou década e nota mínima da TMDB, e ordenação por mais populares, mais bem avaliados ou lançamentos recentes | Opcional |
+| RF64 | Filtrar a aba Descobrir pelos serviços de streaming que o usuário assina no Brasil, com atribuição à JustWatch (RNF09) | Opcional |
+| RF67 | Exibir estatísticas na aba Conta: total de filmes assistidos, de séries completas e de episódios assistidos | Opcional |
 
 RF60 e RF61 dependem dos pré-requisitos descritos na seção 1.5. O RF32 é um deles quando não houver Sign in with Apple.
+
+Os RF63 a RF68 vieram do documento propostas_e_melhorias_seriando.md e estão listados na ordem sugerida de implementação (do mais barato ao mais custoso).
 
 ### 1.4 Sugestões para versões futuras (fora do escopo atual)
 
 | Sugestão | Origem |
 |----------|--------|
 | Recomendação de séries e filmes parecidos com os já assistidos | Apontada com destaque na pergunta aberta da pesquisa de viabilidade (ver estudo-viabilidade.md) |
+| Descobrir obras pelas emoções registradas pela comunidade | Proposta do documento de propostas; exige contadores calculados no servidor (Cloud Function, plano pago do Firebase) e só teria resultados para obras avaliadas por usuários |
+| Notificação de novos episódios e temporadas das séries marcadas como "Assistindo" | Proposta do documento de propostas; exige tarefa em segundo plano (WorkManager) e permissão de notificação |
+| Média de estrelas dadas pelo usuário nas estatísticas da aba Conta | Proposta do documento de propostas; exige ler as avaliações do usuário em todas as obras |
 
 ### 1.5 Por que o aplicativo para iOS não está no escopo atual
 
@@ -142,6 +153,7 @@ O Seriando precisa ser multiplataforma, e a versão iOS (RF60 e RF61) está regi
 | RNF10 | Capas das obras com bordas arredondadas, de forma consistente em todas as telas | Usabilidade (identidade visual) |
 | RNF11 | Código preparado para multiplataforma: sem Context do Android em ViewModels e Repositories; acesso ao Firebase, à TMDB e ao armazenamento local sempre por trás de interfaces na camada de dados (Repository); código específico de Android (Credential Manager, DataStore, Room) isolado em poucos arquivos | Portabilidade / Manutenibilidade |
 | RNF12 | Esteira de publicação documentada para as duas lojas: Google Play (obrigatória) e Apple App Store (preparação documentada, execução opcional, RF61) | Distribuição |
+| RNF13 | Estratégia de cache das chamadas à TMDB definida: cache em memória com tempo de validade na camada Repository e dados das obras da lista guardados no Room (obrasCache), para reduzir chamadas redundantes e consumo de dados | Desempenho |
 
 ---
 
@@ -174,6 +186,7 @@ O Seriando precisa ser multiplataforma, e a versão iOS (RF60 e RF61) está regi
 | RN23 | Em conflito entre o dado local e o da nuvem, vale a gravação mais recente; limitação conhecida: a data da gravação vem do relógio do celular |
 | RN24 | A comunidade (opiniões, avaliações, votos e médias) e o login exigem conexão, e RN08 continua valendo; sem conexão, o app avisa e mantém disponível o que está salvo no aparelho |
 | RN25 | O banco local guarda dados apenas do usuário logado e é apagado por completo no logout (RF27) e na exclusão de conta (RF29) |
+| RN26 | Uma opinião denunciada pelo usuário fica oculta para ele, guardada apenas no aparelho; a denúncia continua sendo gravada em denuncias, de acesso restrito (RF28) |
 
 ---
 

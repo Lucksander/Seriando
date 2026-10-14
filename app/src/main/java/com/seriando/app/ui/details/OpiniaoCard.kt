@@ -1,7 +1,9 @@
 package com.seriando.app.ui.details
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -25,12 +27,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.seriando.app.model.Avaliacao
 import com.seriando.app.model.EMOCOES_DISPONIVEIS
 import com.seriando.app.model.VotoResumo
+import com.seriando.app.ui.theme.corDaEmocao
 
+/**
+ * Cartão de uma opinião da comunidade (RF21 a RF26, RF35, RF36, RF48).
+ * Mostra autor, emoções (chips com bolinha e borda na cor da família), o texto
+ * (oculto se for spoiler até o toque) e os botões de votar, denunciar, editar ou remover.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun OpiniaoCard(
@@ -60,7 +67,6 @@ fun OpiniaoCard(
                 }
                 Spacer(modifier = Modifier.padding(start = 6.dp))
                 Text(text = opiniao.apelidoAutor, style = MaterialTheme.typography.titleSmall)
-
                 if (ehMinha && !opiniao.publica) {
                     Spacer(modifier = Modifier.padding(start = 6.dp))
                     Text(text = "(privada)", style = MaterialTheme.typography.labelSmall)
@@ -70,24 +76,28 @@ fun OpiniaoCard(
             if (opiniao.emocoes.isNotEmpty()) {
                 FlowRow(
                     modifier = Modifier.padding(top = 8.dp),
-                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp),
-                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     opiniao.emocoes.forEach { idEmocao ->
                         val emocao = EMOCOES_DISPONIVEIS.find { it.id == idEmocao }
                         if (emocao != null) {
+                            // Cor já adaptada ao tema claro/escuro
+                            val cor = corDaEmocao(emocao)
+                            val forma = RoundedCornerShape(16.dp)
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .background(Color(emocao.cor).copy(alpha = 0.18f))
+                                    .clip(forma)
+                                    .background(cor.copy(alpha = 0.18f))
+                                    .border(width = 1.dp, color = cor.copy(alpha = 0.7f), shape = forma)
                                     .padding(horizontal = 10.dp, vertical = 6.dp)
                             ) {
                                 Box(
                                     modifier = Modifier
                                         .size(8.dp)
                                         .clip(CircleShape)
-                                        .background(Color(emocao.cor))
+                                        .background(cor)
                                 )
                                 Spacer(modifier = Modifier.padding(start = 4.dp))
                                 Text(text = emocao.label, style = MaterialTheme.typography.labelMedium)
@@ -116,13 +126,15 @@ fun OpiniaoCard(
                     TextButton(onClick = aoCurtir) {
                         Text(
                             text = "👍 ${resumoVotos.curtidas}",
-                            style = if (resumoVotos.meuVoto == 1) MaterialTheme.typography.labelLarge else MaterialTheme.typography.labelMedium
+                            style = if (resumoVotos.meuVoto == 1) MaterialTheme.typography.labelLarge
+                            else MaterialTheme.typography.labelMedium
                         )
                     }
                     TextButton(onClick = aoDescurtir) {
                         Text(
                             text = "👎 ${resumoVotos.descurtidas}",
-                            style = if (resumoVotos.meuVoto == -1) MaterialTheme.typography.labelLarge else MaterialTheme.typography.labelMedium
+                            style = if (resumoVotos.meuVoto == -1) MaterialTheme.typography.labelLarge
+                            else MaterialTheme.typography.labelMedium
                         )
                     }
                     TextButton(onClick = aoDenunciar) {
@@ -130,7 +142,6 @@ fun OpiniaoCard(
                     }
                 }
             }
-
 
             if (ehMinha) {
                 Row(modifier = Modifier.padding(top = 6.dp)) {

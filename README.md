@@ -2,22 +2,28 @@
 
 Aplicativo Android moderno e intuitivo para organizar as séries e filmes que você assiste, avaliar, comentar e acompanhar junto à comunidade. Pesquise títulos, acompanhe temporadas e episódios, veja a disponibilidade nos serviços de streaming, explore a biografia e filmografia de atores/atrizes e nunca mais perca onde parou.
 
-Projeto desenvolvido em **Kotlin** com **Jetpack Compose**, seguindo boas práticas de arquitetura Android (MVVM / Repository Pattern), consumo de APIs REST com Retrofit, autenticação com Google Credential Manager API, persistência em nuvem com Cloud Firestore e gerenciamento de estado resiliente.
+Projeto desenvolvido em **Kotlin** com **Jetpack Compose**, seguindo boas práticas de arquitetura Android (MVVM / Repository Pattern), consumo de APIs REST com Retrofit, autenticação com Google Credential Manager API, persistência local com **Room Database (Offline-First)**, sincronização em nuvem com Cloud Firestore e gerenciamento de estado resiliente.
 
 ---
 
 ## 📌 Versão Atual
 
-**Versão: V0.12** *(em desenvolvimento — rumo à V1.0)*
+**Versão: V0.13** *(em desenvolvimento — rumo à V1.0)*
 
-### 🆕 Novidades da V0.12
-- **Identidade Visual & Design System Velvet Purple (RNF10)**: Implementação do tema exclusivo da marca com paleta em tons de roxo veludo (`VelvetPurple`), fundo `Midnight` e superfícies `VelvetSurface`. Padronização do acabamento das capas de filmes e séries com cantos arredondados e borda sutil em lilás brilhante via `Modifier.capaDeObra()`, além do novo ícone oficial adaptativo do aplicativo.
-- **Home por Categorias (RF44, RF45, RF46)**: A Home passou a exibir fileiras horizontais para cada gênero (*Em alta*, *Ação*, *Comédia*, *Suspense*, *Drama*, *Ficção científica*, *Terror*, *Romance*, *Animação*, *Crime*, *Documentário* e *Família*), agrupando filmes e séries. Ao final de cada fileira, o cartão "Ver mais" abre a lista completa da categoria em grade paginada (3 colunas) com o botão "Carregar mais".
-- **Regras de Segurança do Firestore (RNF01, RNF03, RNF04)**: As regras de produção (`firestore.rules`) foram consolidadas, restringindo a leitura e escrita aos dados do próprio usuário, validando tipos/tamanhos de campos e garantindo que cada usuário vote apenas uma vez em cada opinião (sem votar na própria opinião).
-- **Opinião Privada Isolada (RF48, RN12)**: As opiniões privadas foram movidas para um local de armazenamento exclusivo do autor (`usuarios/{uid}/opinioesPrivadas`), garantindo privacidade a nível de banco de dados e não apenas ocultação na UI.
-- **Tratamento de Erros e Carregamento**: Todas as telas exibem indicadores de carregamento e mensagens explicativas em caso de falha de rede ou permissão, com ação de tentar novamente sem causar travamentos ou crashes no aplicativo.
-- **Exclusão de Conta e Direitos LGPD (RF29)**: Funcionalidade completa para exclusão permanente da conta e de todos os dados associados no Firestore em lotes seguros e idempotentes (até 400 documentos por lote), exigindo confirmação de identidade prévia via Credential Manager API.
-- **Documentação Estruturada de Requisitos**: Adição do levantamento completo de requisitos funcionais e não funcionais, regras de negocio e pipeline de publicação no diretório [`docs/requisitos-seriando.md`](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/docs/requisitos-seriando.md).
+### 🆕 Novidades da V0.13
+- **Arquitetura Offline-First & Banco Local com Room (RF33, RNF11, RN21 a RN25)**: Criação da infraestrutura de banco de dados relacional local com **Room Database** (`SeriandoDatabase`), permitindo acesso instantâneo à lista pessoal, progresso de episódios e perfil do usuário mesmo sem conexão à internet.
+- **Motor de Sincronização em Segundo Plano (`Sincronizador`)**: Implementação do motor de sincronização bidirecional e assíncrono entre o banco local (Room) e o Cloud Firestore em duas fases (Envio e Recebimento), com controle de alterações pendentes (`pendenteSincronizacao`), exclusão por "lápides" (`removido`), resolução de conflitos por estampa de tempo (*last-write-wins* via `atualizadoEm`, RN23) e resiliência com timeout de rede (`withTimeout` de 15s e leituras via `Source.SERVER`).
+- **Desacoplamento de Injeção de Dependências (`Dependencias`)**: Centralização do acesso ao Room e abstração das interfaces dos DAOs (`ListaDao`, `EpisodioDao`, `PerfilDao`, `ObraCacheDao`), garantindo que a camada de repositórios não dependa diretamente do `Context` do Android (RNF11).
+- **Cache em Disco de Obras (`ObraCacheDao`)**: Armazenamento offline das respostas JSON dos detalhes e temporadas das obras salvas do TMDB, viabilizando a navegação offline pelos metadados dos itens da lista do usuário.
+- **Reatividade com Flow e Coroutines**: Atualização automática e reativa da interface do usuário através de `Flow` expostos diretamente pelos DAOs do Room (RN21), eliminando a necessidade de chamadas de rede bloqueantes ao abrir telas como a Minha Lista.
+- **Inicialização da Aplicação (`SeriandoApp`)**: Subclasse de `Application` configurada para instanciar o Room na abertura do app e disparar automaticamente a sincronização da sessão ativa em segundo plano.
+
+### 📜 Novidades da V0.12
+- **Identidade Visual & Design System Velvet Purple (RNF10)**: Tema exclusivo da marca com paleta em tons de roxo veludo (`VelvetPurple`), fundo `Midnight` e superfícies `VelvetSurface`. Padronização do acabamento das capas via `Modifier.capaDeObra()` e novo ícone oficial adaptativo do aplicativo.
+- **Home por Categorias (RF44, RF45, RF46)**: Fileiras horizontais para cada gênero (*Em alta*, *Ação*, *Comédia*, *Suspense*, *Drama*, *Ficção científica*, *Terror*, *Romance*, *Animação*, *Crime*, *Documentário* e *Família*) com navegação para a lista completa em grade paginada (3 colunas).
+- **Regras de Segurança do Firestore (RNF01, RNF03, RNF04)**: Regras de produção (`firestore.rules`) consolidadas, restringindo leitura e escrita aos dados do próprio usuário e validando votos únicos.
+- **Opinião Privada Isolada (RF48, RN12)**: Armazenamento de opiniões privadas em subcoleção exclusiva do autor (`usuarios/{uid}/opinioesPrivadas`).
+- **Exclusão de Conta e Direitos LGPD (RF29)**: Exclusão permanente e segura de todos os dados do usuário no Firestore em lotes idempotentes (até 400 documentos por lote), com confirmação prévia via Credential Manager API.
 
 ---
 
@@ -25,7 +31,7 @@ Projeto desenvolvido em **Kotlin** com **Jetpack Compose**, seguindo boas práti
 
 O **Seriando** foi concebido para oferecer uma experiência completa de organização e descoberta de mídia para cinéfilos e maratonadores. Utilizando a API pública do **TMDB (The Movie Database)**, o aplicativo disponibiliza metadados atualizados de filmes, séries, temporadas, episódios, atores e onde assistir via **JustWatch**.
 
-Integrado ao **Firebase Authentication (Google Sign-In)** e **Cloud Firestore**, o Seriando permite sincronizar em tempo real a lista pessoal de acompanhamento, progresso de episódios, avaliações numéricas (1 a 5 estrelas), resenhas públicas ou privadas com tags emocionais, interações de curtir/descurtir e denúncia de conteúdos impróprios.
+Integrado ao **Firebase Authentication (Google Sign-In)**, **Room Database** e **Cloud Firestore**, o Seriando funciona de forma **Offline-First**, permitindo gerenciar e acompanhar seus títulos sem internet enquanto sincroniza em tempo real as listas, progresso de episódios, avaliações numéricas (1 a 5 estrelas), resenhas públicas ou privadas com tags emocionais, interações de curtir/descurtir e denúncias de conteúdos impróprios.
 
 ---
 
@@ -52,7 +58,7 @@ O Seriando possui uma identidade visual única desenvolvida sob o conceito **Vel
 
 ## 🏛️ Arquitetura & Padrões de Projeto
 
-O aplicativo adota a **Clean Architecture** aliada ao **Repository Pattern** e princípios do **Android Jetpack**:
+O aplicativo adota a **Clean Architecture** aliada ao **Repository Pattern**, arquitetura **Offline-First** e princípios do **Android Jetpack**:
 
 ```mermaid
 flowchart TD
@@ -72,15 +78,24 @@ flowchart TD
     subgraph Repositories ["Repository Layer"]
         I[AuthRepository]
         J[CatalogoRepository]
-        K[MinhaListaRepository]
-        L[AvaliacaoRepository]
-        M[ContaRepository / PerfilRepository / DenunciaRepository / ProgressoRepository]
+        K[MinhaListaRepository / ProgressoRepository]
+        L[AvaliacaoRepository / PerfilRepository]
+        M[ContaRepository / DenunciaRepository]
     end
 
-    subgraph DataSources ["Remote Data Sources"]
-        N[TMDB REST API via Retrofit 2]
-        O[Firebase Auth + Credential Manager]
-        P[Cloud Firestore Database]
+    subgraph LocalData ["Local Data Layer (Room / Offline-First)"]
+        N[Dependencias] --> O[(Room Database: SeriandoDatabase)]
+        O --> P[ListaDao / EpisodioDao / PerfilDao / ObraCacheDao]
+    end
+
+    subgraph SyncEngine ["Synchronization Engine"]
+        Q[Sincronizador]
+    end
+
+    subgraph RemoteDataSources ["Remote Data Sources"]
+        R[TMDB REST API via Retrofit 2]
+        S[Firebase Auth + Credential Manager]
+        T[Cloud Firestore Database]
     end
 
     B <--> H
@@ -88,27 +103,40 @@ flowchart TD
     A <--> F
 
     UI --> Repositories
-    J --> N
-    I --> O
-    K & L & M --> P
+    J --> R
+    I --> S
+    K & L --> P
+    K & L --> Q
+    Q <--> P
+    Q <--> T
+    M --> T
 ```
 
 ### Principais Componentes de Arquitetura
 
 - **UI Declarativa**: Interface de usuário reativa desenvolvida com **Jetpack Compose** e componentes **Material Design 3**.
+- **Persistência Local & Offline-First (Room Database)**:
+  - `SeriandoDatabase`: Banco relacional local gerenciado pelo Room com suporte a migração e transações atômicas (`emTransacao`).
+  - `ListaDao`: Leitura reativa (`Flow`) e mutações pendentes na lista pessoal do usuário.
+  - `EpisodioDao`: Acompanhamento de episódios e temporadas assistidas offline.
+  - `PerfilDao`: Armazenamento local do perfil do usuário (`perfil`).
+  - `ObraCacheDao`: Cache em disco em formato JSON das respostas do TMDB para obras salvas.
+- **Motor de Sincronização em Segundo Plano (`Sincronizador`)**:
+  - Executa tarefas assíncronas em segundo plano (`Dispatchers.IO` + `SupervisorJob`) garantindo sincronização bidirecional transparente.
+  - Resolve conflitos por estampa de tempo (*last-write-wins*, RN23), gerencia pendências de envio (`pendenteSincronizacao`) e trata exclusões com registros do tipo "lápide" (`removido`).
 - **Gerenciamento de Estado & Cache em Memória**:
-  - `AbaCache`: Preserva a aba ativa do `MainScaffold` durante a navegação em pilha.
-  - `BuscaCache`: Mantém os termos e resultados de pesquisa ativos, evitando requisições desnecessárias.
-  - `CatalogoCache`: Armazena em cache a primeira página de cada categoria da Home, eliminando recomposições e estados de carregamento ao retornar de telas filhas.
-- **Camada de Dados Abstrata**: Repositórios desacoplados gerenciando a origem dos dados (TMDB REST API vs. Cloud Firestore):
+  - `AbaCache`: Preserva a aba ativa do `MainScaffold` durante a navegação.
+  - `BuscaCache`: Mantém termos e resultados de pesquisa ativos.
+  - `CatalogoCache`: Armazena a primeira página de cada categoria da Home, evitando recomposições e chamadas repetidas.
+- **Camada de Dados Abstrata**: Repositórios desacoplados gerenciando a origem dos dados (Room Local, TMDB REST API e Cloud Firestore):
   - `AuthRepository`: Fluxo de autenticação Google Sign-In e sessão do usuário.
   - `CatalogoRepository`: Consulta de obras em alta, por gênero, detalhes de mídias, temporadas e artistas.
-  - `MinhaListaRepository`: Gerenciamento do acompanhamento pessoal sincronizado no Firestore.
-  - `AvaliacaoRepository`: Críticas públicas e privadas, notas numéricas, reações emocionais e sistema de votos.
-  - `ContaRepository`: Exclusão de conta com limpeza em lote (batching) em conformidade com a LGPD.
+  - `MinhaListaRepository`: Leitura e escrita instantâneas no Room com disparo do `Sincronizador`.
+  - `AvaliacaoRepository`: Críticas públicas e privadas, notas numéricas, reações emocionais e votos.
+  - `ContaRepository`: Exclusão de conta com limpeza em lote (batching) no Firestore e limpeza do banco local via `Dependencias.limparBancoLocal()`.
   - `DenunciaRepository`: Envio e registro de denúncias de conteúdos impróprios.
-  - `PerfilRepository`: Gerenciamento de apelidos e escolha de avatares.
-  - `ProgressoRepository`: Marcação granular de episódios e temporadas assistidas.
+  - `PerfilRepository`: Gerenciamento de apelidos e avatares.
+  - `ProgressoRepository`: Marcação granular de episódios e temporadas no banco local e nuvem.
 
 ---
 
@@ -125,6 +153,7 @@ sequenceDiagram
     participant Auth as AuthRepository
     participant FB as Firebase Auth
     participant FS as Cloud Firestore
+    participant Sync as Sincronizador
 
     User->>UI: Clica em "Entrar com Google"
     UI->>Auth: entrarComGoogle(context, webClientId)
@@ -135,23 +164,37 @@ sequenceDiagram
     Auth->>FB: signInWithCredential(GoogleAuthProvider)
     FB-->>Auth: Retorna FirebaseUser (UID, email)
     Auth->>FS: Verifica / cria perfis (usuarios/{uid} e perfisPublicos/{uid})
+    Auth->>Sync: disparar(uid) -> Sincroniza banco Room com o Firestore
     Auth-->>UI: Retorna usuário autenticado
     UI-->>User: Atualiza estado da interface para logado
 ```
 
 > [!IMPORTANT]
-> **Confirmação de Identidade para Exclusão de Conta (LGPD / RF29)**: Para executar ações sensíveis, como a exclusão definitiva da conta, o aplicativo solicita a reautenticação através do Credential Manager antes de realizar a exclusão em lote no Cloud Firestore.
+> **Confirmação de Identidade para Exclusão de Conta (LGPD / RF29)**: Para executar ações sensíveis, como a exclusão definitiva da conta, o aplicativo solicita a reautenticação através do Credential Manager antes de realizar a exclusão em lote no Cloud Firestore e a limpeza do banco local (`Dependencias.limparBancoLocal()`).
 
 ---
 
-## 🗄️ Modelo de Dados & Schema do Firestore
+## 🗄️ Modelo de Dados & Schemas
+
+### Schema do Banco de Dados Local (Room Database)
+
+O banco de dados relacional local (`SeriandoDatabase`) armazena os dados da sessão ativa para suporte offline-first:
+
+| Tabela Room | Chave Primária | Finalidade & Campos Principais | Requisito / Regra |
+| :--- | :--- | :--- | :--- |
+| `lista` | `id` (Int - TMDB) | Espelho local da lista pessoal (`id`, `nome`, `sinopse`, `caminhoCapa`, `tipoMidia`, `status`, `dataAdicao`, `atualizadoEm`, `pendenteSincronizacao`, `removido`). | **RF07, RF08, RN21, RN22** |
+| `episodiosAssistidos` | `[serieId, temporada, numero]` | Registros de episódios assistidos (`serieId`, `temporada`, `numero`, `atualizadoEm`, `pendenteSincronizacao`, `removido`). | **RF09, RF10, RN20** |
+| `perfil` | `uid` (String) | Consolidação dos perfis privado e público (`uid`, `apelido`, `avatarId`, `aniversario`, `atualizadoEm`, `pendenteSincronizacao`). | **RF12, RF15, RNF08** |
+| `obrasCache` | `[tipoMidia, tmdbId, parte]` | Cache local em JSON dos detalhes (`parte = -1`) e temporadas (`parte >= 0`) de obras da lista para navegação offline. | **RF33** |
+
+### Schema do Cloud Firestore
 
 O Cloud Firestore utiliza a seguinte estrutura relacional de coleções e subcoleções regidas pelo arquivo de segurança `firestore.rules`:
 
 | Coleção / Caminho | Permissão de Leitura | Permissão de Escrita | Descrição & Campos Principais |
 | :--- | :--- | :--- | :--- |
 | `usuarios/{uid}` | Dono (`request.auth.uid == uid`) | Dono | Dados privados do usuário (`email`, `aniversario`). |
-| `usuarios/{uid}/series/{serieId}` | Dono | Dono | Itens da lista pessoal (`id`, `nome`, `sinopse`, `caminhoCapa`, `tipoMidia`, `status`, `dataAdicao`). |
+| `usuarios/{uid}/series/{serieId}` | Dono | Dono | Itens da lista pessoal (`id`, `nome`, `sinopse`, `caminhoCapa`, `tipoMidia`, `status`, `dataAdicao`, `atualizadoEm`). |
 | `usuarios/{uid}/series/{serieId}/episodiosAssistidos/{docId}` | Dono | Dono | Progresso individual de episódios assistidos pelo usuário. |
 | `usuarios/{uid}/opinioesPrivadas/{obraId}` | Dono | Dono | Críticas e anotações privadas do autor (`texto`, `spoiler`, `emocoes`, `data`). |
 | `perfisPublicos/{uid}` | Usuários autenticados | Dono | Informações públicas de perfil (`apelido`, `avatarId`). |
@@ -169,7 +212,7 @@ A comunicação remota com a API da TMDB é intermediada pela interface `TmdbApi
 | :--- | :--- | :--- | :--- |
 | `/trending/all/week` | `GET` | Busca obras populares da semana para a fileira "Em Alta" e o carrossel de destaques | **RF45** |
 | `/discover/movie` | `GET` | Descobre filmes ordenados por popularidade filtrados por ID de gênero | **RF44** |
-| `/discover/tv` | `GET` | Descobre séries ordenadas por popularidade filtradas por ID de gênero | **RF44** |
+| `/discover/tv` | `GET` | Descobre séries ordenadas por popularidade filtrados por ID de gênero | **RF44** |
 | `/search/multi` | `GET` | Pesquisa unificada de filmes, séries e pessoas com consulta textual | **RF03** |
 | `/movie/{id}` | `GET` | Obtém detalhes completos de um filme (com elenco e vídeos via `append_to_response`) | **RF05** |
 | `/tv/{id}` | `GET` | Obtém detalhes completos de uma série (com elenco e vídeos via `append_to_response`) | **RF05** |
@@ -182,6 +225,11 @@ A comunicação remota com a API da TMDB é intermediada pela interface `TmdbApi
 ---
 
 ## 🚀 Funcionalidades Principais
+
+### ⚡ Modo Offline-First & Sincronização
+- **Funcionamento Sem Internet**: Adição, remoção, alteração de status e acompanhamento de episódios salvos diretamente no banco de dados Room do dispositivo.
+- **Sincronização Transparente**: Motor `Sincronizador` enviando e recebendo alterações em segundo plano na recuperação de conexão.
+- **Resolução Automática de Conflitos**: Algoritmo *last-write-wins* por estampa de tempo (`atualizadoEm`), preservando sempre a versão mais recente dos dados.
 
 ### 🔍 Navegação & Busca
 - **Home em Seções**: Fileiras horizontais organizadas por gênero (incluindo o carrossel *Em alta* da semana) com navegação rápida para a visualização expandida de categorias (`CategoriaScreen`).
@@ -208,7 +256,7 @@ A comunicação remota com a API da TMDB é intermediada pela interface `TmdbApi
 - **Exclusão de Conta (LGPD / RF29)**: Exclusão definitiva e segura de todos os dados do usuário em lotes idempotentes, exigindo confirmação com biometria/passkey via Credential Manager.
 
 ### 📋 Minha Lista Pessoal
-- **Sincronização em Nuvem**: Mídia salva no Cloud Firestore acessível de qualquer dispositivo.
+- **Persistência Local e Nuvem**: Lista salva no Room e sincronizada no Cloud Firestore acessível de qualquer dispositivo.
 - **Status Customizado**:
   - *Séries*: Assistindo, Quero Assistir, Pausado, Finalizado, Abandonado.
   - *Filmes*: Quero Assistir, Já Assisti, Abandonado.
@@ -229,7 +277,7 @@ A especificação técnica detalhada do projeto encontra-se disponível no diret
 - 📋 [**Levantamento Completo de Requisitos (`requisitos-seriando.md`)**](/Seriando/docs/requisitos-seriando.md):
   - **Requisitos Funcionais (RF01 a RF62)**: Detalhamento dos blocos implementados e em desenvolvimento.
   - **Requisitos Não Funcionais (RNF01 a RNF12)**: Segurança, LGPD, portabilidade para Compose Multiplatform e regras de banco.
-  - **Regras de Negócio (RN01 a RN25)**: Comportamento das avaliações, pontuação, privacidade e concorrência.
+  - **Regras de Negócio (RN01 a RN25)**: Comportamento das avaliações, pontuação, privacidade, concorrência e sincronização offline.
   - **Análise de Risco & Segurança**: Modelo de ameaças STRIDE e checklist OWASP MASVS.
   - **Esteira de Publicação**: Procedimento de envio para Google Play Store e preparação para Apple App Store.
 
@@ -242,10 +290,11 @@ A especificação técnica detalhada do projeto encontra-se disponível no diret
 | **Linguagem** | Kotlin | 2.0+ |
 | **UI Framework** | Jetpack Compose | Material Design 3 |
 | **Navegação** | Navigation Compose | Grafo de navegação centralizado (`navigation-compose:2.8.4`) |
+| **Banco de Dados Local** | Room Database | Biblioteca de persistência SQLite offline-first (`androidx.room:2.6.1`) |
 | **Rede & HTTP** | Retrofit 2 + Gson + OkHttp 4 | Consumo das APIs do TMDB (`retrofit:2.11.0`) |
 | **Imagens** | Coil 3 | Carregamento assíncrono e cache de imagens (`coil-compose:3.0.4`) |
 | **Autenticação** | Firebase Auth + Credential Manager API | Google Sign-In e Passkeys (`credentials:1.3.0`) |
-| **Banco de Dados** | Cloud Firestore | Armazenamento noSQL relacional (`firebase-firestore`) |
+| **Banco de Dados Nuvem** | Cloud Firestore | Armazenamento noSQL relacional (`firebase-firestore`) |
 | **Build System** | Gradle | Kotlin DSL & Version Catalogs (`libs.versions.toml`) |
 
 ---
@@ -261,8 +310,10 @@ com.seriando.app
 ├── data/
 │   ├── auth/          # AuthRepository (Firebase Auth + Credential Manager + Sessão)
 │   ├── cache/         # AbaCache, BuscaCache e CatalogoCache (Singletons de cache em memória)
+│   ├── local/         # SeriandoDatabase, Daos (ListaDao, EpisodioDao, PerfilDao, ObraCacheDao), Entidades, Mapeamentos, Dependencias
 │   ├── remote/        # RetrofitInstance e TmdbApiService (End-points e clientes HTTP)
-│   └── repository/    # Repositórios (Avaliacao, Catalogo, Conta, Denuncia, MinhaLista, Perfil, Progresso)
+│   ├── repository/    # Repositórios (Avaliacao, Catalogo, Conta, Denuncia, MinhaLista, Perfil, Progresso)
+│   └── sync/          # Sincronizador (Motor de sincronização bidirecional Room <-> Firestore em segundo plano)
 │
 ├── model/             # Data Classes (Movie, Serie, Pessoa, Avaliacao, Categoria, Emocao, Status, etc.)
 │
@@ -281,7 +332,8 @@ com.seriando.app
 │   ├── theme/         # Color.kt, Formas.kt (capaDeObra), Theme.kt, Type.kt (Design System Velvet Purple)
 │   └── usuario/       # UsuarioScreen e SeletorAvatar
 │
-└── MainActivity.kt    # Ponto de entrada do aplicativo Android
+├── MainActivity.kt    # Ponto de entrada das atividades e UI do Android
+└── SeriandoApp.kt     # Subclasse Application (Inicialização do Room e disparo de Sincronização)
 ```
 
 ---
@@ -407,7 +459,8 @@ Os testes unitários cobrem repositórios, lógica de negócios, parsing de mode
 - **V0.9**: Sistema de avaliação por estrelas (1 a 5), opiniões públicas e privadas com suporte a aviso de spoiler e tags emocionais.
 - **V0.10**: Sistema de curtidas/descurtidas em comentários, denúncia de comentários e visualização de provedores de streaming ("Onde Assistir") via JustWatch.
 - **V0.11**: Tela completa de atores/atrizes com foto, biografia expansível (fallback em inglês) e filmografia paginada por popularidade.
-- **V0.12**: **(Versão Atual)** Home organizada por categorias de gênero com botão "Ver mais", lista paginada em grade de 3 colunas, regras de segurança estritas no Firestore, opiniões privadas em coleções isoladas, mensagens de erro resilientes, exclusão permanente de conta (RF29 / LGPD), Design System Velvet Purple com `Modifier.capaDeObra()` e documentação completa de requisitos em `docs/`.
+- **V0.12**: Home organizada por categorias de gênero com botão "Ver mais", lista paginada em grade de 3 colunas, regras de segurança estritas no Firestore, opiniões privadas em coleções isoladas, exclusão permanente de conta (RF29 / LGPD), Design System Velvet Purple e documentação completa de requisitos.
+- **V0.13**: **(Versão Atual)** Implementação da arquitetura **Offline-First** com **Room Database** (`SeriandoDatabase`, DAOs e entidades) e motor de sincronização em segundo plano (`Sincronizador`), garantindo funcionamento completo da lista pessoal e progresso mesmo sem conexão com a internet, com resolução de conflitos por timestamp e reconciliação com o Cloud Firestore (RF33, RNF11, RN21 a RN25).
 
 ---
 
@@ -417,6 +470,7 @@ Os testes unitários cobrem repositórios, lógica de negócios, parsing de mode
 - [x] **Regras de Segurança do Firestore**: Consolidação de permissões rígidas no banco de dados.
 - [x] **Tratamento Global de Erros**: Indicadores de carregamento, estados de falha e recuperação graciosa.
 - [x] **Identidade Visual & Ícone**: Design System proprietário com paleta de cores Velvet Purple customizada e ícone exclusivo do app.
+- [x] **Modo Offline & Arquitetura Offline-First (Room)**: Persistência local reativa e sincronização bidirecional em segundo plano com o Firestore.
 - [ ] **Testes Automatizados**: Expansão de testes unitários para repositórios/caches e testes de UI com Compose Testing.
 - [ ] **Publicação na Google Play Store**.
 
@@ -427,6 +481,7 @@ Os testes unitários cobrem repositórios, lógica de negócios, parsing de mode
 Este projeto serve como estudo prático e portfólio de desenvolvimento Android moderno:
 - Criação de interfaces declarativas e reativas com **Jetpack Compose** e **Material 3**.
 - Aplicação de arquitetura limpa (MVVM + Repository Pattern).
+- Arquitetura **Offline-First** com **Room Database**, DAOs reativos com Flow e sincronização de dados bidirecional com tratamento de conflitos.
 - Consumo de Web APIs RESTful com **Retrofit 2** e **Coroutines**.
 - Integração com serviços de nuvem **Firebase** (Authentication e Firestore).
 - Implementação da API **Android Credential Manager** para autenticação simplificada.

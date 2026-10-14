@@ -1,61 +1,74 @@
 package com.seriando.app.data.repository
 
-import com.google.firebase.firestore.FirebaseFirestore
+import com.seriando.app.data.local.Dependencias
+import com.seriando.app.data.local.EpisodioDao
+import com.seriando.app.data.local.ListaDao
+import com.seriando.app.data.local.paraEntity
+import com.seriando.app.data.local.paraSerieSalva
+import com.seriando.app.data.sync.Sincronizador
 import com.seriando.app.model.SerieSalva
-import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 
 /**
- * Lista pessoal do usuário (RF07, RF08): usuarios/{uid}/series/{serieId}.
- * As funções não tratam erros: quem chama (a tela) faz try/catch.
+ * Lista pessoal do usuário (RF07, RF08), offline-first (RF33).
+ *
+ * As telas leem e gravam SEMPRE no banco local (RN21). Cada alteração grava primeiro no Room,
+ * marcada como pendente (RN22), e pede ao Sincronizador que a envie ao Firestore em segundo
+ * plano. Por isso estas funções funcionam sem internet e nunca esperam pela nuvem.
+ *
+ * O parâmetro uid das funções é mantido para as telas continuarem iguais: o banco local só
+ * guarda os dados do usuário logado (RN25) e o uid é usado para a sincronização.
+ *
+ * @param local     DAO da lista (interface do Room, RNF11).
+ * @param episodios DAO dos episódios, usado para apagar o progresso junto com o item (RN20).
  */
-class MinhaListaRepository {
+class MinhaListaRepository(
+    private val local: ListaDao = Dependencias.listaDao,
+    private val episodios: EpisodioDao = Dependencias.episodioDao
+) {
 
-    private val db = FirebaseFirestore.getInstance()
+    /** A lista, atualizada sozinha sempre que o banco local mudar (inclusive após sincronizar). */
+    fun observarSeries(): Flow<List<SerieSalva>> =
+        local.observarItens().map { itens -> itens.map { it.paraSerieSalva() } }
 
-    private fun colecaoSeries(uid: String) =
-        db.collection("usuarios").document(uid).collection("series")
+    /** A lista numa leitura única, do banco local. */
+    suspend fun buscarSeries(uid: String): List<SerieSalva> =
+        local.observarItens().first().map { it.paraSerieSalva() }
 
+    /** Adiciona (ou readiciona) um item à lista, pendente de envio. */
     suspend fun adicionarSerie(uid: String, serie: SerieSalva) {
-        colecaoSeries(uid).document(serie.id.toString()).set(serie).await()
+        local.salvar(serie.paraEntity(pendente = true, atualizadoEm = System.currentTimeMillis()))
+        // Só envia: baixar a nuvem inteira a cada alteração geraria leituras demais
+        Sincronizador.disparar(uid, baixarDaNuvem = false)
     }
 
     /**
-     * Remove o item da lista JUNTO com o progresso de episódios dele (RF29).
-     * O Firestore não apaga subcoleções sozinho: sem isto, os episódios assistidos
-     * ficariam no banco sem pai, invisíveis para o app e impossíveis de apagar depois.
-     * Ordem: primeiro os episódios (filhos), depois o documento da série (pai).
-     * Se falhar no meio, o pai continua existindo e uma nova tentativa termina o serviço.
+     * Remove o item da lista (RN20). O item e todo o progresso de episódios dele somem da tela
+     * na hora, numa única transação; as lápides ficam no banco até as exclusões irem à nuvem.
+     * Os episódios também ficam como lápides (em vez de apagados) para a exclusão deles chegar
+     * à nuvem mesmo que o item seja readicionado antes da sincronização.
      */
     suspend fun removerSerie(uid: String, serieId: Int) {
-        val documentoSerie = colecaoSeries(uid).document(serieId.toString())
-
-        // 1) Progresso de episódios, em lotes (o Firestore aceita até 500 operações por lote)
-        val episodios = documentoSerie.collection("episodiosAssistidos").get().await().documents
-        episodios.chunked(400).forEach { grupo ->
-            val lote = db.batch()
-            grupo.forEach { lote.delete(it.reference) }
-            lote.commit().await()
+        val agora = System.currentTimeMillis()
+        Dependencias.emTransacao {
+            local.marcarRemovido(serieId, agora)
+            episodios.marcarTodosRemovidosDaSerie(serieId, agora)
         }
-
-        // 2) Só depois o documento da série
-        documentoSerie.delete().await()
+        Sincronizador.disparar(uid, baixarDaNuvem = false)
     }
 
-    suspend fun buscarSeries(uid: String): List<SerieSalva> {
-        val resultado = colecaoSeries(uid).get().await()
-        return resultado.toObjects(SerieSalva::class.java)
-    }
+    /** true se o item está na lista (itens marcados como removidos não contam). */
+    suspend fun contemSerie(uid: String, serieId: Int): Boolean =
+        local.obter(serieId)?.removido == false
 
-    suspend fun contemSerie(uid: String, serieId: Int): Boolean {
-        val documento = colecaoSeries(uid).document(serieId.toString()).get().await()
-        return documento.exists()
-    }
-
-    // Atualiza só o campo "status" de um item já salvo, sem reescrever o documento inteiro.
-    // Recebe o nome do enum já pronto (StatusSerie ou StatusFilme, resolvido pela tela).
+    /**
+     * Muda só o status de um item já salvo. Recebe o nome do enum já pronto
+     * (StatusSerie ou StatusFilme, resolvido pela tela).
+     */
     suspend fun atualizarStatusTexto(uid: String, serieId: Int, nomeStatus: String) {
-        colecaoSeries(uid).document(serieId.toString())
-            .update("status", nomeStatus)
-            .await()
+        local.atualizarStatus(serieId, nomeStatus, System.currentTimeMillis())
+        Sincronizador.disparar(uid, baixarDaNuvem = false)
     }
 }

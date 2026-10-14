@@ -12,15 +12,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -33,14 +31,14 @@ import com.seriando.app.data.auth.AuthRepository
 import com.seriando.app.data.repository.MinhaListaRepository
 import com.seriando.app.model.SerieSalva
 import com.seriando.app.model.labelDoStatus
+import com.seriando.app.ui.home.DialogoRemoverDaLista
 import com.seriando.app.ui.home.SerieCardSalva
 import kotlinx.coroutines.launch
-import com.seriando.app.ui.home.DialogoRemoverDaLista
 
 /**
- * Aba Minha Lista (RF07, RF08): séries e filmes salvos, com filtro por status.
- * Tem três estados além do normal: carregando, falha (com botão para tentar de novo)
- * e sem login.
+ * Aba Minha Lista (RF07, RF08, RF33): séries e filmes salvos, com filtro por status.
+ * A lista vem do banco local (Room), que a tela observa: funciona sem internet e se
+ * atualiza sozinha quando a sincronização traz mudanças da nuvem (RN21).
  */
 @Composable
 fun MinhaListaScreen(aoClicarEmItem: (Int, String) -> Unit) {
@@ -51,12 +49,9 @@ fun MinhaListaScreen(aoClicarEmItem: (Int, String) -> Unit) {
     val scope = rememberCoroutineScope()
     val uid = authRepository.usuarioAtual()?.uid
 
-    var minhasSeries by remember { mutableStateOf<List<SerieSalva>>(emptyList()) }
-    var carregando by remember { mutableStateOf(true) }   // busca da lista em andamento
-    var falhou by remember { mutableStateOf(false) }      // a busca deu erro
-
-    // Incrementar este número refaz a busca (botão "Tentar novamente")
-    var tentativa by remember { mutableIntStateOf(0) }
+    // A lista observada do banco local. null = o banco ainda não respondeu (carregando).
+    val minhasSeries by remember { minhaListaRepository.observarSeries() }
+        .collectAsState(initial = null)
 
     // null = "Todos"; senão guarda o rótulo de status escolhido (texto, não enum,
     // já que a lista mistura os rótulos de StatusSerie e StatusFilme).
@@ -64,26 +59,6 @@ fun MinhaListaScreen(aoClicarEmItem: (Int, String) -> Unit) {
 
     // Item que o usuário tocou em "remover" e ainda não confirmou (null = nenhum diálogo aberto)
     var serieParaRemover by remember { mutableStateOf<SerieSalva?>(null) }
-
-    // Busca a lista ao abrir, quando o login muda ou quando o usuário tenta de novo.
-    LaunchedEffect(uid, tentativa) {
-        falhou = false
-        if (uid == null) {
-            // Sem login não há o que buscar (e o Firestore recusaria a leitura)
-            minhasSeries = emptyList()
-            carregando = false
-            return@LaunchedEffect
-        }
-        carregando = true
-        try {
-            minhasSeries = minhaListaRepository.buscarSeries(uid)
-        } catch (e: Exception) {
-            Log.e("MinhaListaScreen", "Falha ao buscar a lista", e)
-            falhou = true
-        } finally {
-            carregando = false
-        }
-    }
 
     // Confirmação antes de remover: avisa que o progresso será perdido
     val aRemover = serieParaRemover
@@ -95,8 +70,8 @@ fun MinhaListaScreen(aoClicarEmItem: (Int, String) -> Unit) {
                 serieParaRemover = null
                 scope.launch {
                     try {
+                        // A tela atualiza sozinha: o item some assim que o banco local muda
                         minhaListaRepository.removerSerie(uid, aRemover.id)
-                        minhasSeries = minhasSeries.filter { it.id != aRemover.id }
                     } catch (e: Exception) {
                         Log.e("MinhaListaScreen", "Falha ao remover da lista", e)
                         Toast.makeText(context, "Não foi possível remover.", Toast.LENGTH_SHORT).show()
@@ -106,16 +81,18 @@ fun MinhaListaScreen(aoClicarEmItem: (Int, String) -> Unit) {
         )
     }
 
-    // Monta a lista de rótulos realmente presentes na lista do usuário,
-    // sem repetir, para os chips de filtro mostrarem só o que faz sentido.
-    val labelsPresentes = minhasSeries
+    // Cópia local da lista, para o Kotlin permitir testar null e usar o valor em seguida
+    val lista = minhasSeries
+
+    // Rótulos de status realmente presentes na lista, sem repetir, para os chips de filtro
+    val labelsPresentes = lista.orEmpty()
         .map { labelDoStatus(it.tipoMidia, it.status) }
         .distinct()
 
     val seriesFiltradas = if (filtroLabel == null) {
-        minhasSeries
+        lista.orEmpty()
     } else {
-        minhasSeries.filter { labelDoStatus(it.tipoMidia, it.status) == filtroLabel }
+        lista.orEmpty().filter { labelDoStatus(it.tipoMidia, it.status) == filtroLabel }
     }
 
     Column(
@@ -132,7 +109,7 @@ fun MinhaListaScreen(aoClicarEmItem: (Int, String) -> Unit) {
         Spacer(modifier = Modifier.height(16.dp))
 
         // Chips de filtro: só quando há itens para filtrar
-        if (uid != null && minhasSeries.isNotEmpty()) {
+        if (uid != null && !lista.isNullOrEmpty()) {
             Row(modifier = Modifier.horizontalScroll(rememberScrollState())) {
                 FilterChip(
                     selected = filtroLabel == null,
@@ -158,22 +135,11 @@ fun MinhaListaScreen(aoClicarEmItem: (Int, String) -> Unit) {
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
-            // Carregando: indicador, em vez de mostrar "lista vazia" por engano
-            carregando -> {
+            // Ainda lendo o banco local
+            lista == null -> {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
             }
-            // Falha: mensagem e botão para tentar de novo
-            falhou -> {
-                Text(
-                    text = "Não foi possível carregar sua lista.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Button(onClick = { tentativa++ }) {
-                    Text("Tentar novamente")
-                }
-            }
-            minhasSeries.isEmpty() -> {
+            lista.isEmpty() -> {
                 Text(
                     text = "Você ainda não adicionou nenhuma série ou filme.",
                     style = MaterialTheme.typography.bodyMedium

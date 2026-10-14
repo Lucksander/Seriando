@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,13 +46,15 @@ import com.seriando.app.data.repository.PerfilRepository
 import com.seriando.app.model.PerfilPrivado
 import com.seriando.app.model.PerfilPublico
 import com.seriando.app.ui.home.DialogoEditarApelido
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
 /**
- * Aba Usuário (RF12 a RF15, RF29): apelido, foto/avatar, e-mail, aniversário
+ * Aba Conta (RF12 a RF15, RF29, RF33): apelido, foto/avatar, e-mail, aniversário
  * e exclusão da conta.
- * Toda gravação no Firestore tem try/catch com Log e Toast, porque as regras
- * de segurança podem recusá-la (RNF01) e a falha não pode derrubar o app.
+ * O perfil vem do banco local (Room), que a tela observa: funciona sem internet e se atualiza
+ * sozinho quando a sincronização traz mudanças da nuvem (RN21).
+ * Toda gravação tem try/catch com Log e Toast, porque a falha não pode derrubar o app.
  */
 @Composable
 fun UsuarioScreen() {
@@ -63,33 +66,40 @@ fun UsuarioScreen() {
     val scope = rememberCoroutineScope()
     val webClientId = stringResource(R.string.default_web_client_id)
     val usuario = authRepository.usuarioAtual()
+    val uid = usuario?.uid
 
-    // Começa com um valor padrão (não nulo), em vez de null — assim a tela
-    // sempre tem algo para mostrar, mesmo antes da busca no Firestore terminar.
-    var perfilPublico by remember { mutableStateOf(PerfilPublico()) }
-    var perfilPrivado by remember { mutableStateOf<PerfilPrivado?>(null) }
+    // O perfil observado do banco local. null = ainda não existe (primeira sincronização em andamento).
+    val perfil by remember(uid) {
+        if (uid != null) perfilRepository.observarPerfil(uid) else flowOf(null)
+    }.collectAsState(initial = null)
+
     var mostrarDialogoApelido by remember { mutableStateOf(false) }
     var aniversario by remember { mutableStateOf("") }
-    var carregando by remember { mutableStateOf(true) }
+    var aniversarioIniciado by remember { mutableStateOf(false) }
 
     // Exclusão de conta (RF29)
     var mostrarDialogoExcluir by remember { mutableStateOf(false) } // diálogo de confirmação aberto
     var excluindo by remember { mutableStateOf(false) }             // exclusão em andamento
 
+    // Preenche o campo de aniversário uma única vez, quando o perfil chega do banco local.
+    // Depois disso o campo é do usuário: uma sincronização não apaga o que ele está digitando.
+    LaunchedEffect(perfil) {
+        val atual = perfil
+        if (atual != null && !aniversarioIniciado) {
+            aniversario = atual.privado.aniversario.orEmpty()
+            aniversarioIniciado = true
+        }
+    }
+
     /**
-     * Salva o perfil público (apelido/avatar) mostrando a mudança na tela na hora.
-     * Se a gravação falhar (rede ou regra de segurança), volta ao valor anterior
-     * e avisa o usuário, para a tela nunca mostrar algo que não foi salvo.
+     * Grava apelido e avatar no banco local. A tela atualiza sozinha, porque observa o banco.
      */
-    fun salvarPublico(uid: String, novo: PerfilPublico) {
-        val anterior = perfilPublico
-        perfilPublico = novo
+    fun salvarPublico(uidAtual: String, novo: PerfilPublico) {
         scope.launch {
             try {
-                perfilRepository.salvarPerfilPublico(uid, novo)
+                perfilRepository.salvarPerfilPublico(uidAtual, novo)
             } catch (e: Exception) {
                 Log.e("Seriando", "Erro ao salvar perfil público", e)
-                perfilPublico = anterior
                 Toast.makeText(context, "Não foi possível salvar.", Toast.LENGTH_SHORT).show()
             }
         }
@@ -99,15 +109,14 @@ fun UsuarioScreen() {
      * Exclui a conta e todos os dados (RF29).
      * O ContaRepository pede o login do Google de novo ANTES de apagar qualquer coisa:
      * se o usuário cancelar ali, nada foi apagado.
-     * No sucesso, limpa os caches locais (RF27); ao terminar, "excluindo" volta a false,
-     * a tela recompõe e, sem usuário, mostra o aviso de login.
+     * No sucesso, limpa os caches e o banco local (AuthRepository.sair).
      */
     fun excluirConta() {
         excluindo = true
         scope.launch {
             try {
                 contaRepository.excluirConta(context, webClientId)
-                authRepository.sair() // limpa os caches locais
+                authRepository.sair() // limpa os caches locais e o banco local
                 Toast.makeText(context, "Conta excluída.", Toast.LENGTH_LONG).show()
             } catch (e: GetCredentialCancellationException) {
                 // O usuário fechou o seletor de contas do Google: nada foi apagado
@@ -123,39 +132,8 @@ fun UsuarioScreen() {
         }
     }
 
-    // Carrega os dois perfis ao abrir; cria o público se ainda não existir.
-    LaunchedEffect(usuario?.uid) {
-        val uid = usuario?.uid
-        if (uid != null) {
-            try {
-                val publicoSalvo = perfilRepository.buscarPerfilPublico(uid)
-
-                if (publicoSalvo != null) {
-                    perfilPublico = publicoSalvo
-                } else {
-                    // Perfil público nunca foi criado (ex: login antigo, antes
-                    // dessa tela existir). Cria agora, com o primeiro nome da
-                    // conta Google como sugestão, em vez de deixar a tela vazia.
-                    // ifBlank: nome vazio viraria apelido vazio, que a regra recusa.
-                    val primeiroNome = (usuario.displayName ?: "").trim().split(" ").firstOrNull()
-                        .orEmpty().ifBlank { "Usuário" }
-                    val novoPerfil = PerfilPublico(apelido = primeiroNome, avatarId = "google")
-                    perfilRepository.salvarPerfilPublico(uid, novoPerfil)
-                    perfilPublico = novoPerfil
-                }
-
-                val privadoSalvo = perfilRepository.buscarPerfilPrivado(uid)
-                perfilPrivado = privadoSalvo
-                aniversario = privadoSalvo?.aniversario ?: ""
-            } catch (e: Exception) {
-                Log.e("Seriando", "Erro ao carregar perfil", e)
-                Toast.makeText(context, "Não foi possível carregar o perfil.", Toast.LENGTH_SHORT).show()
-            } finally {
-                // Sai do "Carregando..." mesmo com falha, para a tela não ficar travada
-                carregando = false
-            }
-        }
-    }
+    // Cópia local do perfil, para o Kotlin permitir testar null e usar o valor em seguida
+    val perfilAtual = perfil
 
     Column(
         modifier = Modifier
@@ -166,16 +144,25 @@ fun UsuarioScreen() {
         Text(text = "Conta", style = MaterialTheme.typography.headlineLarge)
         Spacer(modifier = Modifier.height(24.dp))
 
-        if (usuario == null) {
+        if (usuario == null || uid == null) {
             Text(
                 text = "Entre com sua conta na Home para ver e editar seu perfil.",
                 style = MaterialTheme.typography.bodyMedium
             )
-        } else if (carregando) {
+        } else if (perfilAtual == null) {
+            // O perfil ainda não chegou ao banco local; na primeira abertura depois de entrar
+            // ele vem da nuvem, o que precisa de internet
             Text(text = "Carregando perfil...", style = MaterialTheme.typography.bodyMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Na primeira vez, o perfil é baixado da nuvem e precisa de conexão com a internet.",
+                style = MaterialTheme.typography.bodySmall
+            )
         } else {
+            val publico = perfilAtual.publico
+
             // Avatar: foto do Google, ou o emoji escolhido pelo usuário.
-            if (perfilPublico.avatarId == "google") {
+            if (publico.avatarId == "google") {
                 AsyncImage(
                     model = usuario.photoUrl,
                     contentDescription = "Foto de perfil",
@@ -185,20 +172,20 @@ fun UsuarioScreen() {
                     contentScale = ContentScale.Crop
                 )
             } else {
-                Text(text = perfilPublico.avatarId, style = MaterialTheme.typography.displayMedium)
+                Text(text = publico.avatarId, style = MaterialTheme.typography.displayMedium)
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(text = "Escolher avatar do app:", style = MaterialTheme.typography.labelMedium)
             SeletorAvatar(
-                avatarSelecionado = perfilPublico.avatarId,
+                avatarSelecionado = publico.avatarId,
                 aoSelecionar = { novoAvatar ->
-                    salvarPublico(usuario.uid, perfilPublico.copy(avatarId = novoAvatar))
+                    salvarPublico(uid, publico.copy(avatarId = novoAvatar))
                 }
             )
             TextButton(onClick = {
-                salvarPublico(usuario.uid, perfilPublico.copy(avatarId = "google"))
+                salvarPublico(uid, publico.copy(avatarId = "google"))
             }) {
                 Text("Usar foto do Google")
             }
@@ -206,7 +193,7 @@ fun UsuarioScreen() {
             Spacer(modifier = Modifier.height(16.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = perfilPublico.apelido, style = MaterialTheme.typography.headlineSmall)
+                Text(text = publico.apelido, style = MaterialTheme.typography.headlineSmall)
                 TextButton(onClick = { mostrarDialogoApelido = true }) {
                     Text("Editar")
                 }
@@ -215,7 +202,7 @@ fun UsuarioScreen() {
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(text = "E-mail", style = MaterialTheme.typography.labelMedium)
-            Text(text = perfilPrivado?.email ?: usuario.email ?: "", style = MaterialTheme.typography.bodyMedium)
+            Text(text = usuario.email.orEmpty(), style = MaterialTheme.typography.bodyMedium)
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -230,10 +217,10 @@ fun UsuarioScreen() {
             Button(onClick = {
                 scope.launch {
                     try {
-                        val privadoAtual = perfilPrivado ?: PerfilPrivado(email = usuario.email ?: "")
-                        val atualizado = privadoAtual.copy(aniversario = aniversario.ifBlank { null })
-                        perfilRepository.salvarPerfilPrivado(usuario.uid, atualizado)
-                        perfilPrivado = atualizado
+                        perfilRepository.salvarPerfilPrivado(
+                            uid,
+                            PerfilPrivado(email = usuario.email.orEmpty(), aniversario = aniversario.ifBlank { null })
+                        )
                         Toast.makeText(context, "Aniversário salvo.", Toast.LENGTH_SHORT).show()
                     } catch (e: Exception) {
                         Log.e("Seriando", "Erro ao salvar aniversário", e)
@@ -261,12 +248,12 @@ fun UsuarioScreen() {
         }
     }
 
-    if (mostrarDialogoApelido && usuario != null) {
+    if (mostrarDialogoApelido && uid != null && perfilAtual != null) {
         DialogoEditarApelido(
-            valorInicial = perfilPublico.apelido,
+            valorInicial = perfilAtual.publico.apelido,
             aoFechar = { mostrarDialogoApelido = false },
             aoConfirmar = { novoApelido ->
-                salvarPublico(usuario.uid, perfilPublico.copy(apelido = novoApelido))
+                salvarPublico(uid, perfilAtual.publico.copy(apelido = novoApelido))
                 mostrarDialogoApelido = false
             }
         )

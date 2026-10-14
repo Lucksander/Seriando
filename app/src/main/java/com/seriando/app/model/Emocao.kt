@@ -27,9 +27,9 @@ val EMOCOES_DISPONIVEIS = listOf(
     Emocao("frustracao", "Frustração", 0xFF1565C0),
     Emocao("decepcao", "Decepção", 0xFF1565C0),
     Emocao("tedio", "Tédio", 0xFF1565C0),
-    Emocao("intensidade", "Intensidade", 0xFF6A1B9A),
-    Emocao("empolgacao", "Empolgação", 0xFF6A1B9A),
-    Emocao("euforia", "Euforia", 0xFF6A1B9A),
+    Emocao("intensidade", "Intensidade", 0xFFE91E63),
+    Emocao("empolgacao", "Empolgação", 0xFFE91E63),
+    Emocao("euforia", "Euforia", 0xFFE91E63),
     Emocao("indiferenca", "Indiferença", 0xFF616161)
 )
 

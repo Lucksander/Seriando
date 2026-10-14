@@ -2,6 +2,8 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    // Gerador de código do Room (Bloco N)
+    alias(libs.plugins.ksp)
     // Add the Google services Gradle plugin
     id("com.google.gms.google-services")
 }
@@ -74,6 +76,13 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.0.4")
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+
+    // Banco local Room (Bloco N, modo offline): runtime, extensões de corrotinas/Flow
+    // e o gerador de código, que roda via KSP (não é implementation)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

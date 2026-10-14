@@ -12,9 +12,11 @@ import com.google.firebase.auth.GoogleAuthProvider
 import com.seriando.app.data.cache.AbaCache
 import com.seriando.app.data.cache.BuscaCache
 import com.seriando.app.data.cache.CatalogoCache
-import com.seriando.app.data.repository.PerfilRepository
-import com.seriando.app.model.PerfilPrivado
-import com.seriando.app.model.PerfilPublico
+import com.seriando.app.data.local.Dependencias
+import com.seriando.app.data.sync.Sincronizador
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -23,14 +25,14 @@ import kotlinx.coroutines.tasks.await
 class AuthRepository {
 
     private val firebaseAuth = FirebaseAuth.getInstance()
-    private val perfilRepository = PerfilRepository()
 
     /** Usuário autenticado no momento, ou null se não houver login. */
     fun usuarioAtual(): FirebaseUser? = firebaseAuth.currentUser
 
     /**
-     * Abre o seletor de contas Google, autentica no Firebase e, na primeira
-     * vez do usuário, cria os documentos de perfil.
+     * Abre o seletor de contas Google, autentica no Firebase e pede a primeira sincronização,
+     * que traz a lista e o perfil da nuvem para o banco local (e cria o perfil padrão se o
+     * usuário for novo).
      * Falhas do login em si sobem para quem chama (que mostra o Toast).
      */
     suspend fun entrarComGoogle(context: Context, webClientId: String): FirebaseUser? {
@@ -49,42 +51,31 @@ class AuthRepository {
         val resultadoLogin = firebaseAuth.signInWithCredential(credencialFirebase).await()
         val usuario = resultadoLogin.user
 
-        // Primeira vez desse usuário: cria os dois documentos de perfil.
-        // O try/catch impede que uma falha aqui (rede ou regra de segurança) faça o
-        // login parecer ter falhado: o usuário já está autenticado, e a aba Usuário
-        // recria o perfil público se ele não existir.
-        if (usuario != null) {
-            try {
-                val perfilPublicoExistente = perfilRepository.buscarPerfilPublico(usuario.uid)
-                if (perfilPublicoExistente == null) {
-                    // ifBlank: nome vazio viraria apelido vazio, que a regra do Firestore recusa
-                    val primeiroNome = (usuario.displayName ?: "").trim().split(" ").firstOrNull()
-                        .orEmpty().ifBlank { "Usuário" }
-                    perfilRepository.salvarPerfilPublico(
-                        usuario.uid,
-                        PerfilPublico(apelido = primeiroNome, avatarId = "google")
-                    )
-                    perfilRepository.salvarPerfilPrivado(
-                        usuario.uid,
-                        PerfilPrivado(email = usuario.email ?: "", aniversario = null)
-                    )
-                }
-            } catch (e: Exception) {
-                Log.e("AuthRepository", "Falha ao criar o perfil no primeiro login", e)
-            }
-        }
+        // Baixa os dados da nuvem para o banco local (em segundo plano)
+        if (usuario != null) Sincronizador.disparar(usuario.uid)
 
         return usuario
     }
 
     // RF27: ao sair, além de encerrar a sessão do Firebase, limpa o cache
-    // local (pesquisa, aba selecionada e catálogo da Home), para não vazar
-    // dados de um usuário para a sessão do próximo que logar no mesmo aparelho.
+    // local (pesquisa, aba selecionada e catálogo da Home) e o banco local do modo
+    // offline (RN25), para não vazar dados de um usuário para o próximo que logar
+    // no mesmo aparelho.
+    // Atenção: alterações feitas sem conexão e ainda não enviadas são descartadas junto.
     fun sair() {
         firebaseAuth.signOut()
         BuscaCache.textoPesquisa = ""
         BuscaCache.resultados = emptyList()
         AbaCache.abaSelecionada = 0
         CatalogoCache.limpar()
+
+        // O Room só apaga fora da thread principal
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                Dependencias.limparBancoLocal()
+            } catch (e: Exception) {
+                Log.e("AuthRepository", "Falha ao limpar o banco local", e)
+            }
+        }
     }
 }

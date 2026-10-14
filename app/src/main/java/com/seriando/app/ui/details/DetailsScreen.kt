@@ -63,6 +63,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import com.seriando.app.ui.theme.capaDeObra
+import com.seriando.app.data.repository.ObraCacheRepository
 
 /**
  * Tela de detalhes de uma mídia (série ou filme).
@@ -95,6 +96,7 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
     val progressoRepository = remember { ProgressoRepository() }
     val avaliacaoRepository = remember { AvaliacaoRepository() }
     val perfilRepository = remember { PerfilRepository() }
+    val obraCacheRepository = remember { ObraCacheRepository() }
     val scope = rememberCoroutineScope()
 
     // Lido a cada recomposição. Serve de chave dos efeitos da comunidade abaixo:
@@ -157,10 +159,11 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
     // Busca os detalhes (série ou filme, conforme o tipo).
     LaunchedEffect(serieId, tipoMidia) {
         try {
+            // Rede primeiro; sem rede, usa a cópia guardada no aparelho (RF33)
             if (tipoMidia == "movie") {
-                detalheFilme = RetrofitInstance.api.buscarDetalhesFilme(serieId, BuildConfig.TMDB_API_KEY)
+                detalheFilme = obraCacheRepository.buscarDetalheFilme(serieId)
             } else {
-                detalheSerie = RetrofitInstance.api.buscarDetalhesSerie(serieId, BuildConfig.TMDB_API_KEY)
+                detalheSerie = obraCacheRepository.buscarDetalheSerie(serieId)
             }
         } catch (e: Exception) {
             Log.e("Seriando", "Erro ao buscar detalhes", e)
@@ -259,11 +262,7 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
     // Busca a disponibilidade de streaming para o Brasil (RF34, RN09).
     LaunchedEffect(serieId, tipoMidia) {
         try {
-            val resposta = if (tipoMidia == "movie") {
-                RetrofitInstance.api.buscarProvedoresFilme(serieId, BuildConfig.TMDB_API_KEY)
-            } else {
-                RetrofitInstance.api.buscarProvedoresSerie(serieId, BuildConfig.TMDB_API_KEY)
-            }
+            val resposta = obraCacheRepository.buscarProvedores(tipoMidia, serieId)
             provedoresBrasil = resposta.results["BR"]
         } catch (e: Exception) {
             Log.e("Seriando", "Erro ao buscar provedores de streaming", e)
@@ -731,11 +730,7 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                                 temporadaSelecionada = temporada.numero
                                 scope.launch {
                                     try {
-                                        episodiosDaTemporada = RetrofitInstance.api.buscarTemporada(
-                                            serieId,
-                                            temporada.numero,
-                                            BuildConfig.TMDB_API_KEY
-                                        ).episodios
+                                        episodiosDaTemporada = obraCacheRepository.buscarEpisodios(serieId, temporada.numero)
                                     } catch (e: Exception) {
                                         avisarErro("Não foi possível carregar a temporada.", e)
                                     }
