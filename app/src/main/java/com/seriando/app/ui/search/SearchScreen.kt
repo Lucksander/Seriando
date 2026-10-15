@@ -31,6 +31,9 @@ import com.seriando.app.data.remote.RetrofitInstance
 import com.seriando.app.model.ResultadoBusca
 import com.seriando.app.ui.home.ResultadoCard
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.collectAsState
+import com.seriando.app.data.sync.MonitorConexao
+import com.seriando.app.ui.comum.MensagemSemConexao
 
 /**
  * Tela de pesquisa de séries e filmes (RF03, RF04).
@@ -44,6 +47,9 @@ import kotlinx.coroutines.launch
 fun SearchScreen(aoClicarEmItem: (Int, String) -> Unit) {
 
     val context = LocalContext.current
+
+    // true se há internet agora (muda o texto da mensagem de falha)
+    val online by MonitorConexao.online.collectAsState()
 
     // O valor inicial vem do cache, não de uma string vazia — assim,
     // se o usuário já pesquisou algo antes e voltou para cá, o campo
@@ -121,9 +127,13 @@ fun SearchScreen(aoClicarEmItem: (Int, String) -> Unit) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
             }
             falhou -> {
-                Text(
-                    text = "Não foi possível pesquisar. Verifique sua conexão e tente de novo.",
-                    style = MaterialTheme.typography.bodyMedium
+                MensagemSemConexao(
+                    texto = if (!online) {
+                        "Sem conexão com a internet. A pesquisa precisa de internet."
+                    } else {
+                        "Não foi possível pesquisar agora."
+                    },
+                    aoTentarDeNovo = { pesquisar() }
                 )
             }
             jaPesquisou && resultados.isEmpty() -> {

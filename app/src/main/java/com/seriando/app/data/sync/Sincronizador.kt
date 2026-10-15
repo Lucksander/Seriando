@@ -22,6 +22,11 @@ import kotlinx.coroutines.withTimeout
 import com.google.firebase.firestore.SetOptions
 import com.seriando.app.data.local.PerfilEntity
 import com.seriando.app.data.repository.ObraCacheRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 
 /**
  * Sincroniza o banco local (Room) com o Firestore (RF33, RN21 a RN23).
@@ -68,6 +73,10 @@ object Sincronizador {
     // true se algum dos pedidos que chegaram durante a rodada pediu o recebimento da nuvem
     @Volatile
     private var baixarNaProxima = false
+    private val _sincronizando = MutableStateFlow(false)
+
+    /** true enquanto uma sincronização está em andamento (usado pela faixa de conexão). */
+    val sincronizando: StateFlow<Boolean> = _sincronizando.asStateFlow()
 
     /**
      * Pede uma sincronização em segundo plano. Pode ser chamada à vontade.
@@ -76,6 +85,12 @@ object Sincronizador {
      *                      false para só enviar o que está pendente (alterações feitas na tela).
      */
     fun disparar(uid: String, baixarDaNuvem: Boolean = true) {
+        // Sem internet não há o que enviar: as pendências esperam, e o monitor de conexão
+        // dispara a sincronização completa quando a internet voltar
+        if (!MonitorConexao.online.value) {
+            Log.d(TAG, "Sem conexão: sincronização adiada")
+            return
+        }
         escopo.launch { executar(uid, baixarDaNuvem) }
     }
 
@@ -86,6 +101,7 @@ object Sincronizador {
             if (baixarDaNuvem) baixarNaProxima = true
             return
         }
+        _sincronizando.value = true
         try {
             var baixar = baixarDaNuvem
             do {
@@ -103,6 +119,7 @@ object Sincronizador {
                 baixarNaProxima = false
             } while (repetir)
         } finally {
+            _sincronizando.value = false
             trava.unlock()
         }
         // Um pedido pode ter chegado entre o último teste e o desbloqueio
@@ -495,4 +512,15 @@ object Sincronizador {
         Dependencias.obraCacheDao.apagarForaDaLista()
         ObraCacheRepository().baixarObrasDaListaEmSegundoPlano()
     }
+
+
+    /**
+     * Quantidade total de alterações ainda não enviadas à nuvem (lista, episódios e perfil),
+     * atualizada sozinha. Alimenta o aviso de alterações não sincronizadas (RF62).
+     */
+    fun observarPendentes(): Flow<Int> = combine(
+        Dependencias.listaDao.observarQuantidadePendentes(),
+        Dependencias.episodioDao.observarQuantidadePendentes(),
+        Dependencias.perfilDao.observarQuantidadePendentes()
+    ) { lista, episodios, perfil -> lista + episodios + perfil }
 }

@@ -64,6 +64,11 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import com.seriando.app.ui.theme.capaDeObra
 import com.seriando.app.data.repository.ObraCacheRepository
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableIntStateOf
+import com.seriando.app.data.sync.MonitorConexao
+import com.seriando.app.ui.comum.MensagemSemConexao
+
 
 /**
  * Tela de detalhes de uma mídia (série ou filme).
@@ -121,6 +126,10 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
     var totalAvaliacoes by remember { mutableStateOf(0) }
     // true quando a leitura da comunidade falhou (rede ou permissão): mostra aviso em vez de "sem avaliações"
     var erroComunidade by remember { mutableStateOf(false) }
+    // Sobe a cada toque em "Tentar de novo" e refaz a busca da comunidade
+    var tentativaComunidade by remember { mutableIntStateOf(0) }
+    // Estado da conexão: quando a internet volta ou cai, a comunidade é buscada de novo
+    val online by MonitorConexao.online.collectAsState()
 
     var textoOpiniao by remember { mutableStateOf("") }
     var spoilerMarcado by remember { mutableStateOf(false) }
@@ -206,7 +215,7 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
     }
 
     // Nota do usuário e média da comunidade. A leitura da comunidade exige login (RN08).
-    LaunchedEffect(serieId, tipoMidia, logado) {
+    LaunchedEffect(serieId, tipoMidia, logado, tentativaComunidade, online) {
         val uid = authRepository.usuarioAtual()?.uid
         if (uid == null) {
             // Sem login: limpa tudo e NÃO consulta o Firestore
@@ -228,7 +237,7 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
 
     // Opiniões da obra (RF21), a opinião do próprio usuário (se existir),
     // e o resumo de votos de cada opinião (RF26). Exige login (RN08).
-    LaunchedEffect(serieId, tipoMidia, logado) {
+    LaunchedEffect(serieId, tipoMidia, logado, tentativaComunidade, online) {
         val uid = authRepository.usuarioAtual()?.uid
         if (uid == null) {
             // Sem login: esvazia a comunidade e o formulário, sem consultar o Firestore
@@ -556,9 +565,13 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                         style = MaterialTheme.typography.bodyMedium
                     )
                 } else if (erroComunidade) {
-                    Text(
-                        text = "Não foi possível carregar as avaliações da comunidade.",
-                        style = MaterialTheme.typography.bodyMedium
+                    MensagemSemConexao(
+                        texto = if (!online) {
+                            "Sem conexão com a internet. A comunidade (avaliações e opiniões) precisa de internet."
+                        } else {
+                            "Não foi possível carregar a comunidade agora."
+                        },
+                        aoTentarDeNovo = { tentativaComunidade++ }
                     )
                 } else if (totalAvaliacoes > 0) {
                     val palavraAvaliacao = if (totalAvaliacoes == 1) "avaliação" else "avaliações"

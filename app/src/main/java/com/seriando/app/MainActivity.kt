@@ -9,6 +9,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.seriando.app.navigation.SeriandoNavHost
+import com.seriando.app.ui.comum.ComFaixaDeConexao
 import com.seriando.app.ui.theme.SeriandoTheme
 
 class MainActivity : ComponentActivity() {
@@ -19,15 +20,17 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             // O tema envolve todo o app. A Surface na raiz dá o fundo e a cor padrão do texto
-            // às telas que não ficam dentro de um Scaffold (Busca, Detalhes, Pessoa e Categoria);
-            // sem ela, o texto ficaria preto sobre o fundo escuro.
+            // às telas que não ficam dentro de um Scaffold (Busca, Detalhes, Pessoa e Categoria).
             SeriandoTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    // Quem decide qual tela mostrar é o SeriandoNavHost
-                    SeriandoNavHost()
+                    // A faixa de conexão (RF62) fica acima de todas as telas.
+                    // Quem decide qual tela mostrar é o SeriandoNavHost.
+                    ComFaixaDeConexao {
+                        SeriandoNavHost()
+                    }
                 }
             }
         }
