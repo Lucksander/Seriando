@@ -1,8 +1,12 @@
 package com.seriando.app.ui.home
 
+import android.net.Uri
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,11 +14,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,6 +43,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.seriando.app.R
 import com.seriando.app.data.auth.AuthRepository
@@ -45,6 +54,7 @@ import com.seriando.app.data.sync.MonitorConexao
 import com.seriando.app.model.Categorias
 import com.seriando.app.model.PerfilPublico
 import com.seriando.app.model.ResultadoBusca
+import com.seriando.app.ui.comum.LogoSeriando
 import com.seriando.app.ui.comum.MensagemSemConexao
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
@@ -52,7 +62,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Tela inicial (RF11, RF44, RF45, RF46, RF62).
- * Uma LazyColumn com o cabeçalho (entrar/sair, perfil, pesquisar) seguido de
+ * Uma LazyColumn com o cabeçalho (logotipo, avatar ou entrar, pesquisar) seguido de
  * uma fileira horizontal por categoria. Se nenhuma categoria carregar (sem internet, por
  * exemplo), mostra uma mensagem com o botão "Tentar de novo"; quando a internet volta,
  * as categorias que falharam são buscadas de novo sozinhas.
@@ -60,12 +70,14 @@ import kotlinx.coroutines.launch
  * @param aoClicarEmPesquisar abre a tela de busca.
  * @param aoClicarEmItem      abre os Detalhes (id e tipo "movie"/"tv").
  * @param aoClicarEmVerMais   abre a lista completa de uma categoria (recebe o id dela).
+ * @param aoClicarEmPerfil    abre a aba Conta; chamado ao tocar no avatar do cabeçalho.
  */
 @Composable
 fun HomeScreen(
     aoClicarEmPesquisar: () -> Unit,
     aoClicarEmItem: (Int, String) -> Unit,
-    aoClicarEmVerMais: (String) -> Unit
+    aoClicarEmVerMais: (String) -> Unit,
+    aoClicarEmPerfil: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -146,7 +158,7 @@ fun HomeScreen(
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
 
-        // Cabeçalho: entrar/sair, perfil e botão de pesquisar
+        // Cabeçalho: logotipo, avatar (ou entrar) e botão de pesquisar
         item {
             Column24 {
                 Spacer(modifier = Modifier.height(24.dp))
@@ -156,19 +168,17 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "SERIANDO",
-                        style = MaterialTheme.typography.headlineLarge
-                    )
+                    // Logotipo: o ícone do S faz o papel da primeira letra e "eriando" vem ao lado
+                    LogoSeriando(alturaIcone = 48.dp, tamanhoTexto = 34.sp)
 
                     if (usuario != null) {
-                        TextButton(onClick = {
-                            authRepository.sair()
-                            usuario = null
-                            perfilPublico = null
-                        }) {
-                            Text("Sair")
-                        }
+                        // Logado: avatar no canto direito; tocar nele abre a aba Conta.
+                        // O "Sair" fica na aba Conta.
+                        AvatarDoCabecalho(
+                            fotoGoogle = usuario?.photoUrl,
+                            perfil = perfilPublico,
+                            aoClicar = aoClicarEmPerfil
+                        )
                     } else {
                         TextButton(onClick = {
                             scope.launch {
@@ -186,29 +196,14 @@ fun HomeScreen(
                     }
                 }
 
-                // Nome e foto do usuário logado, só leitura (editar fica na aba Conta)
+                // Saudação do usuário logado, só leitura (editar fica na aba Conta)
                 val publico = perfilPublico
                 if (usuario != null && publico != null) {
                     Spacer(modifier = Modifier.height(12.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (publico.avatarId == "google") {
-                            AsyncImage(
-                                model = usuario?.photoUrl,
-                                contentDescription = "Foto de perfil",
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Text(text = publico.avatarId, style = MaterialTheme.typography.headlineSmall)
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Olá, ${publico.apelido}!",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                    }
+                    Text(
+                        text = "Olá, ${publico.apelido}!",
+                        style = MaterialTheme.typography.titleMedium
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -220,11 +215,30 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Button(
-                    onClick = aoClicarEmPesquisar,
-                    modifier = Modifier.fillMaxWidth()
+                // Barra de busca: não é um campo de texto de verdade, só um atalho visual;
+                // tocar em qualquer parte dela abre a tela de busca
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .clickable(onClickLabel = "Pesquisar série ou filme") { aoClicarEmPesquisar() }
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Pesquisar série ou filme")
+                    // contentDescription nulo: o texto ao lado já descreve a ação
+                    Icon(
+                        imageVector = Icons.Outlined.Search,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "Pesquisar série ou filme...",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -255,6 +269,46 @@ fun HomeScreen(
                     aoClicarEmVerMais = { aoClicarEmVerMais(categoria.id) }
                 )
             }
+        }
+    }
+}
+
+/**
+ * Avatar redondo do cabeçalho da Home: mostra a foto da conta Google ou o emoji
+ * escolhido no app, conforme o avatarId do perfil. Tocar nele abre a aba Conta.
+ * Enquanto o perfil não chega do banco local, mostra um boneco genérico, para o
+ * toque continuar funcionando.
+ *
+ * @param fotoGoogle endereço da foto da conta Google (usado quando avatarId == "google").
+ * @param perfil     perfil público do usuário, ou null se ainda não carregou.
+ * @param aoClicar   chamado ao tocar no avatar.
+ */
+@Composable
+private fun AvatarDoCabecalho(
+    fotoGoogle: Uri?,
+    perfil: PerfilPublico?,
+    aoClicar: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(onClickLabel = "Abrir minha conta") { aoClicar() },
+        contentAlignment = Alignment.Center
+    ) {
+        when {
+            // Perfil ainda não carregado: boneco genérico
+            perfil == null -> Icon(Icons.Outlined.Person, contentDescription = "Minha conta")
+            // Foto da conta Google, recortada em círculo pelo clip do Box
+            perfil.avatarId == "google" -> AsyncImage(
+                model = fotoGoogle,
+                contentDescription = "Minha conta",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            // Avatar do app: o próprio emoji
+            else -> Text(text = perfil.avatarId, style = MaterialTheme.typography.headlineSmall)
         }
     }
 }

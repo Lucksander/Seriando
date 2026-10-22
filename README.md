@@ -2,7 +2,7 @@
 
 Aplicativo Android moderno e intuitivo para organizar as séries e filmes que você assiste, avaliar, comentar e acompanhar junto à comunidade. Pesquise títulos, acompanhe temporadas e episódios, veja a disponibilidade nos serviços de streaming, explore a biografia e filmografia de atores/atrizes e nunca mais perca onde parou.
 
-Projeto desenvolvido em **Kotlin** com **Jetpack Compose**, seguindo boas práticas de arquitetura Android (MVVM / Repository Pattern), consumo de APIs REST com Retrofit, autenticação com Google Credential Manager API, persistência local com **Room Database (Offline-First)**, sincronização em nuvem com Cloud Firestore e gerenciamento de estado resiliente.
+Projeto desenvolvido em **Kotlin** com **Jetpack Compose**, seguindo boas práticas de arquitetura Android (MVVM / Repository Pattern), consumo de APIs REST com Retrofit, autenticação com Google Credential Manager API, persistência local com **Room Database (Offline-First)**, armazenamento de preferências com **DataStore**, sincronização em nuvem com Cloud Firestore e gerenciamento de estado resiliente.
 
 ---
 
@@ -10,20 +10,17 @@ Projeto desenvolvido em **Kotlin** com **Jetpack Compose**, seguindo boas práti
 
 **Versão: V0.13** *(em desenvolvimento — rumo à V1.0)*
 
-### 🆕 Novidades da V0.13
-- **Arquitetura Offline-First & Banco Local com Room (RF33, RNF11, RN21 a RN25)**: Criação da infraestrutura de banco de dados relacional local com **Room Database** (`SeriandoDatabase`), permitindo acesso instantâneo à lista pessoal, progresso de episódios e perfil do usuário mesmo sem conexão à internet.
-- **Motor de Sincronização em Segundo Plano (`Sincronizador`)**: Implementação do motor de sincronização bidirecional e assíncrono entre o banco local (Room) e o Cloud Firestore em duas fases (Envio e Recebimento), com controle de alterações pendentes (`pendenteSincronizacao`), exclusão por "lápides" (`removido`), resolução de conflitos por estampa de tempo (*last-write-wins* via `atualizadoEm`, RN23) e resiliência com timeout de rede (`withTimeout` de 15s e leituras via `Source.SERVER`).
-- **Desacoplamento de Injeção de Dependências (`Dependencias`)**: Centralização do acesso ao Room e abstração das interfaces dos DAOs (`ListaDao`, `EpisodioDao`, `PerfilDao`, `ObraCacheDao`), garantindo que a camada de repositórios não dependa diretamente do `Context` do Android (RNF11).
-- **Cache em Disco de Obras (`ObraCacheDao`)**: Armazenamento offline das respostas JSON dos detalhes e temporadas das obras salvas do TMDB, viabilizando a navegação offline pelos metadados dos itens da lista do usuário.
-- **Reatividade com Flow e Coroutines**: Atualização automática e reativa da interface do usuário através de `Flow` expostos diretamente pelos DAOs do Room (RN21), eliminando a necessidade de chamadas de rede bloqueantes ao abrir telas como a Minha Lista.
-- **Inicialização da Aplicação (`SeriandoApp`)**: Subclasse de `Application` configurada para instanciar o Room na abertura do app e disparar automaticamente a sincronização da sessão ativa em segundo plano.
+### 🆕 Novidades & Destaques da Versão
 
-### 📜 Novidades da V0.12
-- **Identidade Visual & Design System Velvet Purple (RNF10)**: Tema exclusivo da marca com paleta em tons de roxo veludo (`VelvetPurple`), fundo `Midnight` e superfícies `VelvetSurface`. Padronização do acabamento das capas via `Modifier.capaDeObra()` e novo ícone oficial adaptativo do aplicativo.
-- **Home por Categorias (RF44, RF45, RF46)**: Fileiras horizontais para cada gênero (*Em alta*, *Ação*, *Comédia*, *Suspense*, *Drama*, *Ficção científica*, *Terror*, *Romance*, *Animação*, *Crime*, *Documentário* e *Família*) com navegação para a lista completa em grade paginada (3 colunas).
-- **Regras de Segurança do Firestore (RNF01, RNF03, RNF04)**: Regras de produção (`firestore.rules`) consolidadas, restringindo leitura e escrita aos dados do próprio usuário e validando votos únicos.
-- **Opinião Privada Isolada (RF48, RN12)**: Armazenamento de opiniões privadas em subcoleção exclusiva do autor (`usuarios/{uid}/opinioesPrivadas`).
-- **Exclusão de Conta e Direitos LGPD (RF29)**: Exclusão permanente e segura de todos os dados do usuário no Firestore em lotes idempotentes (até 400 documentos por lote), com confirmação prévia via Credential Manager API.
+- **Apresentação & Onboarding de Boas-Vindas (`IntroducaoScreen`, RF52)**: Experiência de introdução em 3 páginas deslizáveis com animação radial e ícones temáticos (*O seu cantinho das séries*, *Saiba onde está passando*, *Compartilhe suas impressões*). Suporte a **Jetpack DataStore Preferences** ([PreferenciasApp](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/data/local/PreferenciasApp.kt)) para exibição única por instalação com opção de pular.
+- **Tela de Entrada & Modo Visitante (`EntradaScreen`, `DialogoLoginObrigatorio`, RF53, RF54)**: Fluxo flexível para novos usuários permitindo explorar o catálogo, pesquisar títulos, consultar streaming e elenco como visitante sem obrigar o login inicial. Ao tentar executar ações restritas (salvar na lista, avaliar, opinar ou votar), exibe modal nativo ([DialogoLoginObrigatorio](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/login/DialogoLoginObrigatorio.kt)) destacando os benefícios da conta.
+- **Faixa de Conectividade & Monitor de Rede em Tempo Real (`ComFaixaDeConexao`, `MonitorConexao`, RF62)**: Injeção de banner persistente no topo do app alertando queda de conexão ("*Sem conexão. Você pode continuar usando o que está salvo no aparelho*"), contagem de pendências offline ("*N alterações ainda não sincronizadas*") e ação de envio forçado ("*Enviar agora*").
+- **Aba Descobrir & Recomendações ("O que assistir hoje?") (`DescobrirScreen`, `DescobrirCache`, RF63, RF64, RF65)**: Aba dedicada de exploração com seletores combinados por tipo (Filmes/Séries), categorias TMDB e gêneros. Inclui paginação infinita em grade de 4 colunas, cache em memória persistente e o botão flutuante **"Sortear"** para sugestões aleatórias instantâneas.
+- **Arquitetura Offline-First & Banco Local com Room (`SeriandoDatabase`, RF33, RNF11, RN21 a RN25)**: Infraestrutura relacional SQLite via Room Database com DAOs reativos ([ListaDao](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/data/local/Daos.kt), [EpisodioDao](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/data/local/Daos.kt), [PerfilDao](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/data/local/Daos.kt) e [ObraCacheDao](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/data/local/Daos.kt)), garantindo acesso contínuo aos dados pessoais mesmo offline.
+- **Motor de Sincronização em Segundo Plano ([Sincronizador](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/data/sync/Sincronizador.kt))**: Sincronizador bidirecional e assíncrono entre o Room e o Cloud Firestore com tratamento de pendências (`pendenteSincronizacao`), exclusões lógicas (*tombstones*) e resolução de conflitos por *last-write-wins* (`atualizadoEm`, RN23).
+- **Home por Categorias & Visão Expandida (`CategoriaRow`, `CategoriaScreen`, RF44, RF45, RF46, RF55, RF56)**: Organização da tela inicial em fileiras temáticas por gênero com botão e título clicáveis para visualização expandida em grade de 3 colunas.
+- **Página do Artista & Filmografia (`PessoaScreen`, RF40, RF41, RF42, RF43)**: Detalhes completos de atores/atrizes, biografia expansível com suporte a idioma e filmografia interativa paginada por popularidade.
+- **Histórico Local de Busca (`HistoricoBusca`)**: Armazenamento leve em `SharedPreferences` de termos pesquisados e obras recentemente visualizadas.
 
 ---
 
@@ -31,7 +28,7 @@ Projeto desenvolvido em **Kotlin** com **Jetpack Compose**, seguindo boas práti
 
 O **Seriando** foi concebido para oferecer uma experiência completa de organização e descoberta de mídia para cinéfilos e maratonadores. Utilizando a API pública do **TMDB (The Movie Database)**, o aplicativo disponibiliza metadados atualizados de filmes, séries, temporadas, episódios, atores e onde assistir via **JustWatch**.
 
-Integrado ao **Firebase Authentication (Google Sign-In)**, **Room Database** e **Cloud Firestore**, o Seriando funciona de forma **Offline-First**, permitindo gerenciar e acompanhar seus títulos sem internet enquanto sincroniza em tempo real as listas, progresso de episódios, avaliações numéricas (1 a 5 estrelas), resenhas públicas ou privadas com tags emocionais, interações de curtir/descurtir e denúncias de conteúdos impróprios.
+Integrado ao **Firebase Authentication (Google Sign-In)**, **Room Database**, **DataStore** e **Cloud Firestore**, o Seriando funciona de forma **Offline-First**, permitindo gerenciar e acompanhar seus títulos sem internet enquanto sincroniza em tempo real as listas, progresso de episódios, avaliações numéricas (1 a 5 estrelas), resenhas públicas ou privadas com tags emocionais, interações de curtir/descurtir e denúncias de conteúdos impróprios.
 
 ---
 
@@ -48,9 +45,9 @@ O Seriando possui uma identidade visual única desenvolvida sob o conceito **Vel
 | **Texto Principal** | `#F7F5FC` | Títulos e textos de alta relevância (Contraste 6,6:1) |
 | **Texto Secundário** | `#C9C4D3` | Sinopses, rótulos e informações secundárias |
 
-### Componentes de Design (`Formas.kt` & `Theme.kt`)
+### Componentes de Design ([Formas.kt](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/theme/Formas.kt) & [Theme.kt](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/theme/Theme.kt))
 
-- **Modificador Reutilizável `Modifier.capaDeObra()`**: Padroniza todas as capas do aplicativo aplicando cantos arredondados de 8dp (`FormaCapa`) e uma borda de destaque em `LilasBrilhante`, garantindo consistência visual em todas as telas (Home, Busca, Detalhes, Minha Lista e Artistas).
+- **Modificador Reutilizável `Modifier.capaDeObra()`**: Padroniza todas as capas do aplicativo aplicando cantos arredondados de 8dp (`FormaCapa`) e uma borda de destaque em `LilasBrilhante`, garantindo consistência visual em todas as telas (Home, Busca, Descobrir, Detalhes, Minha Lista e Artistas).
 - **Contraste e Acessibilidade Calibrados**: O texto do botão sobre `VelvetPurple` utiliza a cor `Midnight` em vez de branco, alcançando razão de contraste de 6,6:1 (em conformidade com as diretrizes WCAG AA).
 - **Tema Claro Derivado**: Suporte ao tema claro com primária em `#6B47C7` para manter alto contraste e visibilidade em ambientes muito iluminados.
 
@@ -63,16 +60,25 @@ O aplicativo adota a **Clean Architecture** aliada ao **Repository Pattern**, ar
 ```mermaid
 flowchart TD
     subgraph UI ["UI Layer (Jetpack Compose & Material 3)"]
-        A[MainActivity / SeriandoNavHost] --> B[HomeScreen / CategoriaScreen]
+        A[MainActivity / SeriandoNavHost] --> INTRO[IntroducaoScreen]
+        A --> ENT[EntradaScreen]
+        A --> MAIN[MainScaffold]
+        MAIN --> B[HomeScreen / CategoriaScreen]
+        MAIN --> DESC[DescobrirScreen]
+        MAIN --> D[MinhaListaScreen]
+        MAIN --> USU[UsuarioScreen]
         A --> C[DetailsScreen / PessoaScreen]
-        A --> D[MinhaListaScreen / SearchScreen]
-        A --> E[UsuarioScreen]
+        A --> S[SearchScreen]
+        A --> BANNER[ComFaixaDeConexao]
     end
 
-    subgraph Cache ["In-Memory Cache Layer"]
+    subgraph Cache ["In-Memory & Local Preferences"]
         F[AbaCache]
         G[BuscaCache]
         H[CatalogoCache]
+        DESC_CACHE[DescobrirCache]
+        PREFS[PreferenciasApp DataStore]
+        HIST[HistoricoBusca SharedPrefs]
     end
 
     subgraph Repositories ["Repository Layer"]
@@ -81,6 +87,7 @@ flowchart TD
         K[MinhaListaRepository / ProgressoRepository]
         L[AvaliacaoRepository / PerfilRepository]
         M[ContaRepository / DenunciaRepository]
+        CACHE_REPO[ObraCacheRepository]
     end
 
     subgraph LocalData ["Local Data Layer (Room / Offline-First)"]
@@ -88,7 +95,8 @@ flowchart TD
         O --> P[ListaDao / EpisodioDao / PerfilDao / ObraCacheDao]
     end
 
-    subgraph SyncEngine ["Synchronization Engine"]
+    subgraph NetworkSync ["Network & Synchronization Engine"]
+        MONITOR[MonitorConexao]
         Q[Sincronizador]
     end
 
@@ -99,14 +107,18 @@ flowchart TD
     end
 
     B <--> H
-    D <--> G
+    S <--> G & HIST
+    DESC <--> DESC_CACHE
     A <--> F
+    INTRO <--> PREFS
 
     UI --> Repositories
     J --> R
     I --> S
     K & L --> P
     K & L --> Q
+    CACHE_REPO <--> P
+    MONITOR --> Q
     Q <--> P
     Q <--> T
     M --> T
@@ -115,34 +127,30 @@ flowchart TD
 ### Principais Componentes de Arquitetura
 
 - **UI Declarativa**: Interface de usuário reativa desenvolvida com **Jetpack Compose** e componentes **Material Design 3**.
+- **Grafo de Navegação Reativo ([SeriandoNavHost.kt](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/navigation/SeriandoNavHost.kt))**: Decisão dinâmica de destino inicial ao abrir o app:
+  - Usuário autenticado $\rightarrow$ [HomeScreen](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/home/HomeScreen.kt)
+  - Sem sessão & primeira abertura $\rightarrow$ [IntroducaoScreen](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/introducao/IntroducaoScreen.kt)
+  - Sem sessão & introdução vista $\rightarrow$ [EntradaScreen](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/login/EntradaScreen.kt)
 - **Persistência Local & Offline-First (Room Database)**:
-  - `SeriandoDatabase`: Banco relacional local gerenciado pelo Room com suporte a migração e transações atômicas (`emTransacao`).
+  - `SeriandoDatabase`: Banco relacional local gerenciado pelo Room com suporte a migrações e transações atômicas (`emTransacao`).
   - `ListaDao`: Leitura reativa (`Flow`) e mutações pendentes na lista pessoal do usuário.
   - `EpisodioDao`: Acompanhamento de episódios e temporadas assistidas offline.
   - `PerfilDao`: Armazenamento local do perfil do usuário (`perfil`).
   - `ObraCacheDao`: Cache em disco em formato JSON das respostas do TMDB para obras salvas.
-- **Motor de Sincronização em Segundo Plano (`Sincronizador`)**:
+- **Motor de Sincronização em Segundo Plano ([Sincronizador.kt](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/data/sync/Sincronizador.kt))**:
   - Executa tarefas assíncronas em segundo plano (`Dispatchers.IO` + `SupervisorJob`) garantindo sincronização bidirecional transparente.
-  - Resolve conflitos por estampa de tempo (*last-write-wins*, RN23), gerencia pendências de envio (`pendenteSincronizacao`) e trata exclusões com registros do tipo "lápide" (`removido`).
+  - Resolve conflitos por estampa de tempo (*last-write-wins*, RN23), gerencia pendências de envio (`pendenteSincronizacao`) e trata exclusões com registros do tipo *tombstone* (`removido`).
 - **Gerenciamento de Estado & Cache em Memória**:
   - `AbaCache`: Preserva a aba ativa do `MainScaffold` durante a navegação.
   - `BuscaCache`: Mantém termos e resultados de pesquisa ativos.
   - `CatalogoCache`: Armazena a primeira página de cada categoria da Home, evitando recomposições e chamadas repetidas.
-- **Camada de Dados Abstrata**: Repositórios desacoplados gerenciando a origem dos dados (Room Local, TMDB REST API e Cloud Firestore):
-  - `AuthRepository`: Fluxo de autenticação Google Sign-In e sessão do usuário.
-  - `CatalogoRepository`: Consulta de obras em alta, por gênero, detalhes de mídias, temporadas e artistas.
-  - `MinhaListaRepository`: Leitura e escrita instantâneas no Room com disparo do `Sincronizador`.
-  - `AvaliacaoRepository`: Críticas públicas e privadas, notas numéricas, reações emocionais e votos.
-  - `ContaRepository`: Exclusão de conta com limpeza em lote (batching) no Firestore e limpeza do banco local via `Dependencias.limparBancoLocal()`.
-  - `DenunciaRepository`: Envio e registro de denúncias de conteúdos impróprios.
-  - `PerfilRepository`: Gerenciamento de apelidos e avatares.
-  - `ProgressoRepository`: Marcação granular de episódios e temporadas no banco local e nuvem.
+  - `DescobrirCache`: Preserva filtros ativos, página atual e catálogo sorteado na aba Descobrir.
 
 ---
 
-## 🔐 Autenticação & Fluxo de Segurança
+## 🔐 Autenticação, Onboarding & Segurança
 
-O fluxo de login utiliza a **Android Credential Manager API** combinada com o **Firebase Authentication** para proporcionar autenticação sem fricção com Google Sign-In:
+### Fluxo de Login com Credential Manager API
 
 ```mermaid
 sequenceDiagram
@@ -169,16 +177,39 @@ sequenceDiagram
     UI-->>User: Atualiza estado da interface para logado
 ```
 
+### Modo Visitante & Interceptação de Ações (RF54)
+
+Para proporcionar uso sem barreiras, o Seriando permite navegação como visitante. Quando um visitante tenta executar ações que exigem identificação (adicionar à lista, marcar episódio, avaliar, opinar ou votar), a interface intercepta o toque e apresenta a folha de diálogo [DialogoLoginObrigatorio.kt](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/login/DialogoLoginObrigatorio.kt):
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Guest as Visitante
+    participant UI as Screen (DetailsScreen / OpiniaoCard)
+    participant Auth as AuthRepository
+    participant Modal as DialogoLoginObrigatorio
+
+    Guest->>UI: Toca em "Adicionar à Lista" ou "Avaliar"
+    UI->>Auth: usuarioAtual()
+    Auth-->>UI: Retorna null (Visitante)
+    UI->>Modal: Exibe modal de login obrigatório
+    Modal-->>Guest: Apresenta benefícios da conta e botão Google
+    Guest->>Modal: Clica em "Entrar com Google"
+    Modal->>Auth: Executa login
+    Auth-->>UI: Retorna usuário autenticado
+    UI-->>Guest: Executa a ação solicitada
+```
+
 > [!IMPORTANT]
 > **Confirmação de Identidade para Exclusão de Conta (LGPD / RF29)**: Para executar ações sensíveis, como a exclusão definitiva da conta, o aplicativo solicita a reautenticação através do Credential Manager antes de realizar a exclusão em lote no Cloud Firestore e a limpeza do banco local (`Dependencias.limparBancoLocal()`).
 
 ---
 
-## 🗄️ Modelo de Dados & Schemas
+## 🗄️ Modelo de Dados & Armazenamento Local / Nuvem
 
 ### Schema do Banco de Dados Local (Room Database)
 
-O banco de dados relacional local (`SeriandoDatabase`) armazena os dados da sessão ativa para suporte offline-first:
+O banco relacional local (`SeriandoDatabase`) armazena os dados da sessão ativa para suporte offline-first:
 
 | Tabela Room | Chave Primária | Finalidade & Campos Principais | Requisito / Regra |
 | :--- | :--- | :--- | :--- |
@@ -186,6 +217,13 @@ O banco de dados relacional local (`SeriandoDatabase`) armazena os dados da sess
 | `episodiosAssistidos` | `[serieId, temporada, numero]` | Registros de episódios assistidos (`serieId`, `temporada`, `numero`, `atualizadoEm`, `pendenteSincronizacao`, `removido`). | **RF09, RF10, RN20** |
 | `perfil` | `uid` (String) | Consolidação dos perfis privado e público (`uid`, `apelido`, `avatarId`, `aniversario`, `atualizadoEm`, `pendenteSincronizacao`). | **RF12, RF15, RNF08** |
 | `obrasCache` | `[tipoMidia, tmdbId, parte]` | Cache local em JSON dos detalhes (`parte = -1`) e temporadas (`parte >= 0`) de obras da lista para navegação offline. | **RF33** |
+
+### DataStore & SharedPreferences
+
+| Mecanismo | Chave / Arquivo | Conteúdo & Utilidade |
+| :--- | :--- | :--- |
+| **DataStore Preferences** | `preferencias_app` / `introducao_vista` | Flag booleana indicando se a introdução de 3 telas já foi concluída ou pulada (RF52). |
+| **SharedPreferences** | `historico_busca_prefs` | Histórico local com limite de 10 termos pesquisados recentemente e lista de obras visualizadas. |
 
 ### Schema do Cloud Firestore
 
@@ -206,13 +244,13 @@ O Cloud Firestore utiliza a seguinte estrutura relacional de coleções e subcol
 
 ## 🌐 Integração com TMDB API
 
-A comunicação remota com a API da TMDB é intermediada pela interface `TmdbApiService` via Retrofit 2:
+A comunicação remota com a API da TMDB é intermediada pela interface [TmdbApiService.kt](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/data/remote/TmdbApiService.kt) via Retrofit 2:
 
 | Endpoint TMDB | Método HTTP | Função no App | Requisito Relacionado |
 | :--- | :--- | :--- | :--- |
 | `/trending/all/week` | `GET` | Busca obras populares da semana para a fileira "Em Alta" e o carrossel de destaques | **RF45** |
-| `/discover/movie` | `GET` | Descobre filmes ordenados por popularidade filtrados por ID de gênero | **RF44** |
-| `/discover/tv` | `GET` | Descobre séries ordenadas por popularidade filtrados por ID de gênero | **RF44** |
+| `/discover/movie` | `GET` | Descobre filmes por popularidade, lançamentos, notas ou gênero no Descobrir/Home | **RF44, RF63** |
+| `/discover/tv` | `GET` | Descobre séries por popularidade, lançamentos, notas ou gênero no Descobrir/Home | **RF44, RF63** |
 | `/search/multi` | `GET` | Pesquisa unificada de filmes, séries e pessoas com consulta textual | **RF03** |
 | `/movie/{id}` | `GET` | Obtém detalhes completos de um filme (com elenco e vídeos via `append_to_response`) | **RF05** |
 | `/tv/{id}` | `GET` | Obtém detalhes completos de uma série (com elenco e vídeos via `append_to_response`) | **RF05** |
@@ -226,17 +264,36 @@ A comunicação remota com a API da TMDB é intermediada pela interface `TmdbApi
 
 ## 🚀 Funcionalidades Principais
 
-### ⚡ Modo Offline-First & Sincronização
+### 🌟 Introdução, Entrada & Modo Visitante (RF52, RF53, RF54)
+- **Telas de Introdução (`IntroducaoScreen`)**: Carrossel deslizante em 3 etapas apresentando os diferenciais do app, memorizado em DataStore local (`PreferenciasApp`).
+- **Tela de Entrada (`EntradaScreen`)**: Landing page com opções "Entrar com Google" e "Continuar como visitante".
+- **Interrupção Graciosa para Visitantes**: Permite explorar todo o aplicativo e exibe o modal [DialogoLoginObrigatorio](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/login/DialogoLoginObrigatorio.kt) apenas ao solicitar uma ação que requer salvamento em conta.
+
+### 📶 Faixa de Conectividade & Monitor de Rede (RF62)
+- **Banner de Estado da Conexão (`ComFaixaDeConexao`)**: Alerta dinâmico na barra superior informando perda de rede ou existência de dados pendentes de sincronização offline.
+- **Botão "Enviar Agora"**: Permite forçar o envio manual das pendências assim que a conexão for reestabelecida.
+
+### 🧭 Aba Descobrir & Recomendações ("O que assistir hoje?") (RF63, RF64, RF65)
+- **Filtros Combinados**: Seleção de Tipo (Filmes ou Séries), Catálogo TMDB (Populares, Bem avaliados, Em exibição, Próximos lançamentos, etc.) e Gênero cinematográfico.
+- **Paginação Infinita & Grade de 4 Colunas**: Carregamento assíncrono e contínuo de novas páginas ao rolar até o final da lista.
+- **Botão "Sortear" ("O que assistir hoje?")**: Sorteio instantâneo de uma obra aleatória com base nos filtros ativos para auxiliar na escolha do que assistir.
+- **Cache Persistente (`DescobrirCache`)**: Preservação de filtros, paginação e resultados ao navegar para detalhes e retornar à aba.
+
+### ⚡ Modo Offline-First & Sincronizador (RF33, RN21 a RN25)
 - **Funcionamento Sem Internet**: Adição, remoção, alteração de status e acompanhamento de episódios salvos diretamente no banco de dados Room do dispositivo.
 - **Sincronização Transparente**: Motor `Sincronizador` enviando e recebendo alterações em segundo plano na recuperação de conexão.
 - **Resolução Automática de Conflitos**: Algoritmo *last-write-wins* por estampa de tempo (`atualizadoEm`), preservando sempre a versão mais recente dos dados.
 
-### 🔍 Navegação & Busca
-- **Home em Seções**: Fileiras horizontais organizadas por gênero (incluindo o carrossel *Em alta* da semana) com navegação rápida para a visualização expandida de categorias (`CategoriaScreen`).
-- **Busca Unificada**: Pesquisa integrada para filmes e séries utilizando o endpoint `/search/multi` do TMDB.
-- **Navegação Resiliente**: Preservação do histórico de busca, termo digitado e posição de scroll ao avançar e retornar entre telas.
+### 📂 Home por Categorias & Navegação Expandida (RF44, RF45, RF46, RF55, RF56)
+- **Fileiras Temáticas**: Categorias horizontais (*Em alta*, *Ação*, *Comédia*, *Suspense*, *Drama*, *Terror*, *Romance*, etc.) com rolagem suave.
+- **Botão "Ver mais" & Título Clicável**: Acesso direto à tela [CategoriaScreen](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/home/CategoriaScreen.kt) exibindo a lista completa paginada em grade de 3 colunas.
 
-### 🎬 Detalhes da Obra & Mídia
+### 🎭 Perfil de Artista (Atores/Atrizes) (RF40, RF41, RF42, RF43)
+- **Ficha do Artista**: Exibição de foto de perfil, nome completo, data e local de nascimento.
+- **Biografia Adaptativa**: Exibição da biografia em português ou fallback automático para a versão em inglês na ausência de tradução.
+- **Filmografia Interativa**: Grade com até 60 produções populares do ator/atriz, permitindo navegação direta para os detalhes de qualquer obra.
+
+### 🎬 Detalhes da Obra, Progresso & Onde Assistir (RF05, RF06, RF09, RF10, RF34, RF47, RF57)
 - **Informações Detalhadas**: Pôster em alta resolução, nota média global, sinopse, ano de lançamento, elenco principal interativo e trailer oficial integrado do YouTube.
 - **Gerenciamento de Temporadas e Episódios**:
   - Navegação entre temporadas com suporte a thumbnails individuais por episódio.
@@ -244,25 +301,7 @@ A comunicação remota com a API da TMDB é intermediada pela interface `TmdbApi
   - Indicador visual de progresso (porcentagem de episódios concluídos).
 - **Onde Assistir (JustWatch)**: Mapeamento de provedores de streaming disponíveis no Brasil para assinatura, aluguel ou compra.
 
-### 🎭 Perfil de Artista (Atores/Atrizes)
-- **Ficha do Artista**: Exibição de foto de perfil, nome completo, data e local de nascimento.
-- **Biografia Adaptativa**: Exibição da biografia em português ou fallback automático para a versão em inglês na ausência de tradução.
-- **Filmografia Interativa**: Grade com até 60 produções populares do ator/atriz, permitindo navegação direta para os detalhes de qualquer obra.
-
-### 👤 Autenticação & Perfil de Usuário
-- **Login Seguro via Google**: Integração do Firebase Auth com **Android Credential Manager API**.
-- **Perfil Personalizado**: Apelido configurável, e-mail vinculado e seleção de avatar (foto da conta Google ou emojis divertidos).
-- **Diálogo de Ação Protegida**: Exibição suave de modal de login ao tentar executar ações interativas sem autenticação.
-- **Exclusão de Conta (LGPD / RF29)**: Exclusão definitiva e segura de todos os dados do usuário em lotes idempotentes, exigindo confirmação com biometria/passkey via Credential Manager.
-
-### 📋 Minha Lista Pessoal
-- **Persistência Local e Nuvem**: Lista salva no Room e sincronizada no Cloud Firestore acessível de qualquer dispositivo.
-- **Status Customizado**:
-  - *Séries*: Assistindo, Quero Assistir, Pausado, Finalizado, Abandonado.
-  - *Filmes*: Quero Assistir, Já Assisti, Abandonado.
-- **Filtros Dinâmicos**: Filtragem instantânea por status de acompanhamento.
-
-### ⭐ Comunidade & Avaliações
+### ⭐ Comunidade & Avaliações (RF16 a RF28, RF35, RF36, RF48)
 - **Sistema de Notas**: Avaliação de 1 a 5 estrelas com recálculo da média da comunidade em tempo real.
 - **Opiniões Públicas e Privadas**: Publicação de críticas com tag de *spoiler* e seleção de até 6 emoções acompanhadas de ícones e cores temáticas.
 - **Votação em Comentários**: Sistema de curtidas (+1) e descurtidas (-1) com trava contra múltiplos votos ou votos na própria publicação.
@@ -274,10 +313,10 @@ A comunicação remota com a API da TMDB é intermediada pela interface `TmdbApi
 
 A especificação técnica detalhada do projeto encontra-se disponível no diretório `docs/`:
 
-- 📋 [**Levantamento Completo de Requisitos (`requisitos-seriando.md`)**](/Seriando/docs/requisitos-seriando.md):
-  - **Requisitos Funcionais (RF01 a RF62)**: Detalhamento dos blocos implementados e em desenvolvimento.
-  - **Requisitos Não Funcionais (RNF01 a RNF12)**: Segurança, LGPD, portabilidade para Compose Multiplatform e regras de banco.
-  - **Regras de Negócio (RN01 a RN25)**: Comportamento das avaliações, pontuação, privacidade, concorrência e sincronização offline.
+- 📋 [**Levantamento Completo de Requisitos (`requisitos-seriando.md`)**](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/docs/requisitos-seriando.md):
+  - **Requisitos Funcionais (RF01 a RF68)**: Detalhamento dos blocos implementados e em desenvolvimento.
+  - **Requisitos Não Funcionais (RNF01 a RNF13)**: Segurança, LGPD, portabilidade para Compose Multiplatform e regras de banco.
+  - **Regras de Negócio (RN01 a RN26)**: Comportamento das avaliações, pontuação, privacidade, concorrência e sincronização offline.
   - **Análise de Risco & Segurança**: Modelo de ameaças STRIDE e checklist OWASP MASVS.
   - **Esteira de Publicação**: Procedimento de envio para Google Play Store e preparação para Apple App Store.
 
@@ -290,11 +329,12 @@ A especificação técnica detalhada do projeto encontra-se disponível no diret
 | **Linguagem** | Kotlin | 2.0+ |
 | **UI Framework** | Jetpack Compose | Material Design 3 |
 | **Navegação** | Navigation Compose | Grafo de navegação centralizado (`navigation-compose:2.8.4`) |
-| **Banco de Dados Local** | Room Database | Biblioteca de persistência SQLite offline-first (`androidx.room:2.6.1`) |
+| **Banco Local** | Room Database | Biblioteca de persistência SQLite offline-first (`androidx.room:2.6.1`) |
+| **Preferências** | Jetpack DataStore Preferences | Gravação assíncrona e reativa de preferências (`datastore-preferences:1.1.1`) |
 | **Rede & HTTP** | Retrofit 2 + Gson + OkHttp 4 | Consumo das APIs do TMDB (`retrofit:2.11.0`) |
 | **Imagens** | Coil 3 | Carregamento assíncrono e cache de imagens (`coil-compose:3.0.4`) |
 | **Autenticação** | Firebase Auth + Credential Manager API | Google Sign-In e Passkeys (`credentials:1.3.0`) |
-| **Banco de Dados Nuvem** | Cloud Firestore | Armazenamento noSQL relacional (`firebase-firestore`) |
+| **Banco Nuvem** | Cloud Firestore | Armazenamento NoSQL relacional (`firebase-firestore`) |
 | **Build System** | Gradle | Kotlin DSL & Version Catalogs (`libs.versions.toml`) |
 
 ---
@@ -309,31 +349,35 @@ com.seriando.app
 │
 ├── data/
 │   ├── auth/          # AuthRepository (Firebase Auth + Credential Manager + Sessão)
-│   ├── cache/         # AbaCache, BuscaCache e CatalogoCache (Singletons de cache em memória)
-│   ├── local/         # SeriandoDatabase, Daos (ListaDao, EpisodioDao, PerfilDao, ObraCacheDao), Entidades, Mapeamentos, Dependencias
-│   ├── remote/        # RetrofitInstance e TmdbApiService (End-points e clientes HTTP)
-│   ├── repository/    # Repositórios (Avaliacao, Catalogo, Conta, Denuncia, MinhaLista, Perfil, Progresso)
-│   └── sync/          # Sincronizador (Motor de sincronização bidirecional Room <-> Firestore em segundo plano)
+│   ├── cache/         # Singletons de cache em memória (AbaCache, BuscaCache, CatalogoCache, DescobrirCache)
+│   ├── local/         # Persistência local: SeriandoDatabase, DAOs (ListaDao, EpisodioDao, PerfilDao, ObraCacheDao),
+│   │                  # Entidades, Mapeamentos, Dependencias, PreferenciasApp (DataStore) e HistoricoBusca (SharedPrefs)
+│   ├── remote/        # RetrofitInstance e TmdbApiService (Endpoints e clientes HTTP)
+│   ├── repository/    # Repositórios (Avaliacao, Catalogo, Conta, Denuncia, MinhaLista, ObraCache, Perfil, Progresso)
+│   └── sync/          # Motor de sincronização: MonitorConexao e Sincronizador (Room <-> Firestore)
 │
-├── model/             # Data Classes (Movie, Serie, Pessoa, Avaliacao, Categoria, Emocao, Status, etc.)
+├── model/             # Data Classes (Movie, Serie, Pessoa, Avaliacao, Categoria, Descobrir, Emocao, Status, etc.)
 │
 ├── navigation/
-│   ├── MainScaffold.kt # Scaffold principal com BottomNavigation (Home, Minha Lista, Conta)
-│   ├── Rotas.kt        # Definição centralizada de caminhos e argumentos
-│   └── SeriandoNavHost.kt # Grafo de navegação declarativo
+│   ├── MainScaffold.kt # Scaffold principal com BottomNavigation (Home, Descobrir, Minha Lista, Conta)
+│   ├── Rotas.kt        # Definição centralizada de caminhos e argumentos de rota
+│   └── SeriandoNavHost.kt # Grafo de navegação reativo com decisões de início
 │
 ├── ui/
-│   ├── details/       # DetailsScreen, CartaoEpisodio, ElencoCard, OpiniaoCard, SecaoOndeAssistir, DialogoDenuncia
-│   ├── home/          # HomeScreen, CategoriaRow, CategoriaScreen, DestaqueCard, ResultadoCard, DialogoEditarApelido
-│   ├── login/         # DialogoLoginObrigatorio
+│   ├── comum/         # Componentes compartilhados: BotaoSair, ComFaixaDeConexao, LogoSeriando, MensagemSemConexao
+│   ├── descobrir/     # DescobrirScreen (Aba Descobrir com filtros, grade de 4 colunas e botão "Sortear")
+│   ├── details/       # DetailsScreen, CartaoEpisodio, CartaoTemporada, DialogoDenuncia, ElencoCard, InformacoesDaObra, OpiniaoCard, SecaoOndeAssistir, SeletorEmocoes, SeletorEstrelas
+│   ├── home/          # HomeScreen, CategoriaRow, CategoriaScreen, DestaqueCard, ResultadoCard, DialogoEditarApelido, DialogoRemoverDaLista
+│   ├── introducao/    # IntroducaoScreen (3 páginas de boas-vindas com animação radial)
+│   ├── login/         # EntradaScreen, LoginComGoogle, AvisoDeLoginNecessario, DialogoLoginObrigatorio
 │   ├── mylist/        # MinhaListaScreen (Lista filtrável por status)
 │   ├── pessoa/        # PessoaScreen (Biografia, dados e filmografia do artista)
-│   ├── search/        # SearchScreen (Pesquisa com suporte a cache)
-│   ├── theme/         # Color.kt, Formas.kt (capaDeObra), Theme.kt, Type.kt (Design System Velvet Purple)
+│   ├── search/        # SearchScreen (Pesquisa com suporte a histórico e cache)
+│   ├── theme/         # Color.kt, CoresEmocao.kt, Formas.kt (capaDeObra), Theme.kt, Type.kt (Design System Velvet Purple)
 │   └── usuario/       # UsuarioScreen e SeletorAvatar
 │
-├── MainActivity.kt    # Ponto de entrada das atividades e UI do Android
-└── SeriandoApp.kt     # Subclasse Application (Inicialização do Room e disparo de Sincronização)
+├── MainActivity.kt    # Ponto de entrada do Android com setup de Edge-to-Edge
+└── SeriandoApp.kt     # Subclasse Application (Inicialização do Room e disparo automático de sincronização)
 ```
 
 ---
@@ -406,7 +450,9 @@ O projeto conta com infraestrutura para testes unitários e testes instrumentado
 
 Os testes unitários cobrem repositórios, lógica de negócios, parsing de modelos e manipuladores de status.
 
-### Executar Testes Instrumentados de UI (Android)
+### Executar Testes Instrumentados do Banco Room (Android)
+
+Os testes do banco de dados local ([BancoLocalTest.kt](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/androidTest/java/com/seriando/app/data/local/BancoLocalTest.kt)) validam a persistência offline, transações e gerenciamento de marcações pendentes usando um banco em memória:
 
 ```bash
 ./gradlew connectedDebugAndroidTest
@@ -460,7 +506,7 @@ Os testes unitários cobrem repositórios, lógica de negócios, parsing de mode
 - **V0.10**: Sistema de curtidas/descurtidas em comentários, denúncia de comentários e visualização de provedores de streaming ("Onde Assistir") via JustWatch.
 - **V0.11**: Tela completa de atores/atrizes com foto, biografia expansível (fallback em inglês) e filmografia paginada por popularidade.
 - **V0.12**: Home organizada por categorias de gênero com botão "Ver mais", lista paginada em grade de 3 colunas, regras de segurança estritas no Firestore, opiniões privadas em coleções isoladas, exclusão permanente de conta (RF29 / LGPD), Design System Velvet Purple e documentação completa de requisitos.
-- **V0.13**: **(Versão Atual)** Implementação da arquitetura **Offline-First** com **Room Database** (`SeriandoDatabase`, DAOs e entidades) e motor de sincronização em segundo plano (`Sincronizador`), garantindo funcionamento completo da lista pessoal e progresso mesmo sem conexão com a internet, com resolução de conflitos por timestamp e reconciliação com o Cloud Firestore (RF33, RNF11, RN21 a RN25).
+- **V0.13**: **(Versão Atual)** Onboarding de apresentação com carrossel de 3 páginas (`IntroducaoScreen`), persistência via DataStore (`PreferenciasApp`), Tela de Entrada (`EntradaScreen`) e Modo Visitante interceptado por `DialogoLoginObrigatorio`. Faixa de status de conectividade em tempo real (`ComFaixaDeConexao`), nova Aba Descobrir (`DescobrirScreen`) com botão "Sortear", persistência offline completa com Room Database (`SeriandoDatabase`), motor de sincronização em segundo plano com Firestore (`Sincronizador`) e testes instrumentados ([BancoLocalTest](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/androidTest/java/com/seriando/app/data/local/BancoLocalTest.kt)).
 
 ---
 
@@ -471,6 +517,9 @@ Os testes unitários cobrem repositórios, lógica de negócios, parsing de mode
 - [x] **Tratamento Global de Erros**: Indicadores de carregamento, estados de falha e recuperação graciosa.
 - [x] **Identidade Visual & Ícone**: Design System proprietário com paleta de cores Velvet Purple customizada e ícone exclusivo do app.
 - [x] **Modo Offline & Arquitetura Offline-First (Room)**: Persistência local reativa e sincronização bidirecional em segundo plano com o Firestore.
+- [x] **Onboarding & Modo Visitante**: Introdução em 3 etapas, salvamento em DataStore e interceptação de login para visitantes.
+- [x] **Aba Descobrir & Recomendações**: Filtros avançados com ordenação e botão "Sortear" (*"O que assistir hoje?"*).
+- [ ] **Controle de Idade e Classificação Indicativa (Bloco K)**: Filtro de conteúdo por idade e classificação indicativa no Brasil.
 - [ ] **Testes Automatizados**: Expansão de testes unitários para repositórios/caches e testes de UI com Compose Testing.
 - [ ] **Publicação na Google Play Store**.
 
@@ -482,6 +531,7 @@ Este projeto serve como estudo prático e portfólio de desenvolvimento Android 
 - Criação de interfaces declarativas e reativas com **Jetpack Compose** e **Material 3**.
 - Aplicação de arquitetura limpa (MVVM + Repository Pattern).
 - Arquitetura **Offline-First** com **Room Database**, DAOs reativos com Flow e sincronização de dados bidirecional com tratamento de conflitos.
+- Armazenamento leve reativo de preferências locais com **Jetpack DataStore Preferences**.
 - Consumo de Web APIs RESTful com **Retrofit 2** e **Coroutines**.
 - Integração com serviços de nuvem **Firebase** (Authentication e Firestore).
 - Implementação da API **Android Credential Manager** para autenticação simplificada.

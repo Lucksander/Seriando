@@ -2,6 +2,11 @@ package com.seriando.app.model
 
 import com.google.gson.annotations.SerializedName
 
+/**
+ * Detalhes de uma série vindos da TMDB (tv/{id}).
+ * Os campos novos (situacao e dataUltimoEpisodio) são opcionais: cópias antigas
+ * guardadas no Room (obrasCache) não os têm e simplesmente chegam como null.
+ */
 data class SerieDetalhe(
     val id: Int,
     @SerializedName("name") val nome: String,
@@ -13,11 +18,20 @@ data class SerieDetalhe(
     @SerializedName("vote_average") val notaMedia: Double = 0.0,
     @SerializedName("seasons") val temporadas: List<TemporadaResumo> = emptyList(),
     val credits: Creditos? = null,
-    val videos: VideosResponse? = null
+    val videos: VideosResponse? = null,
+    // Situação da série na TMDB: "Returning Series", "Ended", "Canceled", "In Production"...
+    @SerializedName("status") val situacao: String? = null,
+    // Data do último episódio exibido; usada para o ano final do intervalo ("2019 – 2024")
+    @SerializedName("last_air_date") val dataUltimoEpisodio: String? = null
 )
 
+/**
+ * Resumo de uma temporada dentro dos detalhes da série.
+ * dataExibicao (air_date) é opcional e serve para mostrar o ano no cartão da temporada.
+ */
 data class TemporadaResumo(
     @SerializedName("season_number") val numero: Int,
     @SerializedName("episode_count") val totalEpisodios: Int,
-    @SerializedName("name") val nome: String
+    @SerializedName("name") val nome: String,
+    @SerializedName("air_date") val dataExibicao: String? = null
 )

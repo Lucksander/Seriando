@@ -2,6 +2,8 @@ package com.seriando.app.navigation
 
 // Nomes das rotas (telas) do app, centralizados para evitar erros de digitação.
 object Rotas {
+    const val INTRODUCAO = "introducao" // 3 telas de boas-vindas, só na primeira abertura (RF52)
+    const val ENTRADA = "entrada" // login com Google ou visitante, em toda abertura sem sessão (RF53)
     const val HOME = "home"
     const val BUSCA = "busca"
     const val DETALHES = "detalhes/{tipoMidia}/{serieId}"

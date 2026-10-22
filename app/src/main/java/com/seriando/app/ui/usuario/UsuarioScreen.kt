@@ -48,6 +48,9 @@ import com.seriando.app.model.PerfilPublico
 import com.seriando.app.ui.home.DialogoEditarApelido
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
+import com.seriando.app.ui.comum.BotaoSair
+import androidx.compose.runtime.mutableIntStateOf
+import com.seriando.app.ui.login.AvisoDeLoginNecessario
 
 /**
  * Aba Conta (RF12 a RF15, RF29, RF33): apelido, foto/avatar, e-mail, aniversário
@@ -57,7 +60,10 @@ import kotlinx.coroutines.launch
  * Toda gravação tem try/catch com Log e Toast, porque a falha não pode derrubar o app.
  */
 @Composable
-fun UsuarioScreen() {
+fun UsuarioScreen(
+    // Chamado depois do logout ou da exclusão da conta; quem navega é o SeriandoNavHost (RF53)
+    aoSair: () -> Unit = {}
+) {
 
     val authRepository = remember { AuthRepository() }
     val contaRepository = remember { ContaRepository() }
@@ -65,7 +71,10 @@ fun UsuarioScreen() {
     val perfilRepository = remember { PerfilRepository() }
     val scope = rememberCoroutineScope()
     val webClientId = stringResource(R.string.default_web_client_id)
-    val usuario = authRepository.usuarioAtual()
+    // Sobe quando o visitante faz login pela folha; como é lido nos remember abaixo,
+    // força a tela a recompor e trocar o aviso pelo perfil
+    var loginFeito by remember { mutableIntStateOf(0) }
+    val usuario = remember(loginFeito) { authRepository.usuarioAtual() }
     val uid = usuario?.uid
 
     // O perfil observado do banco local. null = ainda não existe (primeira sincronização em andamento).
@@ -117,6 +126,7 @@ fun UsuarioScreen() {
             try {
                 contaRepository.excluirConta(context, webClientId)
                 authRepository.sair() // limpa os caches locais e o banco local
+                aoSair() // volta para a tela de entrada
                 Toast.makeText(context, "Conta excluída.", Toast.LENGTH_LONG).show()
             } catch (e: GetCredentialCancellationException) {
                 // O usuário fechou o seletor de contas do Google: nada foi apagado
@@ -145,9 +155,10 @@ fun UsuarioScreen() {
         Spacer(modifier = Modifier.height(24.dp))
 
         if (usuario == null || uid == null) {
-            Text(
-                text = "Entre com sua conta na Home para ver e editar seu perfil.",
-                style = MaterialTheme.typography.bodyMedium
+            // Visitante (RF54): aviso com botão "Entrar", que abre a folha de login
+            AvisoDeLoginNecessario(
+                mensagem = "Entre com sua conta para ver e editar seu perfil.",
+                aoLogarComSucesso = { loginFeito++ }
             )
         } else if (perfilAtual == null) {
             // O perfil ainda não chegou ao banco local; na primeira abertura depois de entrar
@@ -233,9 +244,8 @@ fun UsuarioScreen() {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            TextButton(onClick = { authRepository.sair() }) {
-                Text("Sair da conta")
-            }
+            // Pede confirmação se houver alterações não sincronizadas (RN27)
+            BotaoSair(texto = "Sair da conta", aoSairConfirmado = aoSair)
 
             // Exclusão da conta (RF29): em vermelho, separada dos outros botões
             Spacer(modifier = Modifier.height(24.dp))

@@ -10,6 +10,8 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
+import com.seriando.app.data.local.Dependencias
+import com.seriando.app.data.sync.Sincronizador
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -22,8 +24,9 @@ import kotlinx.coroutines.tasks.await
  *
  * Ordem segura de excluirConta:
  *  1. confirmarIdentidade: se o usuário cancelar aqui, NADA foi apagado.
- *  2. excluirDados: apaga o Firestore. É idempotente: se falhar no meio, dá para tentar de novo.
- *  3. Exclui a conta do Authentication, só depois dos dados.
+ *  2. Bloqueia a sincronização: uma alteração pendente não pode recriar na nuvem o que estamos apagando.
+ *  3. excluirDados: apaga o Firestore. É idempotente: se falhar no meio, dá para tentar de novo.
+ *  4. Exclui a conta do Authentication e limpa o banco local (RN25), só depois dos dados.
  *
  * Limitações conhecidas (registrar no modelo de ameaças e na nota LGPD):
  *  - Votos que OUTRAS pessoas deram nas opiniões do usuário ficam órfãos: as regras só deixam
@@ -129,8 +132,9 @@ class ContaRepository {
     }
 
     /**
-     * Fluxo completo: confirma a identidade, apaga os dados e exclui a conta do Authentication.
-     * A tela chama isto e, no sucesso, limpa o cache (AuthRepository.sair) e volta para a Home.
+     * Fluxo completo: confirma a identidade, apaga os dados, exclui a conta do Authentication
+     * e limpa o banco local (RN25). A tela chama isto e, no sucesso, limpa os caches
+     * (AuthRepository.sair) e volta para a Home deslogada.
      */
     suspend fun excluirConta(context: Context, webClientId: String) {
         val usuario = firebaseAuth.currentUser
@@ -138,7 +142,18 @@ class ContaRepository {
         val uid = usuario.uid
 
         confirmarIdentidade(context, webClientId) // se falhar ou cancelar, nada foi apagado
-        excluirDados(uid)
-        usuario.delete().await()
+
+        // A partir daqui nenhuma sincronização pode enviar nem gravar nada: uma pendência
+        // enviada agora recriaria na nuvem dados que estamos apagando
+        Sincronizador.bloquear()
+        try {
+            excluirDados(uid)
+            usuario.delete().await()
+            Dependencias.limparBancoLocal()
+        } catch (e: Exception) {
+            // A exclusão falhou: libera a sincronização para o app continuar funcionando
+            Sincronizador.desbloquear()
+            throw e
+        }
     }
 }

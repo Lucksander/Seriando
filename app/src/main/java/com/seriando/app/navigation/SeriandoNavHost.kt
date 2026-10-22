@@ -1,26 +1,102 @@
 package com.seriando.app.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.seriando.app.data.auth.AuthRepository
+import com.seriando.app.data.local.PreferenciasApp
 import com.seriando.app.ui.details.DetailsScreen
+import com.seriando.app.ui.home.CategoriaScreen
+import com.seriando.app.ui.introducao.IntroducaoScreen
+import com.seriando.app.ui.login.EntradaScreen
 import com.seriando.app.ui.pessoa.PessoaScreen
 import com.seriando.app.ui.search.SearchScreen
-import com.seriando.app.ui.home.CategoriaScreen
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 // Grafo de navegação do app: declara as telas e como elas se conectam.
 @Composable
 fun SeriandoNavHost(
     navController: NavHostController = rememberNavController()
 ) {
+    val contexto = LocalContext.current
+    val escopo = rememberCoroutineScope()
+    val preferencias = remember { PreferenciasApp(contexto) }
+    val authRepository = remember { AuthRepository() }
+
+    // Lê UMA vez, ao abrir o app, se a introdução já foi vista (RF52).
+    // null = ainda lendo o DataStore (leva alguns milissegundos).
+    // Usar first() (e não observar) evita que o grafo troque de destino inicial quando
+    // a flag for gravada ao concluir a introdução.
+    val introducaoVista by produceState<Boolean?>(initialValue = null) {
+        value = preferencias.introducaoVista.first()
+    }
+
+    // Enquanto a flag não chega, mostra só o fundo (a Surface da MainActivity) e não monta o grafo
+    val vista = introducaoVista
+    if (vista == null) {
+        Box(modifier = Modifier.fillMaxSize())
+        return
+    }
+
+    // Destino inicial, calculado uma vez (RF52 e RF53):
+    // - logado: vai direto à Home;
+    // - sem sessão e introdução nunca vista: começa pela introdução;
+    // - sem sessão e introdução já vista: tela de entrada (login ou visitante).
+    val destinoInicial = remember {
+        when {
+            authRepository.usuarioAtual() != null -> Rotas.HOME
+            !vista -> Rotas.INTRODUCAO
+            else -> Rotas.ENTRADA
+        }
+    }
+
     NavHost(
         navController = navController,
-        startDestination = Rotas.HOME
+        startDestination = destinoInicial
     ) {
+        // Introdução (RF52): ao pular ou concluir, grava a flag e segue para a tela de entrada.
+        // popUpTo remove a introdução da pilha, para o botão Voltar não retornar a ela.
+        composable(Rotas.INTRODUCAO) {
+            IntroducaoScreen(
+                aoConcluir = {
+                    escopo.launch { preferencias.marcarIntroducaoVista() }
+                    navController.navigate(Rotas.ENTRADA) {
+                        popUpTo(Rotas.INTRODUCAO) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        // Entrada (RF53): login com Google ou visitante. Nos dois casos o destino é a Home,
+        // e a entrada sai da pilha para o botão Voltar não retornar a ela.
+        composable(Rotas.ENTRADA) {
+            EntradaScreen(
+                aoEntrarComSucesso = {
+                    navController.navigate(Rotas.HOME) {
+                        popUpTo(Rotas.ENTRADA) { inclusive = true }
+                    }
+                },
+                aoContinuarComoVisitante = {
+                    navController.navigate(Rotas.HOME) {
+                        popUpTo(Rotas.ENTRADA) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         composable(Rotas.HOME) {
             MainScaffold(
                 aoClicarEmPesquisar = { navController.navigate(Rotas.BUSCA) },
@@ -30,6 +106,14 @@ fun SeriandoNavHost(
                 // "Ver mais" de uma fileira da Home abre a lista completa da categoria (RF46)
                 aoClicarEmVerMais = { categoriaId ->
                     navController.navigate(Rotas.categoriaComId(categoriaId))
+                },
+                // Saiu da conta ou excluiu (RF53): vai para a tela de entrada e limpa a pilha
+                // inteira (inclusive Detalhes abertos), para o botão Voltar não reabrir telas
+                // de um usuário que já saiu.
+                aoSair = {
+                    navController.navigate(Rotas.ENTRADA) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                    }
                 }
             )
         }

@@ -34,6 +34,8 @@ import com.seriando.app.model.labelDoStatus
 import com.seriando.app.ui.home.DialogoRemoverDaLista
 import com.seriando.app.ui.home.SerieCardSalva
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.mutableIntStateOf
+import com.seriando.app.ui.login.AvisoDeLoginNecessario
 
 /**
  * Aba Minha Lista (RF07, RF08, RF33): séries e filmes salvos, com filtro por status.
@@ -47,7 +49,10 @@ fun MinhaListaScreen(aoClicarEmItem: (Int, String) -> Unit) {
     val authRepository = remember { AuthRepository() }
     val minhaListaRepository = remember { MinhaListaRepository() }
     val scope = rememberCoroutineScope()
-    val uid = authRepository.usuarioAtual()?.uid
+    // Sobe quando o visitante faz login pela folha; como é lido no remember abaixo,
+    // força a tela a recompor e trocar o aviso pela lista do usuário
+    var loginFeito by remember { mutableIntStateOf(0) }
+    val uid = remember(loginFeito) { authRepository.usuarioAtual()?.uid }
 
     // A lista observada do banco local. null = o banco ainda não respondeu (carregando).
     val minhasSeries by remember { minhaListaRepository.observarSeries() }
@@ -129,10 +134,11 @@ fun MinhaListaScreen(aoClicarEmItem: (Int, String) -> Unit) {
         }
 
         when {
+            // Visitante (RF54): aviso com botão "Entrar", que abre a folha de login
             uid == null -> {
-                Text(
-                    text = "Entre com sua conta na Home para ver suas séries salvas.",
-                    style = MaterialTheme.typography.bodyMedium
+                AvisoDeLoginNecessario(
+                    mensagem = "Entre com sua conta para salvar e acompanhar suas séries e filmes.",
+                    aoLogarComSucesso = { loginFeito++ }
                 )
             }
             // Ainda lendo o banco local

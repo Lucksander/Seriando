@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Sincroniza o banco local (Room) com o Firestore (RF33, RN21 a RN23).
@@ -73,6 +74,10 @@ object Sincronizador {
     // true se algum dos pedidos que chegaram durante a rodada pediu o recebimento da nuvem
     @Volatile
     private var baixarNaProxima = false
+
+    // true durante a exclusão da conta: nada pode ser enviado nem gravado no banco local
+    @Volatile
+    private var bloqueado = false
     private val _sincronizando = MutableStateFlow(false)
 
     /** true enquanto uma sincronização está em andamento (usado pela faixa de conexão). */
@@ -85,6 +90,7 @@ object Sincronizador {
      *                      false para só enviar o que está pendente (alterações feitas na tela).
      */
     fun disparar(uid: String, baixarDaNuvem: Boolean = true) {
+        if (bloqueado) return
         // Sem internet não há o que enviar: as pendências esperam, e o monitor de conexão
         // dispara a sincronização completa quando a internet voltar
         if (!MonitorConexao.online.value) {
@@ -107,6 +113,7 @@ object Sincronizador {
             do {
                 repetir = false
                 try {
+                    garantirBancoDoUsuario(uid)
                     sincronizarLista(uid, baixar)
                     sincronizarEpisodios(uid, baixar)
                     sincronizarPerfil(uid, baixar)
@@ -130,9 +137,12 @@ object Sincronizador {
         }
     }
 
-    /** true se o usuário que pediu a sincronização ainda é o usuário logado. */
+    /**
+     * true se o usuário que pediu a sincronização ainda é o usuário logado e a sincronização não
+     * foi bloqueada (exclusão de conta). Conferida antes de cada envio e de cada gravação local.
+     */
     private fun aindaLogado(uid: String): Boolean =
-        FirebaseAuth.getInstance().currentUser?.uid == uid
+        !bloqueado && FirebaseAuth.getInstance().currentUser?.uid == uid
 
     /** Executa uma chamada à nuvem com tempo limite (ver o aviso sobre gravações offline acima). */
     private suspend fun <T> comTempo(bloco: suspend () -> T): T =
@@ -523,4 +533,44 @@ object Sincronizador {
         Dependencias.episodioDao.observarQuantidadePendentes(),
         Dependencias.perfilDao.observarQuantidadePendentes()
     ) { lista, episodios, perfil -> lista + episodios + perfil }
+
+
+    // ==================== SAÍDA DA CONTA E EXCLUSÃO ====================
+
+    /** Impede qualquer sincronização (usado durante a exclusão da conta, RF29). */
+    fun bloquear() {
+        bloqueado = true
+    }
+
+    /** Libera as sincronizações de novo (no login, ou se a exclusão da conta falhar). */
+    fun desbloquear() {
+        bloqueado = false
+    }
+
+    /** Quantas alterações ainda não foram enviadas à nuvem, agora. */
+    suspend fun contarPendentes(): Int = observarPendentes().first()
+
+    /**
+     * Tenta enviar as pendências antes de o usuário sair da conta (RN27): com internet, pede o
+     * envio e espera até [limiteMs] que as pendências cheguem a zero. Devolve quantas restam
+     * (zero se tudo foi enviado; sem internet, nada é tentado).
+     */
+    suspend fun tentarEnviarPendencias(uid: String, limiteMs: Long = 10_000L): Int {
+        if (MonitorConexao.online.value) {
+            disparar(uid, baixarDaNuvem = false)
+            withTimeoutOrNull(limiteMs) { observarPendentes().first { it == 0 } }
+        }
+        return contarPendentes()
+    }
+
+    /**
+     * Defesa do RN25: o banco local só pode ter dados do usuário logado. Se aparecer um perfil
+     * de outro usuário (por exemplo, o app fechou no meio do logout), apaga tudo antes de sincronizar.
+     */
+    private suspend fun garantirBancoDoUsuario(uid: String) {
+        if (Dependencias.perfilDao.contarDeOutrosUsuarios(uid) > 0) {
+            Log.w(TAG, "Banco local com dados de outro usuário: limpando antes de sincronizar")
+            Dependencias.limparBancoLocal()
+        }
+    }
 }

@@ -83,6 +83,9 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
+    // DataStore Preferences (Bloco L): guarda no aparelho se a introdução já foi vista (RF52)
+    implementation(libs.androidx.datastore.preferences)
+
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
@@ -90,4 +93,8 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
+
+    // Ícones estendidos do Material (Explore para a aba Descobrir, Shuffle para o sorteio).
+    // Sem versão: ela vem do Compose BOM já declarado no projeto.
+    implementation("androidx.compose.material:material-icons-extended")
 }

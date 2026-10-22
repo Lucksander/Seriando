@@ -51,17 +51,33 @@ class AuthRepository {
         val resultadoLogin = firebaseAuth.signInWithCredential(credencialFirebase).await()
         val usuario = resultadoLogin.user
 
-        // Baixa os dados da nuvem para o banco local (em segundo plano)
-        if (usuario != null) Sincronizador.disparar(usuario.uid)
+        if (usuario != null) {
+            // Libera a sincronização (ela fica bloqueada depois de uma exclusão de conta)
+            // e baixa os dados da nuvem para o banco local, em segundo plano
+            Sincronizador.desbloquear()
+            Sincronizador.disparar(usuario.uid)
+        }
 
         return usuario
+    }
+
+    /**
+     * Quantas alterações seriam perdidas se o usuário saísse agora (RN27). Se há pendências,
+     * tenta enviá-las primeiro (com internet, espera até 10 segundos). Devolve o que ainda
+     * restar: zero significa que pode sair sem perder nada.
+     */
+    suspend fun alteracoesQueSeriamPerdidas(): Int {
+        val uid = usuarioAtual()?.uid ?: return 0
+        if (Sincronizador.contarPendentes() == 0) return 0
+        return Sincronizador.tentarEnviarPendencias(uid)
     }
 
     // RF27: ao sair, além de encerrar a sessão do Firebase, limpa o cache
     // local (pesquisa, aba selecionada e catálogo da Home) e o banco local do modo
     // offline (RN25), para não vazar dados de um usuário para o próximo que logar
     // no mesmo aparelho.
-    // Atenção: alterações feitas sem conexão e ainda não enviadas são descartadas junto.
+    // Atenção: alterações feitas sem conexão e ainda não enviadas são descartadas junto;
+    // por isso as telas chamam alteracoesQueSeriamPerdidas() antes e pedem confirmação (RN27).
     fun sair() {
         firebaseAuth.signOut()
         BuscaCache.textoPesquisa = ""

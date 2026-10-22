@@ -5,6 +5,7 @@ import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,13 +14,25 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -28,7 +41,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -44,37 +59,31 @@ import com.seriando.app.data.auth.AuthRepository
 import com.seriando.app.data.remote.RetrofitInstance
 import com.seriando.app.data.repository.AvaliacaoRepository
 import com.seriando.app.data.repository.MinhaListaRepository
+import com.seriando.app.data.repository.ObraCacheRepository
 import com.seriando.app.data.repository.PerfilRepository
 import com.seriando.app.data.repository.ProgressoRepository
+import com.seriando.app.data.sync.MonitorConexao
 import com.seriando.app.model.Avaliacao
 import com.seriando.app.model.EpisodioResumo
 import com.seriando.app.model.MovieDetalhe
 import com.seriando.app.model.SerieDetalhe
 import com.seriando.app.model.SerieSalva
 import com.seriando.app.model.StatusSerie
+import com.seriando.app.model.VotoResumo
 import com.seriando.app.model.labelDoStatus
 import com.seriando.app.model.nomeDoStatus
 import com.seriando.app.model.opcoesDeStatus
-import com.seriando.app.ui.login.DialogoLoginObrigatorio
-import kotlinx.coroutines.launch
-import com.seriando.app.model.VotoResumo
-import com.seriando.app.ui.home.DialogoRemoverDaLista
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import com.seriando.app.ui.theme.capaDeObra
-import com.seriando.app.data.repository.ObraCacheRepository
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.mutableIntStateOf
-import com.seriando.app.data.sync.MonitorConexao
 import com.seriando.app.ui.comum.MensagemSemConexao
-
+import com.seriando.app.ui.home.DialogoRemoverDaLista
+import com.seriando.app.ui.login.DialogoLoginObrigatorio
+import com.seriando.app.ui.theme.capaDeObra
+import kotlinx.coroutines.launch
 
 /**
  * Tela de detalhes de uma mídia (série ou filme).
  *
  * Exibe informações completas da obra selecionada, como imagem de capa, títulos,
- * sinopse, pontuação média, trailer e elenco principal.
+ * ano, situação, sinopse, pontuação média, trailer e elenco principal.
  *
  * Principais funcionalidades integradas nesta tela:
  * - Gerenciamento de lista pessoal: Adição e remoção da obra na "Minha Lista" e
@@ -84,6 +93,8 @@ import com.seriando.app.ui.comum.MensagemSemConexao
  *   comunidade e registro de resenhas/opiniões detalhadas (com spoiler, reações emocionais e privacidade).
  * - Interação social: Votação (curtir/descurtir) em opiniões de outros usuários e denúncia de conteúdos inadequados.
  * - Controle de progresso (Séries): Seleção de temporadas e episódios com marcação de progresso individual ou por temporada completa.
+ * - Compartilhamento (RF73): botão ao lado do nome que abre o menu de compartilhar do Android
+ *   com o nome da obra e o link da página dela na TMDB (funciona também para o visitante).
  *
  * A comunidade (média, opiniões, votos) só é lida com o usuário logado (RN08):
  * as regras do Firestore recusam a leitura de quem não está autenticado.
@@ -153,6 +164,25 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
     fun avisarErro(mensagem: String, e: Exception) {
         Log.e("Seriando", mensagem, e)
         Toast.makeText(context, mensagem, Toast.LENGTH_SHORT).show()
+    }
+
+    /**
+     * Abre o menu de compartilhar do Android com o nome da obra e o link da página dela na TMDB
+     * (themoviedb.org/tv/ID ou /movie/ID: o tipoMidia "tv" ou "movie" já é o trecho certo da URL).
+     * Não depende de login nem grava nada.
+     */
+    fun compartilharObra(nome: String) {
+        try {
+            val link = "https://www.themoviedb.org/$tipoMidia/$serieId"
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, nome)
+                putExtra(Intent.EXTRA_TEXT, "Dá uma olhada em \"$nome\":\n$link")
+            }
+            context.startActivity(Intent.createChooser(intent, "Compartilhar"))
+        } catch (e: Exception) {
+            avisarErro("Não foi possível compartilhar.", e)
+        }
     }
 
     /**
@@ -361,8 +391,11 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
     Column(
         modifier = Modifier
             .fillMaxSize()
+            // Antes do verticalScroll de propósito: a área rolável começa abaixo da barra
+            // de status, e o conteúdo não passa por baixo dos ícones ao rolar
+            .statusBarsPadding()
             .verticalScroll(rememberScrollState())
-            .padding(24.dp)
+            .padding(22.dp)
     ) {
         when {
             (detalheSerie == null && detalheFilme == null) && !erro -> {
@@ -384,6 +417,19 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                 val serieAtual = detalheSerie
                 val filmeAtual = detalheFilme
 
+                // Ano (ou intervalo de anos, nas séries) e selo de situação da obra.
+                // Qualquer um dos dois pode ser null (dado ausente na TMDB ou cópia antiga do Room)
+                val periodo = if (serieAtual != null) {
+                    periodoDaSerie(serieAtual.dataEstreia, serieAtual.dataUltimoEpisodio, serieAtual.situacao)
+                } else {
+                    anoDaData(filmeAtual?.dataLancamento)
+                }
+                val situacao = if (serieAtual != null) {
+                    situacaoDaSerie(serieAtual.situacao)
+                } else {
+                    situacaoDoFilme(filmeAtual?.situacao)
+                }
+
                 AsyncImage(
                     model = caminhoCapa?.let { "https://image.tmdb.org/t/p/w500$it" },
                     contentDescription = nome,
@@ -397,7 +443,33 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text(text = nome, style = MaterialTheme.typography.headlineMedium)
+                // Nome da obra com o botão de compartilhar (RF73) alinhado à direita
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = nome,
+                        style = MaterialTheme.typography.headlineMedium,
+                        modifier = Modifier.weight(1f) // o nome ocupa o espaço restante; o botão fica no canto
+                    )
+                    IconButton(onClick = { compartilharObra(nome) }) {
+                        Icon(Icons.Outlined.Share, contentDescription = "Compartilhar")
+                    }
+                }
+
+                // Linha com o ano e o selo de situação; some inteira se não houver nenhum dos dois
+                if (periodo != null || situacao != null) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (periodo != null) {
+                            Text(text = periodo, style = MaterialTheme.typography.bodyMedium)
+                        }
+                        if (situacao != null) {
+                            SeloDeSituacao(situacao)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
 
                 if (notaMedia > 0) {
                     Text(
@@ -441,6 +513,13 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
+                        // Ícone de play à esquerda do texto
+                        Icon(
+                            Icons.Outlined.PlayArrow,
+                            contentDescription = null, // decorativo: o texto do botão já descreve a ação
+                            modifier = Modifier.size(ButtonDefaults.IconSize)
+                        )
+                        Spacer(modifier = Modifier.width(ButtonDefaults.IconSpacing))
                         Text("Assistir trailer")
                     }
                 }
@@ -463,6 +542,13 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                         onClick = { mostrarDialogoRemover = true }, // pede confirmação antes
                         modifier = Modifier.fillMaxWidth()
                     ) {
+                        // Lixeira: combina com "Remover" e a confirmação continua sendo pedida
+                        Icon(
+                            Icons.Outlined.Delete,
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize)
+                        )
+                        Spacer(modifier = Modifier.width(ButtonDefaults.IconSpacing))
                         Text("Remover da minha lista")
                     }
 
@@ -506,6 +592,13 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
+                        // Sinal de mais à esquerda do texto
+                        Icon(
+                            Icons.Outlined.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize)
+                        )
+                        Spacer(modifier = Modifier.width(ButtonDefaults.IconSpacing))
                         Text("Adicionar à minha lista")
                     }
                 }
@@ -564,6 +657,14 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                         text = "Entre na sua conta para ver as avaliações e opiniões da comunidade.",
                         style = MaterialTheme.typography.bodyMedium
                     )
+                    // Botão que abre a folha de login (RF54). Não há ação pendente a retomar,
+                    // por isso adicionarAposLogin fica falso
+                    TextButton(onClick = {
+                        adicionarAposLogin = false
+                        mostrarDialogoLogin = true
+                    }) {
+                        Text("Entrar")
+                    }
                 } else if (erroComunidade) {
                     MensagemSemConexao(
                         texto = if (!online) {
@@ -737,20 +838,31 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                     Text(text = "Temporadas", style = MaterialTheme.typography.headlineSmall)
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    Row(modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                        serieAtual.temporadas.forEach { temporada ->
-                            TextButton(onClick = {
-                                temporadaSelecionada = temporada.numero
-                                scope.launch {
-                                    try {
-                                        episodiosDaTemporada = obraCacheRepository.buscarEpisodios(serieId, temporada.numero)
-                                    } catch (e: Exception) {
-                                        avisarErro("Não foi possível carregar a temporada.", e)
+                    // Temporadas: fileira horizontal de cartões selecionáveis, cada um com
+                    // quantidade de episódios, ano e progresso assistido
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        items(serieAtual.temporadas, key = { it.numero }) { temporada ->
+                            CartaoTemporada(
+                                nome = temporada.nome,
+                                totalEpisodios = temporada.totalEpisodios,
+                                ano = anoDaData(temporada.dataExibicao),
+                                // As chaves de "assistidos" são "temporada_episodio": conta as desta temporada
+                                assistidos = assistidos.count { it.startsWith("${temporada.numero}_") },
+                                selecionada = temporadaSelecionada == temporada.numero,
+                                aoClicar = {
+                                    temporadaSelecionada = temporada.numero
+                                    // Esvazia a lista antes de carregar, para não mostrar por um instante
+                                    // os episódios da temporada anterior sob o número da nova
+                                    episodiosDaTemporada = emptyList()
+                                    scope.launch {
+                                        try {
+                                            episodiosDaTemporada = obraCacheRepository.buscarEpisodios(serieId, temporada.numero)
+                                        } catch (e: Exception) {
+                                            avisarErro("Não foi possível carregar a temporada.", e)
+                                        }
                                     }
                                 }
-                            }) {
-                                Text(temporada.nome)
-                            }
+                            )
                         }
                     }
 

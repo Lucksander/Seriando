@@ -2,8 +2,10 @@ package com.seriando.app.data.remote
 
 import com.seriando.app.model.BuscaMultiResponse
 import com.seriando.app.model.CreditosPessoaResponse
+import com.seriando.app.model.GenerosResponse
 import com.seriando.app.model.MovieDetalhe
 import com.seriando.app.model.PessoaDetalhe
+import com.seriando.app.model.ProvedoresResponse
 import com.seriando.app.model.SerieDetalhe
 import com.seriando.app.model.TemporadaDetalhe
 import com.seriando.app.model.WatchProvidersResponse
@@ -115,4 +117,77 @@ interface TmdbApiService {
         @Query("api_key") apiKey: String,
         @Query("language") idioma: String = "pt-BR"
     ): CreditosPessoaResponse
+
+    // ------------------------------------------------------------------
+    // Aba Descobrir (RF63, RF64): menus de Tipo, Catálogo e Gênero.
+    // Parâmetros opcionais (nulos) NÃO são enviados pelo Retrofit, então a
+    // mesma função serve para qualquer combinação de filtros.
+    // ------------------------------------------------------------------
+
+    // Lista de gêneros de FILMES (terceiro menu, quando o tipo é Filmes).
+    @GET("genre/movie/list")
+    suspend fun listarGenerosFilmes(
+        @Query("api_key") apiKey: String,
+        @Query("language") idioma: String = "pt-BR"
+    ): GenerosResponse
+
+    // Lista de gêneros de SÉRIES (terceiro menu, quando o tipo é Séries).
+    @GET("genre/tv/list")
+    suspend fun listarGenerosSeries(
+        @Query("api_key") apiKey: String,
+        @Query("language") idioma: String = "pt-BR"
+    ): GenerosResponse
+
+    // Serviços de streaming de FILMES disponíveis na região (segundo menu).
+    @GET("watch/providers/movie")
+    suspend fun listarProvedoresFilmes(
+        @Query("api_key") apiKey: String,
+        @Query("watch_region") regiao: String = "BR",
+        @Query("language") idioma: String = "pt-BR"
+    ): ProvedoresResponse
+
+    // Serviços de streaming de SÉRIES disponíveis na região (segundo menu).
+    @GET("watch/providers/tv")
+    suspend fun listarProvedoresSeries(
+        @Query("api_key") apiKey: String,
+        @Query("watch_region") regiao: String = "BR",
+        @Query("language") idioma: String = "pt-BR"
+    ): ProvedoresResponse
+
+    // Descobrir filmes com filtros combinados.
+    //  - generos: id do gênero (ou null para todos).
+    //  - provedores + regiao + tiposMonetizacao: filtro de streaming (RF64);
+    //    "flatrate" = só quem está incluído na assinatura.
+    //  - dataMaxima: só obras lançadas até essa data (yyyy-MM-dd), usada em "Novos".
+    //  - minVotos: descarta obras sem votos, usada em "Novos".
+    // Não devolve media_type; o repositório define o tipo depois.
+    @GET("discover/movie")
+    suspend fun descobrirFilmesComFiltros(
+        @Query("api_key") apiKey: String,
+        @Query("with_genres") generos: String? = null,
+        @Query("with_watch_providers") provedores: String? = null,
+        @Query("watch_region") regiao: String? = null,
+        @Query("with_watch_monetization_types") tiposMonetizacao: String? = null,
+        @Query("sort_by") ordenacao: String = "popularity.desc",
+        @Query("primary_release_date.lte") dataMaxima: String? = null,
+        @Query("vote_count.gte") minVotos: Int? = null,
+        @Query("language") idioma: String = "pt-BR",
+        @Query("page") pagina: Int = 1
+    ): BuscaMultiResponse
+
+    // Descobrir séries com filtros combinados (mesma ideia dos filmes; o campo
+    // de data das séries na TMDB é first_air_date, não primary_release_date).
+    @GET("discover/tv")
+    suspend fun descobrirSeriesComFiltros(
+        @Query("api_key") apiKey: String,
+        @Query("with_genres") generos: String? = null,
+        @Query("with_watch_providers") provedores: String? = null,
+        @Query("watch_region") regiao: String? = null,
+        @Query("with_watch_monetization_types") tiposMonetizacao: String? = null,
+        @Query("sort_by") ordenacao: String = "popularity.desc",
+        @Query("first_air_date.lte") dataMaxima: String? = null,
+        @Query("vote_count.gte") minVotos: Int? = null,
+        @Query("language") idioma: String = "pt-BR",
+        @Query("page") pagina: Int = 1
+    ): BuscaMultiResponse
 }

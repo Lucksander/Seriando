@@ -167,6 +167,10 @@ interface PerfilDao {
     /** Limpa a marca de pendente do perfil, se ele não mudou desde o envio. */
     @Query("UPDATE perfil SET pendenteSincronizacao = 0 WHERE uid = :uid AND atualizadoEm = :atualizadoEm")
     suspend fun marcarSincronizado(uid: String, atualizadoEm: Long)
+
+    /** Quantos perfis de OUTROS usuários há no banco local (deveria ser zero, RN25). */
+    @Query("SELECT COUNT(*) FROM perfil WHERE uid <> :uid")
+    suspend fun contarDeOutrosUsuarios(uid: String): Int
 }
 
 @Dao

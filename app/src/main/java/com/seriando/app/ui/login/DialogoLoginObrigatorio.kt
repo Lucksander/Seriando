@@ -1,82 +1,162 @@
 package com.seriando.app.ui.login
 
-import android.util.Log
-import android.widget.Toast
-import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
-import androidx.credentials.exceptions.GetCredentialCancellationException
-import com.seriando.app.R
-import com.seriando.app.data.auth.AuthRepository
-import kotlinx.coroutines.launch
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 
 /**
- * Diálogo exibido quando o usuário tenta fazer algo que exige login
- * (salvar uma série, avaliar, votar, denunciar) mas ainda não está autenticado.
+ * Folha inferior exibida quando o visitante tenta fazer algo que exige conta (RF54):
+ * adicionar à lista, marcar episódio, avaliar, opinar, votar ou denunciar.
+ * Mostra os benefícios de ter uma conta e oferece o login com Google.
  *
- * @param aoFechar            chamado ao cancelar.
- * @param aoLogarComSucesso   chamado após o login dar certo, para a tela que
- *                            abriu o diálogo continuar a ação que o usuário queria fazer.
+ * Mantém o nome e os parâmetros do antigo diálogo, então as telas que a chamam não mudam.
+ *
+ * @param aoFechar          chamado ao tocar em "Continuar navegando", deslizar a folha para baixo
+ *                          ou tocar fora dela.
+ * @param aoLogarComSucesso chamado após o login dar certo, para a tela que abriu a folha
+ *                          continuar a ação que o usuário queria fazer.
  */
+@OptIn(ExperimentalMaterial3Api::class) // ModalBottomSheet ainda é marcado como experimental
 @Composable
 fun DialogoLoginObrigatorio(
     aoFechar: () -> Unit,
     aoLogarComSucesso: () -> Unit
 ) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    // remember: o repositório é criado uma vez, e não a cada recomposição do diálogo
-    val authRepository = remember { AuthRepository() }
-    val webClientId = stringResource(R.string.default_web_client_id)
+    // Estado e ação do login, o mesmo usado pela tela de entrada (RF53)
+    val login = rememberLoginComGoogle(aoLogarComSucesso = aoLogarComSucesso)
 
-    // true enquanto o login está em andamento: evita dois toques seguidos no botão
-    var entrando by remember { mutableStateOf(false) }
+    // skipPartiallyExpanded: a folha abre inteira, sem parar na metade da altura
+    val estadoFolha = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    AlertDialog(
+    ModalBottomSheet(
         onDismissRequest = aoFechar,
-        title = { Text("Faça login para continuar") },
-        text = { Text("Entre com sua conta Google para salvar suas séries e filmes, avaliar e participar da comunidade.") },
-        confirmButton = {
-            TextButton(
-                enabled = !entrando,
-                onClick = {
-                    entrando = true
-                    scope.launch {
-                        try {
-                            val usuario = authRepository.entrarComGoogle(context, webClientId)
-                            if (usuario != null) {
-                                aoLogarComSucesso()
-                            } else {
-                                // Login terminou sem usuário: raro, mas não pode passar em silêncio
-                                Toast.makeText(context, "Não foi possível entrar.", Toast.LENGTH_SHORT).show()
-                            }
-                        } catch (e: GetCredentialCancellationException) {
-                            // O usuário fechou o seletor de contas de propósito: não é erro, sem Toast
-                            Log.d("DialogoLogin", "Login cancelado pelo usuário")
-                        } catch (e: Exception) {
-                            Log.e("DialogoLogin", "Falha no login", e)
-                            Toast.makeText(context, "Não foi possível entrar.", Toast.LENGTH_SHORT).show()
-                        } finally {
-                            entrando = false
-                        }
-                    }
-                }
-            ) {
-                Text(if (entrando) "Entrando..." else "Entrar com Google")
+        sheetState = estadoFolha
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                // Mantém o conteúdo acima da barra de navegação do sistema
+                .navigationBarsPadding()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Cadeado na cor da marca
+            Icon(
+                imageVector = Icons.Outlined.Lock,
+                contentDescription = null, // decorativo: o título já descreve a folha
+                modifier = Modifier.size(40.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+
+            Text(
+                text = "Crie sua conta para continuar",
+                modifier = Modifier.padding(top = 12.dp),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Lista de benefícios (textos da especificação do Bloco L)
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Beneficio(
+                    icone = Icons.Outlined.BookmarkBorder,
+                    titulo = "Sua lista sincronizada",
+                    descricao = "Salve seu progresso e acesse de qualquer lugar."
+                )
+                Beneficio(
+                    icone = Icons.Outlined.StarBorder,
+                    titulo = "Dê sua opinião",
+                    descricao = "Avalie obras, marque emoções e interaja com a comunidade."
+                )
+                Beneficio(
+                    icone = Icons.Outlined.CloudOff,
+                    titulo = "Modo offline",
+                    descricao = "Continue registrando seus episódios mesmo sem internet."
+                )
             }
-        },
-        dismissButton = {
-            TextButton(onClick = aoFechar) {
-                Text("Cancelar")
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Ação principal: login com Google (desabilitado enquanto o login está em andamento)
+            Button(
+                onClick = login.entrar,
+                enabled = !login.entrando,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+            ) {
+                Text(if (login.entrando) "Entrando..." else "Entrar com o Google")
+            }
+
+            // Ação secundária: fecha a folha e deixa o visitante seguir navegando
+            TextButton(
+                onClick = aoFechar,
+                enabled = !login.entrando,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp)
+            ) {
+                Text("Continuar navegando")
             }
         }
-    )
+    }
+}
+
+// Uma linha da lista de benefícios: ícone à esquerda, título em destaque e descrição embaixo.
+@Composable
+private fun Beneficio(icone: ImageVector, titulo: String, descricao: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top
+    ) {
+        Icon(
+            imageVector = icone,
+            contentDescription = null, // decorativo: o texto ao lado já diz tudo
+            modifier = Modifier.size(24.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Column {
+            Text(
+                text = titulo,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = descricao,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
 }
