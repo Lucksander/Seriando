@@ -36,6 +36,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,6 +59,7 @@ import com.seriando.app.data.cache.BuscaCache
 import com.seriando.app.data.local.HistoricoBusca
 import com.seriando.app.data.local.ObraVista
 import com.seriando.app.data.remote.RetrofitInstance
+import com.seriando.app.data.repository.FiltroDeIdadeRepository
 import com.seriando.app.data.sync.MonitorConexao
 import com.seriando.app.ui.comum.MensagemSemConexao
 import com.seriando.app.ui.home.ResultadoCard
@@ -71,6 +73,8 @@ import kotlinx.coroutines.launch
  * recentes (texto), cada um com seu "Limpar". Estados: pesquisando (indicador), falha
  * (mensagem + Toast), nenhum resultado e lista de resultados. O texto e os resultados
  * ficam no BuscaCache para sobreviver à ida e volta entre telas.
+ * Os resultados passam pelo filtro por idade (RF50): obras acima da idade do usuário
+ * não aparecem, nem as que vieram do cache de uma pesquisa anterior.
  *
  * @param aoClicarEmItem abre os Detalhes (id e tipo "movie"/"tv").
  */
@@ -92,6 +96,9 @@ fun SearchScreen(aoClicarEmItem: (Int, String) -> Unit) {
     var resultados by remember { mutableStateOf(BuscaCache.resultados) }
     val scope = rememberCoroutineScope()
 
+    // Filtro por idade (RF50): a busca esconde as obras acima da idade do usuário
+    val filtroDeIdade = remember { FiltroDeIdadeRepository() }
+
     var pesquisando by remember { mutableStateOf(false) }   // chamada à TMDB em andamento
     var falhou by remember { mutableStateOf(false) }        // a última pesquisa deu erro
     // Distingue "ainda não pesquisei" de "pesquisei e não achei nada".
@@ -103,6 +110,25 @@ fun SearchScreen(aoClicarEmItem: (Int, String) -> Unit) {
     val historico = remember { HistoricoBusca(context) }
     var pesquisasRecentes by remember { mutableStateOf(historico.pesquisas()) }
     var obrasRecentes by remember { mutableStateOf(historico.obrasVistas()) }
+
+    // Ao abrir a tela, filtra de novo os resultados que vieram do cache: eles podem ser de uma
+    // pesquisa feita antes de o usuário entrar, sair ou mudar a data de nascimento, e não podem
+    // mostrar obras acima da idade de agora (RF50)
+    LaunchedEffect(Unit) {
+        if (resultados.isNotEmpty()) {
+            try {
+                val permitidos = filtroDeIdade.filtrar(
+                    resultados,
+                    tipoDe = { it.tipoMidia },
+                    idDe = { it.id }
+                )
+                resultados = permitidos
+                BuscaCache.resultados = permitidos
+            } catch (e: Exception) {
+                Log.e("Seriando", "Erro ao filtrar os resultados guardados", e)
+            }
+        }
+    }
 
     /** Executa a pesquisa com o texto atual, tratando erro, carregamento e texto vazio. */
     fun pesquisar() {
@@ -122,7 +148,12 @@ fun SearchScreen(aoClicarEmItem: (Int, String) -> Unit) {
                     BuildConfig.TMDB_API_KEY,
                     termo
                 )
-                resultados = resposta.results.filter { it.ehFilme || it.ehSerie }
+                // Só filmes e séries, e só os que a idade do usuário permite (RF50)
+                resultados = filtroDeIdade.filtrar(
+                    resposta.results.filter { it.ehFilme || it.ehSerie },
+                    tipoDe = { it.tipoMidia },
+                    idDe = { it.id }
+                )
                 BuscaCache.resultados = resultados // salva o resultado também
                 jaPesquisou = true
                 // Só entra no histórico a pesquisa que deu certo e achou algo:

@@ -46,7 +46,7 @@ data class EpisodioAssistidoEntity(
 
 /**
  * Perfil do próprio usuário (RF12 a RF15). Uma única linha, que junta perfisPublicos/{uid}
- * (apelido e avatar) e usuarios/{uid} (aniversário). O e-mail não é guardado aqui: o
+ * (apelido e avatar) e usuarios/{uid} (data de nascimento). O e-mail não é guardado aqui: o
  * Firebase Auth já o mantém no aparelho (coleta mínima, RNF08).
  */
 @Entity(tableName = "perfil")
@@ -54,9 +54,14 @@ data class PerfilEntity(
     @PrimaryKey val uid: String,
     val apelido: String,
     val avatarId: String,
-    val aniversario: String?,       // hoje texto livre; vira data completa no Bloco K (RF59)
+    // Data de nascimento (RF59) no formato "AAAA-MM-DD". Valores antigos em texto livre
+    // (ex: "15/03") continuam aqui até o usuário informar a data completa
+    val aniversario: String?,
     val atualizadoEm: Long,
-    val pendenteSincronizacao: Boolean
+    val pendenteSincronizacao: Boolean,
+    // true depois que o usuário usou a única correção da data (RN17). Espelha o campo
+    // aniversarioAlterado de usuarios/{uid}. O valor padrão mantém o código antigo compilando
+    val aniversarioCorrigido: Boolean = false
 )
 
 /**

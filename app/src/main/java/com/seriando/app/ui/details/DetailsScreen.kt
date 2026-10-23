@@ -64,6 +64,7 @@ import com.seriando.app.data.repository.PerfilRepository
 import com.seriando.app.data.repository.ProgressoRepository
 import com.seriando.app.data.sync.MonitorConexao
 import com.seriando.app.model.Avaliacao
+import com.seriando.app.model.ClassificacaoIndicativa
 import com.seriando.app.model.EpisodioResumo
 import com.seriando.app.model.MovieDetalhe
 import com.seriando.app.model.SerieDetalhe
@@ -83,7 +84,7 @@ import kotlinx.coroutines.launch
  * Tela de detalhes de uma mídia (série ou filme).
  *
  * Exibe informações completas da obra selecionada, como imagem de capa, títulos,
- * ano, situação, sinopse, pontuação média, trailer e elenco principal.
+ * ano, situação, classificação indicativa, sinopse, pontuação média, trailer e elenco principal.
  *
  * Principais funcionalidades integradas nesta tela:
  * - Gerenciamento de lista pessoal: Adição e remoção da obra na "Minha Lista" e
@@ -95,6 +96,7 @@ import kotlinx.coroutines.launch
  * - Controle de progresso (Séries): Seleção de temporadas e episódios com marcação de progresso individual ou por temporada completa.
  * - Compartilhamento (RF73): botão ao lado do nome que abre o menu de compartilhar do Android
  *   com o nome da obra e o link da página dela na TMDB (funciona também para o visitante).
+ * - Classificação indicativa do Brasil (RF49): selo ao lado do ano e da situação da obra.
  *
  * A comunidade (média, opiniões, votos) só é lida com o usuário logado (RN08):
  * as regras do Firestore recusam a leitura de quem não está autenticado.
@@ -417,8 +419,9 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                 val serieAtual = detalheSerie
                 val filmeAtual = detalheFilme
 
-                // Ano (ou intervalo de anos, nas séries) e selo de situação da obra.
-                // Qualquer um dos dois pode ser null (dado ausente na TMDB ou cópia antiga do Room)
+                // Ano (ou intervalo de anos, nas séries), selo de situação e classificação indicativa.
+                // Os três podem ser null (dado ausente na TMDB ou cópia antiga do Room).
+                // Cada um é declarado uma única vez, aqui.
                 val periodo = if (serieAtual != null) {
                     periodoDaSerie(serieAtual.dataEstreia, serieAtual.dataUltimoEpisodio, serieAtual.situacao)
                 } else {
@@ -428,6 +431,12 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                     situacaoDaSerie(serieAtual.situacao)
                 } else {
                     situacaoDoFilme(filmeAtual?.situacao)
+                }
+                // Classificação indicativa do Brasil (RF49); null se a TMDB não informar
+                val classificacao = if (serieAtual != null) {
+                    ClassificacaoIndicativa.daSerie(serieAtual.classificacoes)
+                } else {
+                    ClassificacaoIndicativa.doFilme(filmeAtual?.datasDeLancamento)
                 }
 
                 AsyncImage(
@@ -455,8 +464,9 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                     }
                 }
 
-                // Linha com o ano e o selo de situação; some inteira se não houver nenhum dos dois
-                if (periodo != null || situacao != null) {
+                // Linha com o ano, o selo de situação e a classificação indicativa;
+                // some inteira se não houver nenhum dos três
+                if (periodo != null || situacao != null || classificacao != null) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -466,6 +476,9 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
                         }
                         if (situacao != null) {
                             SeloDeSituacao(situacao)
+                        }
+                        if (classificacao != null) {
+                            SeloDeClassificacao(classificacao)
                         }
                     }
                     Spacer(modifier = Modifier.height(4.dp))

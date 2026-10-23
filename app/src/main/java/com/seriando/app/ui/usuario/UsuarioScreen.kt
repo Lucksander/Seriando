@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -19,13 +18,13 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -43,17 +42,17 @@ import com.seriando.app.R
 import com.seriando.app.data.auth.AuthRepository
 import com.seriando.app.data.repository.ContaRepository
 import com.seriando.app.data.repository.PerfilRepository
-import com.seriando.app.model.PerfilPrivado
+import com.seriando.app.data.repository.ResultadoDataNascimento
+import com.seriando.app.model.DataNascimento
 import com.seriando.app.model.PerfilPublico
+import com.seriando.app.ui.comum.BotaoSair
 import com.seriando.app.ui.home.DialogoEditarApelido
+import com.seriando.app.ui.login.AvisoDeLoginNecessario
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
-import com.seriando.app.ui.comum.BotaoSair
-import androidx.compose.runtime.mutableIntStateOf
-import com.seriando.app.ui.login.AvisoDeLoginNecessario
 
 /**
- * Aba Conta (RF12 a RF15, RF29, RF33): apelido, foto/avatar, e-mail, aniversário
+ * Aba Conta (RF12 a RF15, RF29, RF33, RF59): apelido, foto/avatar, e-mail, data de nascimento
  * e exclusão da conta.
  * O perfil vem do banco local (Room), que a tela observa: funciona sem internet e se atualiza
  * sozinho quando a sincronização traz mudanças da nuvem (RN21).
@@ -83,22 +82,14 @@ fun UsuarioScreen(
     }.collectAsState(initial = null)
 
     var mostrarDialogoApelido by remember { mutableStateOf(false) }
-    var aniversario by remember { mutableStateOf("") }
-    var aniversarioIniciado by remember { mutableStateOf(false) }
+
+    // Data de nascimento (RF59): o seletor de data e a confirmação antes de gravar
+    var mostrarSeletorData by remember { mutableStateOf(false) }
+    var dataEscolhida by remember { mutableStateOf<String?>(null) } // "AAAA-MM-DD" aguardando confirmação
 
     // Exclusão de conta (RF29)
     var mostrarDialogoExcluir by remember { mutableStateOf(false) } // diálogo de confirmação aberto
     var excluindo by remember { mutableStateOf(false) }             // exclusão em andamento
-
-    // Preenche o campo de aniversário uma única vez, quando o perfil chega do banco local.
-    // Depois disso o campo é do usuário: uma sincronização não apaga o que ele está digitando.
-    LaunchedEffect(perfil) {
-        val atual = perfil
-        if (atual != null && !aniversarioIniciado) {
-            aniversario = atual.privado.aniversario.orEmpty()
-            aniversarioIniciado = true
-        }
-    }
 
     /**
      * Grava apelido e avatar no banco local. A tela atualiza sozinha, porque observa o banco.
@@ -109,6 +100,27 @@ fun UsuarioScreen(
                 perfilRepository.salvarPerfilPublico(uidAtual, novo)
             } catch (e: Exception) {
                 Log.e("Seriando", "Erro ao salvar perfil público", e)
+                Toast.makeText(context, "Não foi possível salvar.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    /**
+     * Grava a data de nascimento no banco local. A trava de uma única correção (RN17) é aplicada
+     * pelo PerfilRepository; aqui só se mostra o resultado ao usuário.
+     */
+    fun salvarDataNascimento(uidAtual: String, data: String) {
+        scope.launch {
+            try {
+                val mensagem = when (perfilRepository.salvarDataNascimento(uidAtual, data)) {
+                    ResultadoDataNascimento.SALVA -> "Data de nascimento salva."
+                    ResultadoDataNascimento.CORRIGIDA -> "Data corrigida. Ela agora está travada."
+                    ResultadoDataNascimento.TRAVADA -> "A data já foi corrigida e não pode mais ser alterada."
+                    ResultadoDataNascimento.INVALIDA -> "Data inválida."
+                }
+                Toast.makeText(context, mensagem, Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Log.e("Seriando", "Erro ao salvar data de nascimento", e)
                 Toast.makeText(context, "Não foi possível salvar.", Toast.LENGTH_SHORT).show()
             }
         }
@@ -144,6 +156,8 @@ fun UsuarioScreen(
 
     // Cópia local do perfil, para o Kotlin permitir testar null e usar o valor em seguida
     val perfilAtual = perfil
+    // Data já salva (pode ser null, ou o texto antigo em formato livre)
+    val dataSalva = perfilAtual?.privado?.aniversario
 
     Column(
         modifier = Modifier
@@ -217,29 +231,49 @@ fun UsuarioScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            OutlinedTextField(
-                value = aniversario,
-                // Limite de 20 caracteres: é o máximo aceito pelas regras do Firestore
-                onValueChange = { if (it.length <= 20) aniversario = it },
-                label = { Text("Aniversário (ex: 15/03)") },
-                modifier = Modifier.fillMaxWidth()
+            // ---------- Data de nascimento (RF59) ----------
+            val temData = DataNascimento.valida(dataSalva)
+            val corrigida = perfilAtual.aniversarioCorrigido
+
+            Text(text = "Data de nascimento", style = MaterialTheme.typography.labelMedium)
+            Text(
+                text = if (temData) DataNascimento.paraExibicao(dataSalva).orEmpty() else "Não informada",
+                style = MaterialTheme.typography.bodyMedium
             )
+            Text(
+                text = "Só você vê esta data. Ela é usada para filtrar a classificação indicativa das obras.",
+                style = MaterialTheme.typography.bodySmall
+            )
+            // Aniversário antigo em texto livre (ex: "15/03"): não serve para calcular a idade
+            if (!temData && !dataSalva.isNullOrBlank()) {
+                Text(
+                    text = "Seu aniversário antigo (\"$dataSalva\") não vale mais: informe a data completa.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
-            Button(onClick = {
-                scope.launch {
-                    try {
-                        perfilRepository.salvarPerfilPrivado(
-                            uid,
-                            PerfilPrivado(email = usuario.email.orEmpty(), aniversario = aniversario.ifBlank { null })
-                        )
-                        Toast.makeText(context, "Aniversário salvo.", Toast.LENGTH_SHORT).show()
-                    } catch (e: Exception) {
-                        Log.e("Seriando", "Erro ao salvar aniversário", e)
-                        Toast.makeText(context, "Não foi possível salvar.", Toast.LENGTH_SHORT).show()
-                    }
+
+            when {
+                // Ainda não há data válida: o primeiro preenchimento é livre
+                !temData -> Button(onClick = { mostrarSeletorData = true }) {
+                    Text("Informar data de nascimento")
                 }
-            }) {
-                Text("Salvar aniversário")
+                // Há data e a correção ainda não foi usada: uma única correção (RN17)
+                !corrigida -> {
+                    OutlinedButton(onClick = { mostrarSeletorData = true }) {
+                        Text("Corrigir data")
+                    }
+                    Text(
+                        text = "Você pode corrigir a data uma única vez.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                // A correção já foi usada: a data está travada
+                else -> Text(
+                    text = "A data está travada: a única correção já foi usada.",
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -265,6 +299,48 @@ fun UsuarioScreen(
             aoConfirmar = { novoApelido ->
                 salvarPublico(uid, perfilAtual.publico.copy(apelido = novoApelido))
                 mostrarDialogoApelido = false
+            }
+        )
+    }
+
+    // Seletor de data: ao confirmar, guarda a escolha e passa para a confirmação abaixo
+    if (mostrarSeletorData && uid != null) {
+        SeletorDataNascimento(
+            dataInicial = dataSalva,
+            aoConfirmar = { data ->
+                mostrarSeletorData = false
+                dataEscolhida = data
+            },
+            aoFechar = { mostrarSeletorData = false }
+        )
+    }
+
+    // Confirmação antes de gravar: a data trava, então o usuário precisa saber disso (RN17)
+    val escolhida = dataEscolhida
+    if (escolhida != null && uid != null) {
+        val ehCorrecao = DataNascimento.valida(dataSalva)
+        AlertDialog(
+            onDismissRequest = { dataEscolhida = null },
+            title = { Text(if (ehCorrecao) "Corrigir a data?" else "Salvar a data?") },
+            text = {
+                Text(
+                    "Data: ${DataNascimento.paraExibicao(escolhida)}\n\n" +
+                            (if (ehCorrecao) "Esta é a sua única correção: depois dela, a data fica travada."
+                            else "Depois de salva, a data só poderá ser corrigida uma vez.")
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    dataEscolhida = null
+                    salvarDataNascimento(uid, escolhida)
+                }) {
+                    Text("Salvar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { dataEscolhida = null }) {
+                    Text("Cancelar")
+                }
             }
         )
     }

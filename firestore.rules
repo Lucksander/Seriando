@@ -18,19 +18,58 @@ service cloud.firestore {
     }
 
     // ---------- usuarios/{uid}: dados PRIVADOS (RNF03) ----------
-    // Só o dono lê e escreve. Guarda apenas e-mail e aniversário.
+    // Só o dono lê e escreve. Guarda e-mail, data de nascimento (RF59) e a marca de que a
+    // única correção dela já foi usada (RN17).
     match /usuarios/{uid} {
+
+      // Data de nascimento: texto "AAAA-MM-DD", de 1900-01-01 em diante.
+      // (Que não seja futura é conferido só no app: as regras não sabem formatar a data de hoje.)
+      function dataNascimentoValida(v) {
+        return v is string
+        && v.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && v >= '1900-01-01';
+      }
+
+      // Campos aceitos, iguais na criação e na atualização.
+      function camposValidos() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['email', 'aniversario', 'aniversarioAlterado'])
+        && d.get('email', '') is string
+        && d.get('email', '').size() <= 254
+        && d.get('aniversarioAlterado', false) is bool;
+      }
+
+      // Criação: a data é opcional e a marca de correção começa falsa.
+      function aniversarioNaCriacaoValido() {
+        let novo = request.resource.data.get('aniversario', null);
+        return (novo == null || dataNascimentoValida(novo))
+        && request.resource.data.get('aniversarioAlterado', false) == false;
+      }
+
+      // Atualização (RN17): só estas três situações são aceitas.
+      function aniversarioNaAtualizacaoValido() {
+        let antigo = resource.data.get('aniversario', null);
+        let antigoCorrigido = resource.data.get('aniversarioAlterado', false);
+        let novo = request.resource.data.get('aniversario', null);
+        let novoCorrigido = request.resource.data.get('aniversarioAlterado', false);
+        return
+        // 1) A data não muda (ex: troca de e-mail): a marca também não pode mudar.
+        (novo == antigo && novoCorrigido == antigoCorrigido)
+        // 2) Primeira data, ou ainda só o texto antigo (ex: "15/03"): aceita qualquer data
+        //    válida, e a marca continua falsa.
+        || ((antigo == null || !dataNascimentoValida(antigo))
+        && (novo == null || dataNascimentoValida(novo))
+        && novoCorrigido == false)
+        // 3) A única correção: a data válida muda uma vez e a marca vira true.
+        || (dataNascimentoValida(antigo) && !antigoCorrigido
+        && dataNascimentoValida(novo) && novo != antigo
+        && novoCorrigido == true);
+      }
+
       allow read: if dono(uid);
-      allow delete: if dono(uid); // prepara a futura exclusão de conta (RF29)
-      allow create, update: if dono(uid)
-        // Só estes dois campos podem existir no documento
-        && request.resource.data.keys().hasOnly(['email', 'aniversario'])
-        && request.resource.data.get('email', '') is string
-        && request.resource.data.get('email', '').size() <= 254
-        // Aniversário é opcional: pode ser nulo ou texto curto
-        && (request.resource.data.get('aniversario', null) == null
-            || (request.resource.data.aniversario is string
-                && request.resource.data.aniversario.size() <= 20));
+      allow delete: if dono(uid); // exclusão de conta (RF29)
+      allow create: if dono(uid) && camposValidos() && aniversarioNaCriacaoValido();
+      allow update: if dono(uid) && camposValidos() && aniversarioNaAtualizacaoValido();
 
       // Lista pessoal e status (RF07, RF08): só o dono, com validação dos campos (RNF01).
       match /series/{serieId} {

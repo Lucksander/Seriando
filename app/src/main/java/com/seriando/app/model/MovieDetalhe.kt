@@ -17,5 +17,7 @@ data class MovieDetalhe(
     val credits: Creditos? = null,
     val videos: VideosResponse? = null,
     // Situação do filme na TMDB: "Released", "Post Production", "In Production", "Planned"...
-    @SerializedName("status") val situacao: String? = null
+    @SerializedName("status") val situacao: String? = null,
+    // Datas e certificações por país (append_to_response=release_dates); usada para a do Brasil (RF49)
+    @SerializedName("release_dates") val datasDeLancamento: ReleaseDatesResponse? = null
 )

@@ -36,6 +36,7 @@ import com.seriando.app.data.remote.RetrofitInstance
 import com.seriando.app.model.CreditoPessoa
 import com.seriando.app.model.PessoaDetalhe
 import com.seriando.app.ui.theme.capaDeObra
+import com.seriando.app.data.repository.FiltroDeIdadeRepository
 
 // Converte "AAAA-MM-DD" (formato da TMDB) em "DD/MM/AAAA".
 // Retorna null se a data estiver ausente ou fora do formato esperado.
@@ -62,6 +63,9 @@ fun PessoaScreen(pessoaId: Int, aoClicarEmItem: (Int, String) -> Unit) {
 
     // Incrementar este número refaz todas as buscas (botão "Tentar novamente")
     var tentativa by remember { mutableIntStateOf(0) }
+
+    // Filtro por idade (RF50): a filmografia esconde as obras acima da idade do usuário
+    val filtroDeIdade = remember { FiltroDeIdadeRepository() }
 
     LaunchedEffect(pessoaId, tentativa) {
         // Zera o estado para mostrar o indicador de carregamento de novo
@@ -96,10 +100,17 @@ fun PessoaScreen(pessoaId: Int, aoClicarEmItem: (Int, String) -> Unit) {
         // populares para os menos, para os títulos conhecidos virem primeiro.
         // Falha aqui só afeta esta seção.
         try {
-            creditos = RetrofitInstance.api.buscarCreditosPessoa(pessoaId, BuildConfig.TMDB_API_KEY).cast
+            val filmografia = RetrofitInstance.api.buscarCreditosPessoa(pessoaId, BuildConfig.TMDB_API_KEY).cast
                 .filter { it.caminhoCapa != null && (it.tipoMidia == "movie" || it.tipoMidia == "tv") }
                 .distinctBy { "${it.tipoMidia}_${it.id}" }
                 .sortedByDescending { it.popularity }
+            // Filtra só os 100 mais populares: a tela mostra no máximo 60, e assim
+            // um menor não dispara centenas de consultas numa carreira longa
+            creditos = filtroDeIdade.filtrar(
+                filmografia.take(100),
+                tipoDe = { it.tipoMidia },
+                idDe = { it.id }
+            )
         } catch (e: Exception) {
             Log.e("Seriando", "Erro ao buscar filmografia", e)
             erroCreditos = true

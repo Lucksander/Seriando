@@ -384,8 +384,8 @@ object Sincronizador {
 
     /**
      * ENVIO do perfil: grava perfisPublicos/{uid} (apelido, avatar e atualizadoEm) e
-     * usuarios/{uid} (e-mail e aniversário) numa única operação. Se a nuvem tem uma
-     * alteração mais recente que a local, ela vence (RN23).
+     * usuarios/{uid} (e-mail, data de nascimento e marca de correção) numa única operação.
+     * Se a nuvem tem uma alteração mais recente que a local, ela vence (RN23).
      */
     private suspend fun enviarPerfil(uid: String) {
         val dao = Dependencias.perfilDao
@@ -421,7 +421,9 @@ object Sincronizador {
                                 avatarId = publicoNuvem.getString("avatarId") ?: "google",
                                 aniversario = privadoNuvem.getString("aniversario"),
                                 atualizadoEm = atualizadoNaNuvem,
-                                pendenteSincronizacao = false
+                                pendenteSincronizacao = false,
+                                // A marca de correção também vem da nuvem (RN17)
+                                aniversarioCorrigido = privadoNuvem.getBoolean("aniversarioAlterado") ?: false
                             )
                         )
                     }
@@ -443,7 +445,12 @@ object Sincronizador {
             )
             lote.set(
                 privadoRef,
-                mapOf("email" to email, "aniversario" to perfil.aniversario),
+                mapOf(
+                    "email" to email,
+                    "aniversario" to perfil.aniversario,
+                    // As regras do Firestore conferem esta marca para permitir só uma correção (RN17)
+                    "aniversarioAlterado" to perfil.aniversarioCorrigido
+                ),
                 SetOptions.merge()
             )
             comTempo { lote.commit().await() }
@@ -464,6 +471,9 @@ object Sincronizador {
 
         if (!aindaLogado(uid)) return
 
+        // Documentos criados antes do Bloco K não têm a marca: valem como "correção não usada"
+        val corrigidaNaNuvem = privadoNuvem.getBoolean("aniversarioAlterado") ?: false
+
         if (publicoNuvem.exists()) {
             Dependencias.emTransacao {
                 val local = dao.obter(uid)
@@ -475,7 +485,8 @@ object Sincronizador {
                             avatarId = publicoNuvem.getString("avatarId") ?: "google",
                             aniversario = privadoNuvem.getString("aniversario"),
                             atualizadoEm = publicoNuvem.getLong("atualizadoEm") ?: 0L,
-                            pendenteSincronizacao = false
+                            pendenteSincronizacao = false,
+                            aniversarioCorrigido = corrigidaNaNuvem
                         )
                     )
                 }
@@ -484,7 +495,7 @@ object Sincronizador {
             // Primeiro acesso: nem a nuvem nem o banco local têm perfil
             val criou = Dependencias.emTransacao {
                 if (dao.obter(uid) == null) {
-                    dao.salvar(perfilPadrao(uid, privadoNuvem.getString("aniversario")))
+                    dao.salvar(perfilPadrao(uid, privadoNuvem.getString("aniversario"), corrigidaNaNuvem))
                     true
                 } else {
                     false
@@ -496,7 +507,7 @@ object Sincronizador {
     }
 
     /** Perfil inicial de um usuário novo: apelido = primeiro nome da conta Google (ou "Usuário"). */
-    private fun perfilPadrao(uid: String, aniversario: String?): PerfilEntity {
+    private fun perfilPadrao(uid: String, aniversario: String?, aniversarioCorrigido: Boolean): PerfilEntity {
         val nomeCompleto = FirebaseAuth.getInstance().currentUser?.displayName.orEmpty()
         // ifBlank: nome vazio viraria apelido vazio, que as regras do Firestore recusam
         val primeiroNome = nomeCompleto.trim().split(" ").firstOrNull().orEmpty().ifBlank { "Usuário" }
@@ -506,7 +517,8 @@ object Sincronizador {
             avatarId = "google",
             aniversario = aniversario,
             atualizadoEm = System.currentTimeMillis(),
-            pendenteSincronizacao = true
+            pendenteSincronizacao = true,
+            aniversarioCorrigido = aniversarioCorrigido
         )
     }
 

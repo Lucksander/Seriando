@@ -12,6 +12,8 @@ import com.seriando.app.model.WatchProvidersResponse
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
+import com.seriando.app.model.ContentRatingsResponse
+import com.seriando.app.model.ReleaseDatesResponse
 
 /**
  * Contrato Retrofit com a API da TMDB.
@@ -48,7 +50,7 @@ interface TmdbApiService {
         @Path("id") serieId: Int,
         @Query("api_key") apiKey: String,
         @Query("language") idioma: String = "pt-BR",
-        @Query("append_to_response") extras: String = "credits,videos"
+        @Query("append_to_response") extras: String = "credits,videos,content_ratings"
     ): SerieDetalhe
 
     @GET("movie/{id}")
@@ -56,7 +58,7 @@ interface TmdbApiService {
         @Path("id") filmeId: Int,
         @Query("api_key") apiKey: String,
         @Query("language") idioma: String = "pt-BR",
-        @Query("append_to_response") extras: String = "credits,videos"
+        @Query("append_to_response") extras: String = "credits,videos,release_dates"
     ): MovieDetalhe
 
     // Episódios de uma temporada (RF06).
@@ -190,4 +192,20 @@ interface TmdbApiService {
         @Query("language") idioma: String = "pt-BR",
         @Query("page") pagina: Int = 1
     ): BuscaMultiResponse
+
+    // Controle de idade (RF50): classificação de um filme em cada país. A região BR é
+    // escolhida no app (ClassificacaoIndicativa.doFilme), não na chamada.
+    @GET("movie/{id}/release_dates")
+    suspend fun buscarClassificacaoFilme(
+        @Path("id") filmeId: Int,
+        @Query("api_key") apiKey: String
+    ): ReleaseDatesResponse
+
+    // Controle de idade (RF50): classificação de uma série em cada país.
+    @GET("tv/{id}/content_ratings")
+    suspend fun buscarClassificacaoSerie(
+        @Path("id") serieId: Int,
+        @Query("api_key") apiKey: String
+    ): ContentRatingsResponse
+
 }

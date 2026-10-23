@@ -22,7 +22,10 @@ data class SerieDetalhe(
     // Situação da série na TMDB: "Returning Series", "Ended", "Canceled", "In Production"...
     @SerializedName("status") val situacao: String? = null,
     // Data do último episódio exibido; usada para o ano final do intervalo ("2019 – 2024")
-    @SerializedName("last_air_date") val dataUltimoEpisodio: String? = null
+    @SerializedName("last_air_date") val dataUltimoEpisodio: String? = null,
+    // Classificações por país (append_to_response=content_ratings); usada para a do Brasil (RF49)
+    @SerializedName("content_ratings") val classificacoes: ContentRatingsResponse? = null
+
 )
 
 /**

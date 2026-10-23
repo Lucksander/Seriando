@@ -28,6 +28,7 @@ data class PaginaCatalogo(
 /**
  * Busca os títulos de cada categoria da Home na TMDB (RF44, RF45, RF46)
  * e os resultados da aba Descobrir (RF63, RF64).
+ * Toda lista de obras passa pelo filtro por idade (RF50) antes de ser devolvida.
  * As funções são suspend e NÃO tratam erros: quem chama (a tela) faz
  * try/catch, registra no Log e avisa o usuário com Toast.
  */
@@ -35,6 +36,9 @@ class CatalogoRepository {
 
     // A TMDB limita a paginação do discover a 500 páginas.
     private val limitePaginas = 500
+
+    // Filtro por idade (RF50): único ponto que decide o que fica oculto (RN15)
+    private val filtroDeIdade = FiltroDeIdadeRepository()
 
     /**
      * Itens da 1ª página de uma categoria, usados nas fileiras da Home.
@@ -67,9 +71,13 @@ class CatalogoRepository {
             apiKey = BuildConfig.TMDB_API_KEY,
             pagina = pagina
         )
-        val itens = resposta.results
-            // Remove pessoas (e qualquer tipo desconhecido) e itens sem capa
-            .filter { (it.ehFilme || it.ehSerie) && it.caminhoCapa != null }
+        val itens = filtroDeIdade.filtrar(
+            resposta.results
+                // Remove pessoas (e qualquer tipo desconhecido) e itens sem capa
+                .filter { (it.ehFilme || it.ehSerie) && it.caminhoCapa != null },
+            tipoDe = { it.tipoMidia },
+            idDe = { it.id }
+        )
         return PaginaCatalogo(itens, minOf(resposta.totalPaginas, limitePaginas))
     }
 
@@ -113,7 +121,13 @@ class CatalogoRepository {
             val totais = listOfNotNull(respostaFilmes?.totalPaginas, respostaSeries?.totalPaginas)
             val total = (totais.minOrNull() ?: 0).coerceAtMost(limitePaginas)
 
-            PaginaCatalogo(intercalar(filmes, series), total)
+            // Filtro por idade depois de misturar filmes e séries (RF50)
+            val permitidos = filtroDeIdade.filtrar(
+                intercalar(filmes, series),
+                tipoDe = { it.tipoMidia },
+                idDe = { it.id }
+            )
+            PaginaCatalogo(permitidos, total)
         }
 
     /**
@@ -240,9 +254,14 @@ class CatalogoRepository {
 
         // discover não devolve media_type: definimos o tipo manualmente e
         // descartamos itens sem capa, como nas categorias da Home.
-        val itens = resposta.results
-            .map { it.copy(tipoMidia = tipo.valorTmdb) }
-            .filter { it.caminhoCapa != null }
+        // Depois, o filtro por idade esconde o que está acima da idade do usuário (RF50).
+        val itens = filtroDeIdade.filtrar(
+            resposta.results
+                .map { it.copy(tipoMidia = tipo.valorTmdb) }
+                .filter { it.caminhoCapa != null },
+            tipoDe = { it.tipoMidia },
+            idDe = { it.id }
+        )
         return PaginaCatalogo(itens, minOf(resposta.totalPaginas, limitePaginas))
     }
 
