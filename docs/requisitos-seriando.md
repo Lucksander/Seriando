@@ -57,10 +57,22 @@ Aplicativo Android para acompanhar séries e filmes, com lista pessoal, progress
 | RF56 | Exibir o "Ver mais" do fim da fileira como um card do tamanho das capas, com seta dentro de um círculo e o texto "Ver mais" | Concluído |
 | RF57 | Exibir os thumbnails dos episódios maiores e em rolagem horizontal na tela de Detalhes | Concluído |
 | RF58 | Renomear a aba Usuário para "Conta" na navegação | Concluído |
+| RF33 | Modo offline com persistência local (Room): a lista pessoal, os status, o progresso de episódios, o perfil do próprio usuário e os dados das obras da lista ficam salvos no aparelho; o app abre, permite consultar a lista e marcar episódios sem internet e sincroniza com o Firestore quando a conexão voltar | Concluído |
+| RF62 | Avisar o usuário quando o app estiver sem conexão e indicar que há alterações ainda não sincronizadas; as telas que dependem de internet (Home, busca e comunidade) mostram uma mensagem com ícone explicando a falta de conexão e a ação possível (tentar de novo) | Concluído |
+| RF63 | Aba "Descobrir" na navegação inferior (que passa a ter 4 itens: Home, Descobrir, Minha Lista e Conta), com três menus suspensos (Tipo: filmes ou séries; Catálogo: Popular, Novos ou um serviço de streaming; Gênero) e uma grade de capas com 4 colunas que carrega a próxima página ao rolar; filtros, resultados e posição da rolagem são mantidos ao voltar da tela de Detalhes | Concluído |
+| RF64 | Filtrar a Descobrir por serviço de streaming do Brasil (somente assinatura), escolhido no menu Catálogo, com a lista de serviços vinda da TMDB (sem lojas e agregadores) e atribuição à JustWatch (RNF09) | Concluído |
+| RF65 | Botão "Sortear" ("O que assistir hoje?"): sorteia, sem repetir a anterior, uma obra entre as já carregadas na grade da Descobrir, respeitando os filtros ativos, e mostra capa, nome, ano e sinopse com as ações "Ver detalhes" e "Sortear de novo" | Concluído |
+| RF69 | Logotipo do Seriando no cabeçalho da Home: o ícone do S como primeira letra, seguido de "eriando" na fonte Poppins SemiBold | Concluído |
+| RF70 | Avatar do usuário logado (foto da conta Google ou avatar do app) no canto do cabeçalho da Home; tocar nele abre a aba Conta. O botão "Sair" fica apenas na aba Conta | Concluído |
+| RF71 | Barra de pesquisa com lupa na Home (atalho que abre a tela de busca) e na tela de busca (campo de uma linha em que a tecla de pesquisa do teclado dispara a busca, com botão para limpar o texto) | Concluído |
+| RF72 | Histórico na tela de busca, mostrado com o campo vazio: obras vistas recentemente (capas, até 12, as abertas a partir da busca) e pesquisas recentes (até 10, só as que devolveram resultados), com opção de apagar uma pesquisa e de limpar cada lista | Concluído |
+| RF52 | Telas de introdução na primeira abertura do app: três páginas deslizáveis com indicador de pontos (boas-vindas, onde assistir e comunidade), botão "Pular" no topo de todas e botão "Avançar" que vira "Começar" na última; mostradas apenas uma vez, com a indicação guardada só no aparelho (DataStore, `introducao_vista`) | Concluído |
+| RF53 | Tela de entrada, mostrada depois da introdução e em toda abertura em que não houver usuário logado, e também depois de sair da conta ou excluí-la: logotipo, botão "Entrar com o Google", opção "Continuar como visitante" e links para a Política de Privacidade e os Termos de Uso | Concluído |
+| RF54 | Modo visitante: permite navegar na Home, usar a Descobrir e o sorteio, pesquisar, ver detalhes, onde assistir, elenco e página da pessoa; ao tentar adicionar à lista, marcar episódios, avaliar ou ver a comunidade, abre uma folha inferior (BottomSheet) com os benefícios de ter conta (lista sincronizada, opinião e comunidade, modo offline) e o botão "Entrar com o Google"; as abas Minha Lista e Conta mostram um aviso com o botão "Entrar" | Concluído |
 
 ### 1.2 A implementar (escopo atual)
 
-Os blocos A a J e o bloco M foram concluídos. Faltam os blocos K, L e N.
+Os blocos A a J, L e M foram concluídos. Falta o bloco K.
 
 **Bloco K — Controle de idade (classificação indicativa)**
 
@@ -70,23 +82,6 @@ Os blocos A a J e o bloco M foram concluídos. Faltam os blocos K, L e N.
 | RF50 | Ocultar as obras acima da idade do usuário na Home, na busca, nas categorias e na filmografia da pessoa | A implementar |
 | RF51 | Bloquear a tela de Detalhes de uma obra acima da idade do usuário, mesmo quando acessada por outro caminho | A implementar |
 | RF59 | Informar a data de nascimento completa (dia, mês e ano) com seletor de data na aba Conta, necessária para calcular a idade; substitui o aniversário em texto livre do RF14 | A implementar |
-
-**Bloco L — Introdução e modo visitante**
-
-| ID | Requisito | Situação |
-|----|-----------|----------|
-| RF52 | Exibir telas de introdução na primeira abertura do app (ícone do Seriando, "seu cantinho para registrar e organizar suas séries no seu ritmo" e "descubra em que streaming sua série ou filme está"), mostradas apenas uma vez | A implementar |
-| RF53 | Exibir, depois da introdução, uma tela de entrada com o botão de login com Google e a opção de entrar sem fazer login | A implementar |
-| RF54 | Modo visitante: permitir pesquisar, ver detalhes, onde assistir, elenco e página da pessoa; ao tentar adicionar à lista, avaliar, opinar, votar ou ver a comunidade, pedir o login por meio de uma folha inferior (BottomSheet) que mostra os benefícios de ter uma conta: salvar o progresso, avaliar e participar da comunidade | A implementar |
-
-**Bloco N — Modo offline (offline-first)**
-
-Promovido de opcional para obrigatório (antes RF33), por orientação do professor: a persistência local é uma das competências centrais da disciplina.
-
-| ID | Requisito | Situação |
-|----|-----------|----------|
-| RF33 | Modo offline com persistência local (Room): a lista pessoal, os status, o progresso de episódios, o perfil do próprio usuário e os dados das obras da lista ficam salvos no aparelho; o app abre, permite consultar a lista e marcar episódios sem internet e sincroniza com o Firestore quando a conexão voltar | A implementar |
-| RF62 | Avisar o usuário quando o app estiver sem conexão e indicar que há alterações ainda não sincronizadas; as telas que dependem de internet (Home, busca e comunidade) mostram uma mensagem com ícone explicando a falta de conexão e a ação possível (tentar de novo) | A implementar |
 
 ### 1.3 Opcionais (se sobrar tempo, por ordem de prioridade)
 
@@ -99,14 +94,12 @@ Promovido de opcional para obrigatório (antes RF33), por orientação do profes
 | RF61 | Publicação na Apple App Store: distribuição de testes pelo TestFlight e envio para revisão | Opcional |
 | RF68 | Ocultar imediatamente, para quem denunciou, a opinião denunciada, com o aviso "Opinião denunciada e oculta" (RN26) | Opcional |
 | RF66 | Buscar por nome e ordenar (data de adição, nome ou status) dentro da Minha Lista | Opcional |
-| RF65 | Modo "O que assistir hoje?": sugestão aleatória com base nos filtros escolhidos na aba Descobrir | Opcional |
-| RF63 | Nova aba "Descobrir" (a navegação inferior passa a ter 4 itens) com filtros combinados: gênero, ano ou década e nota mínima da TMDB, e ordenação por mais populares, mais bem avaliados ou lançamentos recentes | Opcional |
-| RF64 | Filtrar a aba Descobrir pelos serviços de streaming que o usuário assina no Brasil, com atribuição à JustWatch (RNF09) | Opcional |
 | RF67 | Exibir estatísticas na aba Conta: total de filmes assistidos, de séries completas e de episódios assistidos | Opcional |
+| RF73 | Botão de compartilhar na tela de Detalhes (ícone Outlined ao lado do nome da obra): abre o menu de compartilhar do Android com uma mensagem e o link da página da obra na TMDB; funciona também para o visitante | Opcional |
 
 RF60 e RF61 dependem dos pré-requisitos descritos na seção 1.5. O RF32 é um deles quando não houver Sign in with Apple.
 
-Os RF63 a RF68 vieram do documento propostas_e_melhorias_seriando.md e estão listados na ordem sugerida de implementação (do mais barato ao mais custoso).
+Os RF63 a RF68 vieram do documento propostas_e_melhorias_seriando.md. Os RF63, RF64 e RF65 foram implementados com um desenho ajustado (seção 1.1): sem filtro por década nem nota mínima, e com o streaming escolhido no menu Catálogo. Seguem opcionais, na ordem sugerida de implementação, os RF66, RF67 e RF68.
 
 ### 1.4 Sugestões para versões futuras (fora do escopo atual)
 
@@ -116,6 +109,7 @@ Os RF63 a RF68 vieram do documento propostas_e_melhorias_seriando.md e estão li
 | Descobrir obras pelas emoções registradas pela comunidade | Proposta do documento de propostas; exige contadores calculados no servidor (Cloud Function, plano pago do Firebase) e só teria resultados para obras avaliadas por usuários |
 | Notificação de novos episódios e temporadas das séries marcadas como "Assistindo" | Proposta do documento de propostas; exige tarefa em segundo plano (WorkManager) e permissão de notificação |
 | Média de estrelas dadas pelo usuário nas estatísticas da aba Conta | Proposta do documento de propostas; exige ler as avaliações do usuário em todas as obras |
+| Compartilhamento que abre direto no Seriando | Evolução do RF73: o link da TMDB abre o site, e não o app. Exige deep links (App Links) e uma página própria para cada obra; depois da publicação, a mensagem de compartilhar pode incluir o link do app na Play Store |
 
 ### 1.5 Por que o aplicativo para iOS não está no escopo atual
 
@@ -154,6 +148,8 @@ O Seriando precisa ser multiplataforma, e a versão iOS (RF60 e RF61) está regi
 | RNF11 | Código preparado para multiplataforma: sem Context do Android em ViewModels e Repositories; acesso ao Firebase, à TMDB e ao armazenamento local sempre por trás de interfaces na camada de dados (Repository); código específico de Android (Credential Manager, DataStore, Room) isolado em poucos arquivos | Portabilidade / Manutenibilidade |
 | RNF12 | Esteira de publicação documentada para as duas lojas: Google Play (obrigatória) e Apple App Store (preparação documentada, execução opcional, RF61) | Distribuição |
 | RNF13 | Estratégia de cache das chamadas à TMDB definida: cache em memória com tempo de validade na camada Repository e dados das obras da lista guardados no Room (obrasCache), para reduzir chamadas redundantes e consumo de dados | Desempenho |
+| RNF14 | Conteúdo das telas começa abaixo da barra de status e não rola por baixo dos ícones dela, mantendo a barra transparente (tela de ponta a ponta) | Usabilidade |
+| RNF15 | Ícones da interface no estilo Outlined do Material Icons, de forma consistente (preenchidos só onde o preenchimento tem significado, como a estrela da avaliação) | Usabilidade (identidade visual) |
 
 ---
 
@@ -187,6 +183,10 @@ O Seriando precisa ser multiplataforma, e a versão iOS (RF60 e RF61) está regi
 | RN24 | A comunidade (opiniões, avaliações, votos e médias) e o login exigem conexão, e RN08 continua valendo; sem conexão, o app avisa e mantém disponível o que está salvo no aparelho |
 | RN25 | O banco local guarda dados apenas do usuário logado e é apagado por completo no logout (RF27) e na exclusão de conta (RF29) |
 | RN26 | Uma opinião denunciada pelo usuário fica oculta para ele, guardada apenas no aparelho; a denúncia continua sendo gravada em denuncias, de acesso restrito (RF28) |
+| RN27 | Ao sair da conta com alterações ainda não sincronizadas, o app tenta enviá-las e, se não conseguir, avisa quantas serão perdidas e pede confirmação, porque o banco local é apagado no logout (RN25) |
+| RN28 | Sem conexão, as alterações ficam pendentes e o app não tenta enviá-las; a sincronização completa roda ao abrir o app, no login e quando a internet volta |
+| RN29 | O histórico de busca (pesquisas e obras vistas recentemente) fica só no aparelho (SharedPreferences), nunca é enviado ao Firestore e vale também para o visitante; não é apagado no logout nem na exclusão de conta, e o usuário o apaga pelos botões "Limpar" da tela de busca |
+| RN30 | A escolha de "Continuar como visitante" vale só para aquela abertura do app e não é guardada: sem usuário logado, a tela de entrada aparece em toda abertura. Só a indicação de "introdução já vista" é guardada, no aparelho (DataStore) |
 
 ---
 
@@ -209,16 +209,17 @@ Observações sobre os blocos K e L e sobre o RF29:
 - A indicação de "introdução já vista" (RF52) é guardada apenas no aparelho (DataStore), não no Firestore.
 - Para RN17, o campo de aniversário em `usuarios/{uid}` passa a ter regra de atualização restrita.
 - A exclusão de conta (RF29) não cria coleções: apaga os documentos descritos acima. Depende de uma regra de leitura em `/{path=**}/opinioes/{opiniaoId}` (consulta em todas as obras, só para usuário logado), usada para achar as avaliações e os votos do usuário.
+- A aba Descobrir (RF63 a RF65) e o histórico de busca (RF72) não criam coleções no Firestore: a Descobrir só consulta a TMDB, e o histórico fica no aparelho, em SharedPreferences (RN29).
 
 ### 4.1 Banco local (Room) — Bloco N
 
 O Firestore não ganha coleções com o modo offline. O Bloco N cria apenas um banco local no aparelho, que espelha os dados pessoais do usuário logado:
 
 ```
-lista                 -> obra (tipo e id da TMDB), título, capa, status, pendenteSincronizacao, atualizadoEm
-episodiosAssistidos   -> obra, temporada, episódio, pendenteSincronizacao, atualizadoEm
-perfil                -> apelido, avatar, data de nascimento
-obrasCache            -> dados das obras da lista (sinopse, temporadas, episódios) para consulta sem internet
+lista                 -> id da TMDB (chave), tipo, título, sinopse, capa, status, dataAdicao, pendenteSincronizacao, atualizadoEm, removido
+episodiosAssistidos   -> série, temporada, episódio (chave composta), pendenteSincronizacao, atualizadoEm, removido
+perfil                -> uid, apelido, avatar, aniversário (data de nascimento a partir do Bloco K), pendenteSincronizacao, atualizadoEm
+obrasCache            -> tipo, id da TMDB e parte (detalhes, onde assistir ou temporada), json da resposta da TMDB, atualizadoEm
 ```
 
 Observações sobre o Bloco N:
@@ -227,12 +228,17 @@ Observações sobre o Bloco N:
 - O acesso ao Room fica atrás de uma interface na camada de dados, para ser trocado por outra implementação em uma futura versão multiplataforma (RNF11).
 - Os campos `pendenteSincronizacao` e `atualizadoEm` sustentam a fila de envio (RN22), a resolução de conflitos (RN23) e o aviso de alterações não sincronizadas (RF62).
 - O banco local é apagado no logout e na exclusão de conta (RN25).
+- O campo `removido` é uma "lápide": um item removido sem conexão não some do banco na hora, fica marcado e pendente até a exclusão ser enviada à nuvem, e a tela não o mostra.
+- A sincronização tem duas fases: o envio das pendências (conferindo a nuvem para fazer valer a alteração mais recente) e o recebimento dos dados da nuvem. O recebimento lê muitos documentos, então roda ao abrir o app, no login e quando a internet volta; as alterações feitas na tela só disparam o envio (RN28).
+- O e-mail não é guardado no banco local, porque o login do Google já o mantém no aparelho (RNF08).
+- O cache das obras guarda as respostas da TMDB como texto JSON e só mantém as obras da lista: as demais são apagadas a cada sincronização completa.
+- Este bloco foi promovido de opcional para obrigatório (antes RF33 opcional), por orientação do professor: a persistência local é uma das competências centrais da disciplina.
 
 ---
 
 ## 5. Documentação a produzir
 
-- Diagrama de casos de uso (atualizar com os Blocos H, I, K, L, M e N e com o RF29, incluindo o ator Visitante)
+- Diagrama de casos de uso (atualizar com os Blocos H, I, K, L, M e N, com o RF29, com a Descobrir e o sorteio, com o histórico de busca e incluindo o ator Visitante)
 - Diagrama de arquitetura (camadas ui, data, model, navigation + Firebase + TMDB; incluir o banco local Room e a sincronização com o Firestore)
 - Modelagem do banco: coleções e documentos, campos e exemplos de leitura e escrita; incluir as tabelas locais do Room (seção 4.1)
 - Diagramas de sequência: login, adicionar à lista, publicar opinião, votar, sincronizar alterações feitas offline
