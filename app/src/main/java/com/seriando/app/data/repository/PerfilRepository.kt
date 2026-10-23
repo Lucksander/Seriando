@@ -10,6 +10,7 @@ import com.seriando.app.model.PerfilPrivado
 import com.seriando.app.model.PerfilPublico
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import com.seriando.app.data.cache.VersaoDaIdade
 
 /**
  * O perfil completo do usuário: a parte pública (apelido e avatar), a privada (e-mail e data de
@@ -121,6 +122,10 @@ class PerfilRepository(
                 pendenteSincronizacao = true
             )
         )
+        // A idade mudou: as listas guardadas (Home, busca) foram filtradas com a idade antiga (RF50)
+        VersaoDaIdade.idadeMudou()
+        Sincronizador.disparar(uid, baixarDaNuvem = false)
+
         Sincronizador.disparar(uid, baixarDaNuvem = false)
         return if (jaTemData) ResultadoDataNascimento.CORRIGIDA else ResultadoDataNascimento.SALVA
     }

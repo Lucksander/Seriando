@@ -65,6 +65,8 @@ import com.seriando.app.ui.comum.MensagemSemConexao
 import com.seriando.app.ui.home.ResultadoCard
 import com.seriando.app.ui.theme.capaDeObra
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.mutableIntStateOf
+import com.seriando.app.data.cache.VersaoDaIdade
 
 /**
  * Tela de pesquisa de séries e filmes (RF03, RF04).
@@ -109,24 +111,41 @@ fun SearchScreen(aoClicarEmItem: (Int, String) -> Unit) {
     // a cada mudança, para a tela atualizar na hora.
     val historico = remember { HistoricoBusca(context) }
     var pesquisasRecentes by remember { mutableStateOf(historico.pesquisas()) }
-    var obrasRecentes by remember { mutableStateOf(historico.obrasVistas()) }
+    // Todas as obras guardadas no aparelho, e só as que a idade atual permite mostrar (RF50)
+    var obrasGuardadas by remember { mutableStateOf(historico.obrasVistas()) }
+    var obrasRecentes by remember { mutableStateOf<List<ObraVista>>(emptyList()) }
 
     // Ao abrir a tela, filtra de novo os resultados que vieram do cache: eles podem ser de uma
     // pesquisa feita antes de o usuário entrar, sair ou mudar a data de nascimento, e não podem
     // mostrar obras acima da idade de agora (RF50)
-    LaunchedEffect(Unit) {
-        if (resultados.isNotEmpty()) {
-            try {
-                val permitidos = filtroDeIdade.filtrar(
-                    resultados,
-                    tipoDe = { it.tipoMidia },
-                    idDe = { it.id }
-                )
-                resultados = permitidos
-                BuscaCache.resultados = permitidos
-            } catch (e: Exception) {
-                Log.e("Seriando", "Erro ao filtrar os resultados guardados", e)
-            }
+    // Muda quando a idade do usuário muda: o que foi pesquisado antes pode não valer mais (RF50)
+    val versaoDaIdade by VersaoDaIdade.versao.collectAsState()
+    var versaoVista by remember { mutableIntStateOf(versaoDaIdade) }
+
+    LaunchedEffect(versaoDaIdade) {
+        if (versaoDaIdade != versaoVista) {
+            // O VersaoDaIdade já limpou o BuscaCache; aqui limpa o que a tela tem em memória
+            textoPesquisa = ""
+            resultados = emptyList()
+            jaPesquisou = false
+            falhou = false
+            versaoVista = versaoDaIdade
+        }
+    }
+
+    // Obras vistas recentemente: só aparecem as que a idade atual permite (RF50).
+    // Roda de novo quando a lista guardada muda ou quando a idade muda.
+    // Se a classificação não puder ser consultada, a obra fica oculta (na dúvida, esconde).
+    LaunchedEffect(obrasGuardadas, versaoDaIdade) {
+        try {
+            obrasRecentes = filtroDeIdade.filtrar(
+                obrasGuardadas,
+                tipoDe = { it.tipoMidia },
+                idDe = { it.id }
+            )
+        } catch (e: Exception) {
+            Log.e("Seriando", "Erro ao filtrar as obras vistas", e)
+            obrasRecentes = emptyList()
         }
     }
 
@@ -175,7 +194,7 @@ fun SearchScreen(aoClicarEmItem: (Int, String) -> Unit) {
     /** Abre os Detalhes e registra a obra no topo das vistas recentemente. */
     fun abrirObra(obra: ObraVista) {
         historico.registrarObra(obra)
-        obrasRecentes = historico.obrasVistas()
+        obrasGuardadas = historico.obrasVistas()
         aoClicarEmItem(obra.id, obra.tipoMidia)
     }
 
@@ -285,7 +304,7 @@ fun SearchScreen(aoClicarEmItem: (Int, String) -> Unit) {
                     aoClicarEmObra = { abrirObra(it) },
                     aoLimparObras = {
                         historico.limparObras()
-                        obrasRecentes = emptyList()
+                        obrasGuardadas = emptyList()
                     },
                     aoClicarEmPesquisa = { pesquisarTermo(it) },
                     aoRemoverPesquisa = {

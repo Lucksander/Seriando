@@ -59,6 +59,7 @@ import com.seriando.app.ui.comum.MensagemSemConexao
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import com.seriando.app.data.cache.VersaoDaIdade
 
 /**
  * Tela inicial (RF11, RF44, RF45, RF46, RF62).
@@ -95,6 +96,11 @@ fun HomeScreen(
     // Sobe a cada toque em "Tentar de novo" e refaz a busca das categorias que falharam
     var tentativa by remember { mutableIntStateOf(0) }
 
+    // Muda quando a idade do usuário muda (login, logout, data de nascimento): as categorias
+    // guardadas foram filtradas com a idade anterior e precisam ser buscadas de novo (RF50)
+    val versaoDaIdade by VersaoDaIdade.versao.collectAsState()
+    var versaoVista by remember { mutableIntStateOf(versaoDaIdade) }
+
     // Itens de cada categoria, por id. Chave ausente = carregando (null);
     // lista vazia = falha. Já nasce preenchido com o que estiver no CatalogoCache,
     // para a Home não piscar em "carregando" ao voltar de Detalhes ou de outra aba.
@@ -110,7 +116,13 @@ fun HomeScreen(
     // Roda ao abrir, a cada "Tentar de novo" e quando a conexão muda. As que falharam antes
     // voltam ao estado "carregando" e são buscadas de novo.
     // Cada uma tem seu try/catch: se uma falhar, as outras continuam normalmente.
-    LaunchedEffect(tentativa, online) {
+    LaunchedEffect(tentativa, online, versaoDaIdade) {
+        // A idade mudou desde que esta tela começou: esvazia as categorias para carregar de novo
+        if (versaoDaIdade != versaoVista) {
+            itensPorCategoria.clear()
+            versaoVista = versaoDaIdade
+        }
+
         Categorias.todas.forEach { categoria ->
             if (itensPorCategoria[categoria.id]?.isEmpty() == true) itensPorCategoria.remove(categoria.id)
         }

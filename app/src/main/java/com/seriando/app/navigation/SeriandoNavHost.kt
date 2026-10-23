@@ -158,7 +158,9 @@ fun SeriandoNavHost(
                 // Tocar num ator do elenco abre a página dele (RF40).
                 aoClicarEmAtor = { pessoaId ->
                     navController.navigate(Rotas.pessoaComId(pessoaId))
-                }
+                },
+                // Botão "Voltar" do aviso de obra bloqueada por idade (RF51)
+                aoVoltar = { navController.popBackStack() }
             )
         }
 

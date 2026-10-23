@@ -8,10 +8,15 @@ Projeto desenvolvido em **Kotlin** com **Jetpack Compose**, seguindo boas práti
 
 ## 📌 Versão Atual
 
-**Versão: V0.13** *(em desenvolvimento — rumo à V1.0)*
+**Versão: V0.14** *(em desenvolvimento — rumo à V1.0)*
 
 ### 🆕 Novidades & Destaques da Versão
 
+- **Controle de Idade & Classificação Indicativa do Brasil (`FiltroDeIdadeRepository`, `ControleDeIdade`, `ClassificacaoIndicativa`, RF49, RF50, RF51, RF59, RN13 a RN17)**: Sistema completo e centralizado de controle de idade e filtragem de conteúdo baseado na classificação indicativa brasileira (L, 10, 12, 14, 16 e 18 anos).
+  - **Filtro Unificado na Camada de Dados ([FiltroDeIdadeRepository](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/data/repository/FiltroDeIdadeRepository.kt))**: Ponto único de decisão na camada de dados que oculta obras inadequadas na Home, categorias ("Ver mais"), busca, aba Descobrir e filmografia de artistas, sem duplicar regras de negócio na UI (RN15).
+  - **Bloqueio da Tela de Detalhes ([ObraBloqueada](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/details/ObraBloqueada.kt), RF51)**: Interceptação e bloqueio do acesso direto a obras acima da faixa etária permitida, exibindo o selo de classificação e mensagem orientativa.
+  - **Seletor de Data de Nascimento & Trava de Correção Única ([DataNascimento](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/model/DataNascimento.kt), [SeletorDataNascimento](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/usuario/SeletorDataNascimento.kt), RF59, RN17)**: Interface amigável com DatePicker do Material 3 na aba Conta, calculando a idade no momento do uso (RN13) e aplicando trava de segurança que aceita apenas uma correção pontual (`correcaoDataUsada`).
+  - **Proteção Padrão para Visitantes (RN14, RN16)**: Visitantes e usuários sem data informada são restritos automaticamente a conteúdos de até 12 anos. Obras sem classificação no Brasil exigem 18+ anos (RN14).
 - **Apresentação & Onboarding de Boas-Vindas (`IntroducaoScreen`, RF52)**: Experiência de introdução em 3 páginas deslizáveis com animação radial e ícones temáticos (*O seu cantinho das séries*, *Saiba onde está passando*, *Compartilhe suas impressões*). Suporte a **Jetpack DataStore Preferences** ([PreferenciasApp](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/data/local/PreferenciasApp.kt)) para exibição única por instalação com opção de pular.
 - **Tela de Entrada & Modo Visitante (`EntradaScreen`, `DialogoLoginObrigatorio`, RF53, RF54)**: Fluxo flexível para novos usuários permitindo explorar o catálogo, pesquisar títulos, consultar streaming e elenco como visitante sem obrigar o login inicial. Ao tentar executar ações restritas (salvar na lista, avaliar, opinar ou votar), exibe modal nativo ([DialogoLoginObrigatorio](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/login/DialogoLoginObrigatorio.kt)) destacando os benefícios da conta.
 - **Faixa de Conectividade & Monitor de Rede em Tempo Real (`ComFaixaDeConexao`, `MonitorConexao`, RF62)**: Injeção de banner persistente no topo do app alertando queda de conexão ("*Sem conexão. Você pode continuar usando o que está salvo no aparelho*"), contagem de pendências offline ("*N alterações ainda não sincronizadas*") e ação de envio forçado ("*Enviar agora*").
@@ -140,11 +145,13 @@ flowchart TD
 - **Motor de Sincronização em Segundo Plano ([Sincronizador.kt](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/data/sync/Sincronizador.kt))**:
   - Executa tarefas assíncronas em segundo plano (`Dispatchers.IO` + `SupervisorJob`) garantindo sincronização bidirecional transparente.
   - Resolve conflitos por estampa de tempo (*last-write-wins*, RN23), gerencia pendências de envio (`pendenteSincronizacao`) e trata exclusões com registros do tipo *tombstone* (`removido`).
+- **Filtro de Conteúdo Centralizado ([FiltroDeIdadeRepository.kt](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/data/repository/FiltroDeIdadeRepository.kt))**: Centralização da lógica de controle de idade e verificação da classificação indicativa brasileira (TMDB `release_dates`/`content_ratings`), garantindo que mídias inadequadas sejam filtradas em uma única camada (RN15) e com cache em memória (RNF13).
 - **Gerenciamento de Estado & Cache em Memória**:
   - `AbaCache`: Preserva a aba ativa do `MainScaffold` durante a navegação.
   - `BuscaCache`: Mantém termos e resultados de pesquisa ativos.
   - `CatalogoCache`: Armazena a primeira página de cada categoria da Home, evitando recomposições e chamadas repetidas.
   - `DescobrirCache`: Preserva filtros ativos, página atual e catálogo sorteado na aba Descobrir.
+  - `VersaoDaIdade`: Sinaliza alterações na idade do usuário para invalidação e atualização reativa dos caches de listas.
 
 ---
 
@@ -215,7 +222,7 @@ O banco relacional local (`SeriandoDatabase`) armazena os dados da sessão ativa
 | :--- | :--- | :--- | :--- |
 | `lista` | `id` (Int - TMDB) | Espelho local da lista pessoal (`id`, `nome`, `sinopse`, `caminhoCapa`, `tipoMidia`, `status`, `dataAdicao`, `atualizadoEm`, `pendenteSincronizacao`, `removido`). | **RF07, RF08, RN21, RN22** |
 | `episodiosAssistidos` | `[serieId, temporada, numero]` | Registros de episódios assistidos (`serieId`, `temporada`, `numero`, `atualizadoEm`, `pendenteSincronizacao`, `removido`). | **RF09, RF10, RN20** |
-| `perfil` | `uid` (String) | Consolidação dos perfis privado e público (`uid`, `apelido`, `avatarId`, `aniversario`, `atualizadoEm`, `pendenteSincronizacao`). | **RF12, RF15, RNF08** |
+| `perfil` | `uid` (String) | Consolidação dos perfis privado e público (`uid`, `apelido`, `avatarId`, `aniversario`, `correcaoDataUsada`, `atualizadoEm`, `pendenteSincronizacao`). | **RF12, RF15, RF59, RN17, RNF08** |
 | `obrasCache` | `[tipoMidia, tmdbId, parte]` | Cache local em JSON dos detalhes (`parte = -1`) e temporadas (`parte >= 0`) de obras da lista para navegação offline. | **RF33** |
 
 ### DataStore & SharedPreferences
@@ -231,7 +238,7 @@ O Cloud Firestore utiliza a seguinte estrutura relacional de coleções e subcol
 
 | Coleção / Caminho | Permissão de Leitura | Permissão de Escrita | Descrição & Campos Principais |
 | :--- | :--- | :--- | :--- |
-| `usuarios/{uid}` | Dono (`request.auth.uid == uid`) | Dono | Dados privados do usuário (`email`, `aniversario`). |
+| `usuarios/{uid}` | Dono (`request.auth.uid == uid`) | Dono | Dados privados do usuário (`email`, `aniversario`, `correcaoDataUsada` com validação de correção única em `firestore.rules`). |
 | `usuarios/{uid}/series/{serieId}` | Dono | Dono | Itens da lista pessoal (`id`, `nome`, `sinopse`, `caminhoCapa`, `tipoMidia`, `status`, `dataAdicao`, `atualizadoEm`). |
 | `usuarios/{uid}/series/{serieId}/episodiosAssistidos/{docId}` | Dono | Dono | Progresso individual de episódios assistidos pelo usuário. |
 | `usuarios/{uid}/opinioesPrivadas/{obraId}` | Dono | Dono | Críticas e anotações privadas do autor (`texto`, `spoiler`, `emocoes`, `data`). |
@@ -259,10 +266,20 @@ A comunicação remota com a API da TMDB é intermediada pela interface [TmdbApi
 | `/tv/{id}/watch/providers` | `GET` | Provedores de streaming para assistir à série no Brasil (JustWatch) | **RF34** |
 | `/person/{id}` | `GET` | Detalhes biográficos e foto de perfil de um ator/atriz | **RF41** |
 | `/person/{id}/combined_credits` | `GET` | Filmografia completa (filmes e séries) de um artista | **RF42** |
+| `/movie/{id}/release_dates` | `GET` | Certificações de lançamento por país para classificação indicativa do filme no Brasil (BR) | **RF49, RN14** |
+| `/tv/{id}/content_ratings` | `GET` | Classificações indicativas por país para a série no Brasil (BR) | **RF49, RN14** |
 
 ---
 
 ## 🚀 Funcionalidades Principais
+
+### 🔞 Controle de Idade & Classificação Indicativa (RF49, RF50, RF51, RF59, RN13 a RN17)
+- **Classificação Indicativa Brasileira (L, 10, 12, 14, 16, 18)**: Consulta das certificações oficiais para o Brasil (BR) na TMDB para filmes (`release_dates`) e séries (`content_ratings`), selecionando a classificação mais restritiva em caso de múltiplos lançamentos no país (RF49, RN14).
+- **Filtro Automático em Camada Única**: Centralização da filtragem no repositório ([FiltroDeIdadeRepository](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/data/repository/FiltroDeIdadeRepository.kt)), garantindo que obras inadequadas para a idade do usuário sejam ocultadas da Home, categorias ("Ver mais"), busca, aba Descobrir e filmografia de pessoas (RF50, RN15).
+- **Bloqueio da Tela de Detalhes (`ObraBloqueada`)**: Interceptação de links ou acessos diretos a mídias com classificação acima da idade do usuário, substituindo a tela por mensagem orientativa e selo com as cores oficiais brasileiras (RF51).
+- **Data de Nascimento & Trava de Segurança (RN17)**: Escolha de data no formato `AAAA-MM-DD` via DatePicker M3 ([SeletorDataNascimento](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/usuario/SeletorDataNascimento.kt)), com cálculo dinâmico da idade sem armazená-la (RN13) e mecanismo no Firestore/Room que aceita no máximo 1 correção pontual em caso de erro de digitação (`correcaoDataUsada`).
+- **Modo Restrito para Visitantes e Desconectados**: Aplicação automática da faixa restrita de até 12 anos para visitantes e contas sem data de nascimento informada (RN16). Mídias sem classificação brasileira cadastrada exigem 18+ anos (RN14).
+- **Invalidação Reativa de Cache (`VersaoDaIdade`)**: Notificação global em tempo de execução para reprocessar e recarregar os caches de listas no instante em que a idade do perfil muda ou ocorre troca de conta.
 
 ### 🌟 Introdução, Entrada & Modo Visitante (RF52, RF53, RF54)
 - **Telas de Introdução (`IntroducaoScreen`)**: Carrossel deslizante em 3 etapas apresentando os diferenciais do app, memorizado em DataStore local (`PreferenciasApp`).
@@ -349,14 +366,14 @@ com.seriando.app
 │
 ├── data/
 │   ├── auth/          # AuthRepository (Firebase Auth + Credential Manager + Sessão)
-│   ├── cache/         # Singletons de cache em memória (AbaCache, BuscaCache, CatalogoCache, DescobrirCache)
+│   ├── cache/         # Singletons de cache em memória (AbaCache, BuscaCache, CatalogoCache, DescobrirCache, VersaoDaIdade)
 │   ├── local/         # Persistência local: SeriandoDatabase, DAOs (ListaDao, EpisodioDao, PerfilDao, ObraCacheDao),
 │   │                  # Entidades, Mapeamentos, Dependencias, PreferenciasApp (DataStore) e HistoricoBusca (SharedPrefs)
 │   ├── remote/        # RetrofitInstance e TmdbApiService (Endpoints e clientes HTTP)
-│   ├── repository/    # Repositórios (Avaliacao, Catalogo, Conta, Denuncia, MinhaLista, ObraCache, Perfil, Progresso)
+│   ├── repository/    # Repositórios (Avaliacao, Catalogo, Conta, Denuncia, FiltroDeIdade, MinhaLista, ObraCache, Perfil, Progresso)
 │   └── sync/          # Motor de sincronização: MonitorConexao e Sincronizador (Room <-> Firestore)
 │
-├── model/             # Data Classes (Movie, Serie, Pessoa, Avaliacao, Categoria, Descobrir, Emocao, Status, etc.)
+├── model/             # Data Classes (Movie, Serie, Pessoa, Avaliacao, Categoria, ClassificacaoIndicativa, ControleDeIdade, DataNascimento, Descobrir, Emocao, Status, etc.)
 │
 ├── navigation/
 │   ├── MainScaffold.kt # Scaffold principal com BottomNavigation (Home, Descobrir, Minha Lista, Conta)
@@ -366,7 +383,7 @@ com.seriando.app
 ├── ui/
 │   ├── comum/         # Componentes compartilhados: BotaoSair, ComFaixaDeConexao, LogoSeriando, MensagemSemConexao
 │   ├── descobrir/     # DescobrirScreen (Aba Descobrir com filtros, grade de 4 colunas e botão "Sortear")
-│   ├── details/       # DetailsScreen, CartaoEpisodio, CartaoTemporada, DialogoDenuncia, ElencoCard, InformacoesDaObra, OpiniaoCard, SecaoOndeAssistir, SeletorEmocoes, SeletorEstrelas
+│   ├── details/       # DetailsScreen, CartaoEpisodio, CartaoTemporada, DialogoDenuncia, ElencoCard, InformacoesDaObra, ObraBloqueada, OpiniaoCard, SecaoOndeAssistir, SeletorEmocoes, SeletorEstrelas
 │   ├── home/          # HomeScreen, CategoriaRow, CategoriaScreen, DestaqueCard, ResultadoCard, DialogoEditarApelido, DialogoRemoverDaLista
 │   ├── introducao/    # IntroducaoScreen (3 páginas de boas-vindas com animação radial)
 │   ├── login/         # EntradaScreen, LoginComGoogle, AvisoDeLoginNecessario, DialogoLoginObrigatorio
@@ -374,7 +391,7 @@ com.seriando.app
 │   ├── pessoa/        # PessoaScreen (Biografia, dados e filmografia do artista)
 │   ├── search/        # SearchScreen (Pesquisa com suporte a histórico e cache)
 │   ├── theme/         # Color.kt, CoresEmocao.kt, Formas.kt (capaDeObra), Theme.kt, Type.kt (Design System Velvet Purple)
-│   └── usuario/       # UsuarioScreen e SeletorAvatar
+│   └── usuario/       # UsuarioScreen, SeletorAvatar e SeletorDataNascimento
 │
 ├── MainActivity.kt    # Ponto de entrada do Android com setup de Edge-to-Edge
 └── SeriandoApp.kt     # Subclasse Application (Inicialização do Room e disparo automático de sincronização)
@@ -506,7 +523,8 @@ Os testes do banco de dados local ([BancoLocalTest.kt](file:///C:/Users/Lucas/An
 - **V0.10**: Sistema de curtidas/descurtidas em comentários, denúncia de comentários e visualização de provedores de streaming ("Onde Assistir") via JustWatch.
 - **V0.11**: Tela completa de atores/atrizes com foto, biografia expansível (fallback em inglês) e filmografia paginada por popularidade.
 - **V0.12**: Home organizada por categorias de gênero com botão "Ver mais", lista paginada em grade de 3 colunas, regras de segurança estritas no Firestore, opiniões privadas em coleções isoladas, exclusão permanente de conta (RF29 / LGPD), Design System Velvet Purple e documentação completa de requisitos.
-- **V0.13**: **(Versão Atual)** Onboarding de apresentação com carrossel de 3 páginas (`IntroducaoScreen`), persistência via DataStore (`PreferenciasApp`), Tela de Entrada (`EntradaScreen`) e Modo Visitante interceptado por `DialogoLoginObrigatorio`. Faixa de status de conectividade em tempo real (`ComFaixaDeConexao`), nova Aba Descobrir (`DescobrirScreen`) com botão "Sortear", persistência offline completa com Room Database (`SeriandoDatabase`), motor de sincronização em segundo plano com Firestore (`Sincronizador`) e testes instrumentados ([BancoLocalTest](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/androidTest/java/com/seriando/app/data/local/BancoLocalTest.kt)).
+- **V0.13**: Onboarding de apresentação com carrossel de 3 páginas (`IntroducaoScreen`), persistência via DataStore (`PreferenciasApp`), Tela de Entrada (`EntradaScreen`) e Modo Visitante interceptado por `DialogoLoginObrigatorio`. Faixa de status de conectividade em tempo real (`ComFaixaDeConexao`), nova Aba Descobrir (`DescobrirScreen`) com botão "Sortear", persistência offline completa com Room Database (`SeriandoDatabase`), motor de sincronização em segundo plano com Firestore (`Sincronizador`) e testes instrumentados ([BancoLocalTest](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/androidTest/java/com/seriando/app/data/local/BancoLocalTest.kt)).
+- **V0.14**: **(Versão Atual)** Implementação completa do Controle de Idade e Classificação Indicativa do Brasil (Bloco K / RF49, RF50, RF51, RF59, RN13 a RN17), com o repositório centralizado [FiltroDeIdadeRepository](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/data/repository/FiltroDeIdadeRepository.kt), cálculo dinâmico de idade, selos visuais de classificação indicativa (L, 10, 12, 14, 16, 18), bloqueio de detalhes ([ObraBloqueada](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/details/ObraBloqueada.kt)), seletor de data de nascimento com DatePicker M3 ([SeletorDataNascimento](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/usuario/SeletorDataNascimento.kt)), trava de correção única no Firestore (`correcaoDataUsada`) e invalidação de cache em tempo de execução via `VersaoDaIdade`.
 
 ---
 
@@ -519,7 +537,7 @@ Os testes do banco de dados local ([BancoLocalTest.kt](file:///C:/Users/Lucas/An
 - [x] **Modo Offline & Arquitetura Offline-First (Room)**: Persistência local reativa e sincronização bidirecional em segundo plano com o Firestore.
 - [x] **Onboarding & Modo Visitante**: Introdução em 3 etapas, salvamento em DataStore e interceptação de login para visitantes.
 - [x] **Aba Descobrir & Recomendações**: Filtros avançados com ordenação e botão "Sortear" (*"O que assistir hoje?"*).
-- [ ] **Controle de Idade e Classificação Indicativa (Bloco K)**: Filtro de conteúdo por idade e classificação indicativa no Brasil.
+- [x] **Controle de Idade e Classificação Indicativa (Bloco K)**: Filtro de conteúdo por idade e classificação indicativa no Brasil.
 - [ ] **Testes Automatizados**: Expansão de testes unitários para repositórios/caches e testes de UI com Compose Testing.
 - [ ] **Publicação na Google Play Store**.
 

@@ -53,6 +53,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.seriando.app.data.cache.DescobrirCache
+import com.seriando.app.data.cache.VersaoDaIdade
 import com.seriando.app.data.repository.CatalogoRepository
 import com.seriando.app.data.sync.MonitorConexao
 import com.seriando.app.model.CatalogoDescoberta
@@ -65,12 +66,23 @@ import com.seriando.app.ui.theme.capaDeObra
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
+// Quantas páginas seguidas sem nenhuma obra permitida (por causa do filtro de idade, RF50)
+// a tela busca sozinha antes de parar e oferecer o botão "Procurar mais".
+// Cada página vazia custa umas 20 consultas de classificação, por isso o limite.
+private const val LIMITE_PAGINAS_VAZIAS = 5
+
 /**
  * Aba Descobrir (RF63, RF64, RF65): três menus (Tipo, Catálogo e Gênero), uma grade de
  * capas com 4 colunas, que carrega a próxima página sozinha ao rolar até perto do fim,
  * e o botão "Sortear" ("O que assistir hoje?").
  *
+ * As obras acima da idade do usuário são ocultadas pelo CatalogoRepository (RF50). Como isso
+ * pode deixar páginas inteiras vazias, a tela continua buscando páginas enquanto a grade
+ * estiver vazia, até o limite de [LIMITE_PAGINAS_VAZIAS] páginas seguidas.
+ *
  * Filtros e resultados ficam no DescobrirCache, para sobreviver à ida e volta aos Detalhes.
+ * Se a idade do usuário mudar enquanto isso (login, logout, data de nascimento), os resultados
+ * guardados são descartados e carregados de novo, mantendo os filtros escolhidos.
  *
  * @param aoClicarEmItem abre os Detalhes (id e tipo "movie"/"tv").
  */
@@ -82,16 +94,27 @@ fun DescobrirScreen(
     val scope = rememberCoroutineScope()
     val repositorio = remember { CatalogoRepository() }
 
+    // Idade do usuário (RF50): o cache da Descobrir só vale se foi gravado com a mesma versão.
+    // versaoVista é a versão com que os itens da tela foram carregados.
+    val versaoDaIdade by VersaoDaIdade.versao.collectAsState()
+    val cacheValido = remember { DescobrirCache.versaoDaIdade == VersaoDaIdade.versao.value }
+    var versaoVista by remember { mutableIntStateOf(VersaoDaIdade.versao.value) }
+
     // Filtros escolhidos, restaurados do cache ao voltar para a aba
     var tipo by remember { mutableStateOf(DescobrirCache.tipo) }
     var catalogo by remember { mutableStateOf<CatalogoDescoberta>(DescobrirCache.catalogo) }
     var generoId by remember { mutableStateOf<Int?>(DescobrirCache.generoId) }
 
-    // Resultados e paginação, também restaurados do cache
-    var itens by remember { mutableStateOf<List<ResultadoBusca>>(DescobrirCache.itens) }
-    var paginaAtual by remember { mutableIntStateOf(DescobrirCache.paginaAtual) }   // última carregada
-    var totalPaginas by remember { mutableIntStateOf(DescobrirCache.totalPaginas) }
-    var paginaPedida by remember { mutableIntStateOf(maxOf(DescobrirCache.paginaAtual, 1)) } // a que se quer ver
+    // Resultados e paginação, restaurados do cache só se ele ainda vale para a idade de agora
+    var itens by remember {
+        mutableStateOf<List<ResultadoBusca>>(if (cacheValido) DescobrirCache.itens else emptyList())
+    }
+    var paginaAtual by remember { mutableIntStateOf(if (cacheValido) DescobrirCache.paginaAtual else 0) }   // última carregada
+    var totalPaginas by remember { mutableIntStateOf(if (cacheValido) DescobrirCache.totalPaginas else 0) }
+    var paginaPedida by remember { mutableIntStateOf(maxOf(paginaAtual, 1)) } // a que se quer ver
+
+    // Quantas páginas seguidas vieram sem nenhuma obra permitida (RF50). Não vai para o cache.
+    var paginasVazias by remember { mutableIntStateOf(0) }
 
     // Estado da carga
     var carregando by remember { mutableStateOf(false) }
@@ -106,10 +129,10 @@ fun DescobrirScreen(
     var generos by remember { mutableStateOf<List<Genero>>(emptyList()) }
     var provedores by remember { mutableStateOf<List<ProvedorStreaming>>(emptyList()) }
 
-    // Posição da rolagem, restaurada do cache
+    // Posição da rolagem, restaurada do cache (volta ao topo se o cache não vale mais)
     val gridState = rememberLazyGridState(
-        initialFirstVisibleItemIndex = DescobrirCache.indicePrimeiroItem,
-        initialFirstVisibleItemScrollOffset = DescobrirCache.deslocamento
+        initialFirstVisibleItemIndex = if (cacheValido) DescobrirCache.indicePrimeiroItem else 0,
+        initialFirstVisibleItemScrollOffset = if (cacheValido) DescobrirCache.deslocamento else 0
     )
 
     // Ao sair da tela (abrir Detalhes, trocar de aba), grava tudo no cache
@@ -123,6 +146,8 @@ fun DescobrirScreen(
             DescobrirCache.totalPaginas = totalPaginas
             DescobrirCache.indicePrimeiroItem = gridState.firstVisibleItemIndex
             DescobrirCache.deslocamento = gridState.firstVisibleItemScrollOffset
+            // Marca com qual idade estes itens foram carregados (RF50)
+            DescobrirCache.versaoDaIdade = versaoVista
         }
     }
 
@@ -169,6 +194,8 @@ fun DescobrirScreen(
             }
             paginaAtual = paginaPedida
             totalPaginas = pagina.totalPaginas
+            // Conta as páginas seguidas em que o filtro de idade não deixou passar nenhuma obra (RF50)
+            paginasVazias = if (pagina.itens.isEmpty()) paginasVazias + 1 else 0
             carregando = false
         } catch (e: CancellationException) {
             // Cancelada por uma mudança de filtro: a nova carga assume o estado
@@ -193,10 +220,14 @@ fun DescobrirScreen(
         }
     }
 
-    // Rolagem infinita: perto do fim, sem carga em andamento e com mais páginas, pede a próxima.
-    // Só avança quando a página pedida já chegou (paginaPedida == paginaAtual).
-    LaunchedEffect(pertoDoFim, carregando, falhou, paginaAtual, totalPaginas) {
-        if (pertoDoFim && !carregando && !falhou &&
+    // Busca a próxima página quando: (a) o usuário rolou até perto do fim, ou (b) a grade está
+    // vazia porque o filtro de idade ocultou tudo (RF50) e ainda há páginas para olhar.
+    // Só avança quando a página pedida já chegou (paginaPedida == paginaAtual) e para depois
+    // de LIMITE_PAGINAS_VAZIAS páginas seguidas sem nenhuma obra permitida.
+    LaunchedEffect(pertoDoFim, carregando, falhou, paginaAtual, totalPaginas, itens.isEmpty(), paginasVazias) {
+        val gradeVazia = itens.isEmpty()
+        if ((pertoDoFim || gradeVazia) && !carregando && !falhou &&
+            paginasVazias < LIMITE_PAGINAS_VAZIAS &&
             paginaAtual in 1 until totalPaginas && paginaPedida == paginaAtual
         ) {
             paginaPedida = paginaAtual + 1
@@ -215,8 +246,18 @@ fun DescobrirScreen(
         paginaAtual = 0
         totalPaginas = 0
         paginaPedida = 1
+        paginasVazias = 0
         falhou = false
         scope.launch { gridState.scrollToItem(0) }
+    }
+
+    // Se a idade do usuário mudou com a tela aberta (por exemplo, a data de nascimento chegou da
+    // nuvem), as obras da grade foram filtradas com a idade antiga: recarrega com os mesmos filtros (RF50)
+    LaunchedEffect(versaoDaIdade) {
+        if (versaoDaIdade != versaoVista) {
+            versaoVista = versaoDaIdade
+            aplicarFiltros(tipo, catalogo, generoId)
+        }
     }
 
     /**
@@ -293,17 +334,28 @@ fun DescobrirScreen(
                     )
                 }
 
-                // A carga terminou, mas os filtros não devolveram nenhuma obra
-                itens.isEmpty() && paginaAtual > 0 && !carregando -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                // Nenhuma obra permitida: ou as páginas acabaram, ou já foram várias páginas seguidas
+                // vazias por causa do filtro de idade (RF50). Se ainda há páginas, oferece continuar.
+                itens.isEmpty() && paginaAtual > 0 && !carregando &&
+                        (paginaAtual >= totalPaginas || paginasVazias >= LIMITE_PAGINAS_VAZIAS) -> {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                         Text(
                             text = "Nenhum título encontrado com esses filtros.",
                             style = MaterialTheme.typography.bodyMedium
                         )
+                        if (paginaAtual < totalPaginas) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            // Zerar o contador deixa o efeito de rolagem buscar mais páginas
+                            Button(onClick = { paginasVazias = 0 }) { Text("Procurar mais") }
+                        }
                     }
                 }
 
-                // Primeira carga (ou troca de filtro) em andamento
+                // Primeira carga, troca de filtro ou busca da próxima página com a grade ainda vazia
                 itens.isEmpty() -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
@@ -342,6 +394,10 @@ fun DescobrirScreen(
                                     carregando -> CircularProgressIndicator()
                                     // Falhou ao carregar mais: botão para tentar de novo
                                     falhou -> Button(onClick = { tentativa++ }) { Text("Tentar de novo") }
+                                    // O filtro de idade deixou várias páginas seguidas sem nenhuma obra:
+                                    // parou de buscar sozinho e oferece continuar (RF50)
+                                    paginasVazias >= LIMITE_PAGINAS_VAZIAS && paginaAtual < totalPaginas ->
+                                        Button(onClick = { paginasVazias = 0 }) { Text("Procurar mais") }
                                     // Chegou ao fim da lista
                                     paginaAtual >= totalPaginas -> Text(
                                         text = "Isso é tudo por aqui.",

@@ -54,9 +54,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.seriando.app.BuildConfig
 import com.seriando.app.data.auth.AuthRepository
-import com.seriando.app.data.remote.RetrofitInstance
 import com.seriando.app.data.repository.AvaliacaoRepository
 import com.seriando.app.data.repository.MinhaListaRepository
 import com.seriando.app.data.repository.ObraCacheRepository
@@ -79,6 +77,9 @@ import com.seriando.app.ui.home.DialogoRemoverDaLista
 import com.seriando.app.ui.login.DialogoLoginObrigatorio
 import com.seriando.app.ui.theme.capaDeObra
 import kotlinx.coroutines.launch
+import com.seriando.app.data.cache.VersaoDaIdade
+import com.seriando.app.data.repository.FiltroDeIdadeRepository
+import kotlinx.coroutines.CancellationException
 
 /**
  * Tela de detalhes de uma mídia (série ou filme).
@@ -106,7 +107,13 @@ import kotlinx.coroutines.launch
  * @param aoClicarEmAtor Callback disparado ao selecionar um integrante do elenco, repassando o ID do ator.
  */
 @Composable
-fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit) {
+fun DetailsScreen(
+    serieId: Int,
+    tipoMidia: String,
+    aoClicarEmAtor: (Int) -> Unit,
+    // Chamado pelo botão "Voltar" do aviso de obra bloqueada por idade (RF51)
+    aoVoltar: () -> Unit = {}
+) {
 
     val context = LocalContext.current
     val authRepository = remember { AuthRepository() }
@@ -115,6 +122,8 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
     val avaliacaoRepository = remember { AvaliacaoRepository() }
     val perfilRepository = remember { PerfilRepository() }
     val obraCacheRepository = remember { ObraCacheRepository() }
+    // Controle de idade (RF51): decide se este usuário pode abrir esta obra
+    val filtroDeIdade = remember { FiltroDeIdadeRepository() }
     val scope = rememberCoroutineScope()
 
     // Lido a cada recomposição. Serve de chave dos efeitos da comunidade abaixo:
@@ -124,6 +133,10 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
     var detalheSerie by remember { mutableStateOf<SerieDetalhe?>(null) }
     var detalheFilme by remember { mutableStateOf<MovieDetalhe?>(null) }
     var erro by remember { mutableStateOf(false) }
+    // Resultado do controle de idade (RF51): null = ainda conferindo, true = liberada, false = bloqueada
+    var liberada by remember { mutableStateOf<Boolean?>(null) }
+    // Muda quando a idade do usuário muda com a tela aberta: a conferência é refeita
+    val versaoDaIdade by VersaoDaIdade.versao.collectAsState()
     var mostrarDialogoLogin by remember { mutableStateOf(false) }
     var mostrarDialogoRemover by remember { mutableStateOf(false) } // confirmação de "remover da lista"
 
@@ -209,6 +222,36 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
         } catch (e: Exception) {
             Log.e("Seriando", "Erro ao buscar detalhes", e)
             erro = true
+        }
+    }
+
+    // Controle de idade (RF51): quando os detalhes chegam, confere se a idade do usuário permite a obra.
+    // Vale para qualquer caminho até aqui (Home, busca, lista, sorteio, filmografia, histórico).
+    // Usa a classificação que veio nos detalhes; se a cópia é antiga e não a traz, consulta a TMDB.
+    // Na dúvida (erro ou obra sem classificação), bloqueia para menores.
+    LaunchedEffect(detalheSerie, detalheFilme, versaoDaIdade) {
+        val serie = detalheSerie
+        val filme = detalheFilme
+        if (serie == null && filme == null) return@LaunchedEffect
+
+        try {
+            // Os detalhes trazem o campo da classificação? (cópias antigas do Room não trazem)
+            val trazClassificacao = if (serie != null) {
+                serie.classificacoes != null
+            } else {
+                filme?.datasDeLancamento != null
+            }
+            val classificacao = if (serie != null) {
+                ClassificacaoIndicativa.daSerie(serie.classificacoes)
+            } else {
+                ClassificacaoIndicativa.doFilme(filme?.datasDeLancamento)
+            }
+            liberada = filtroDeIdade.obraPermitida(tipoMidia, serieId, classificacao, trazClassificacao)
+        } catch (e: CancellationException) {
+            throw e // a tela saiu: não é falha
+        } catch (e: Exception) {
+            Log.e("Seriando", "Erro no controle de idade", e)
+            liberada = false // na dúvida, bloqueia
         }
     }
 
@@ -406,6 +449,24 @@ fun DetailsScreen(serieId: Int, tipoMidia: String, aoClicarEmAtor: (Int) -> Unit
 
             erro -> {
                 Text("Não foi possível carregar os detalhes.")
+            }
+
+            // Controle de idade (RF51): os detalhes chegaram, mas a idade ainda está sendo conferida.
+            // Nada da obra é mostrado enquanto isso.
+            liberada == null -> {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+            }
+
+            // Obra acima da idade do usuário: o aviso substitui todo o conteúdo (RF51)
+            liberada == false -> {
+                ObraBloqueada(
+                    classificacao = if (detalheSerie != null) {
+                        ClassificacaoIndicativa.daSerie(detalheSerie?.classificacoes)
+                    } else {
+                        ClassificacaoIndicativa.doFilme(detalheFilme?.datasDeLancamento)
+                    },
+                    aoVoltar = aoVoltar
+                )
             }
 
             else -> {

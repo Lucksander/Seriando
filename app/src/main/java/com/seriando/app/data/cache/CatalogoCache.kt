@@ -12,7 +12,8 @@ import com.seriando.app.model.ResultadoBusca
 object CatalogoCache {
 
     // Chave: id da categoria (ex.: "acao"). Valor: itens da 1ª página, já com tipoMidia definido.
-    private val primeirasPaginas = mutableMapOf<String, List<ResultadoBusca>>()
+    // ConcurrentHashMap: a limpeza pode vir da sincronização (outra thread) enquanto a Home lê
+    private val primeirasPaginas = java.util.concurrent.ConcurrentHashMap<String, List<ResultadoBusca>>()
 
     /** Devolve os itens em cache da categoria, ou null se ainda não foram carregados. */
     fun obter(categoriaId: String): List<ResultadoBusca>? = primeirasPaginas[categoriaId]

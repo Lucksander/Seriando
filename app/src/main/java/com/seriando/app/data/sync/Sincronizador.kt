@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.withTimeoutOrNull
+import com.seriando.app.data.cache.VersaoDaIdade
 
 /**
  * Sincroniza o banco local (Room) com o Firestore (RF33, RN21 a RN23).
@@ -475,7 +476,9 @@ object Sincronizador {
         val corrigidaNaNuvem = privadoNuvem.getBoolean("aniversarioAlterado") ?: false
 
         if (publicoNuvem.exists()) {
-            Dependencias.emTransacao {
+            val dataNova = privadoNuvem.getString("aniversario")
+            // A transação devolve true se a data de nascimento local mudou (ou nem existia ainda)
+            val dataMudou = Dependencias.emTransacao {
                 val local = dao.obter(uid)
                 if (local == null || !local.pendenteSincronizacao) {
                     dao.salvar(
@@ -483,14 +486,19 @@ object Sincronizador {
                             uid = uid,
                             apelido = publicoNuvem.getString("apelido").orEmpty().ifBlank { "Usuário" },
                             avatarId = publicoNuvem.getString("avatarId") ?: "google",
-                            aniversario = privadoNuvem.getString("aniversario"),
+                            aniversario = dataNova,
                             atualizadoEm = publicoNuvem.getLong("atualizadoEm") ?: 0L,
                             pendenteSincronizacao = false,
                             aniversarioCorrigido = corrigidaNaNuvem
                         )
                     )
+                    local?.aniversario != dataNova
+                } else {
+                    false
                 }
             }
+            // A data chegou da nuvem e muda a idade: as listas filtradas antes não valem mais (RF50)
+            if (dataMudou) VersaoDaIdade.idadeMudou()
         } else {
             // Primeiro acesso: nem a nuvem nem o banco local têm perfil
             val criou = Dependencias.emTransacao {

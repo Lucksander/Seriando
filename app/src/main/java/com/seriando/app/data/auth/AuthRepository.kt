@@ -18,6 +18,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import com.seriando.app.data.cache.VersaoDaIdade
 
 /**
  * Autenticação com conta Google (RF01, RF02, RF27).
@@ -52,6 +53,8 @@ class AuthRepository {
         val usuario = resultadoLogin.user
 
         if (usuario != null) {
+            // Quem entra pode ter outra idade: apaga as listas guardadas com a idade anterior (RF50)
+            VersaoDaIdade.idadeMudou()
             // Libera a sincronização (ela fica bloqueada depois de uma exclusão de conta)
             // e baixa os dados da nuvem para o banco local, em segundo plano
             Sincronizador.desbloquear()
@@ -84,6 +87,7 @@ class AuthRepository {
         BuscaCache.resultados = emptyList()
         AbaCache.abaSelecionada = 0
         CatalogoCache.limpar()
+        VersaoDaIdade.idadeMudou() // quem sai vira visitante: as telas abertas recarregam com a idade restrita (RF50)
 
         // O Room só apaga fora da thread principal
         CoroutineScope(Dispatchers.IO).launch {

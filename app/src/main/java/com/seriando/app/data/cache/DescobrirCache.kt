@@ -26,4 +26,8 @@ object DescobrirCache {
     // Posição da rolagem da grade
     var indicePrimeiroItem: Int = 0
     var deslocamento: Int = 0
+
+    // Versão da idade (VersaoDaIdade) com que os itens guardados foram carregados (RF50):
+    // se a idade mudou desde então, a tela descarta os itens e carrega de novo
+    var versaoDaIdade: Int = 0
 }

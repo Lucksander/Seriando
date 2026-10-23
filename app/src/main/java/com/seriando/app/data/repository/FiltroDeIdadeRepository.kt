@@ -66,6 +66,30 @@ class FiltroDeIdadeRepository(
     }
 
     /**
+     * Controle de idade da tela de Detalhes (RF51): diz se esta obra pode ser aberta pelo usuário.
+     * Usa a mesma regra do filtro das listas (ControleDeIdade), então os dois nunca discordam.
+     *
+     * @param classificacaoConhecida classificação que já veio nos detalhes da obra (pode ser null).
+     * @param jaConsultada true se os detalhes trouxeram o campo da classificação, mesmo vazio
+     *                     (null aí significa "a TMDB não tem classificação do Brasil", RN14).
+     *                     false se a cópia dos detalhes é antiga e não traz o campo: nesse caso a
+     *                     classificação é consultada à parte, com o cache de memória.
+     */
+    suspend fun obraPermitida(
+        tipoMidia: String,
+        id: Int,
+        classificacaoConhecida: ClassificacaoIndicativa?,
+        jaConsultada: Boolean
+    ): Boolean {
+        val idade = idadeEfetiva()
+        // Maior de idade: tudo é permitido, sem consultar nada
+        if (idade >= ControleDeIdade.MAIORIDADE) return true
+
+        val classificacao = if (jaConsultada) classificacaoConhecida else buscarClassificacao(tipoMidia, id)
+        return ControleDeIdade.permitida(classificacao, idade)
+    }
+
+    /**
      * Classificação do Brasil de uma obra, ou null se não houver (ou se a consulta falhar).
      * Respostas bem-sucedidas, inclusive "sem classificação", ficam no cache; falhas não,
      * para serem tentadas de novo na próxima vez.
