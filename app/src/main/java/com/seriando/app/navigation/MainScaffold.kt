@@ -35,6 +35,8 @@ import com.seriando.app.ui.usuario.UsuarioScreen
  * @param aoClicarEmPesquisar abre a tela de busca.
  * @param aoClicarEmItem      abre os Detalhes (id e tipo "movie"/"tv").
  * @param aoClicarEmVerMais   abre a lista completa de uma categoria (recebe o id dela).
+ * @param aoAbrirTermos       abre os Termos de Uso (linha da aba Conta).
+ * @param aoAbrirPrivacidade  abre a Política de Privacidade (linha da aba Conta).
  */
 @Composable
 fun MainScaffold(
@@ -42,7 +44,10 @@ fun MainScaffold(
     aoClicarEmItem: (Int, String) -> Unit,
     aoClicarEmVerMais: (String) -> Unit, // recebe o id da categoria
     // Chamado depois que o usuário sai da conta ou a exclui (RF53): o NavHost leva à tela de entrada
-    aoSair: () -> Unit = {}
+    aoSair: () -> Unit = {},
+    // Abrem os textos legais a partir da aba Conta
+    aoAbrirTermos: () -> Unit = {},
+    aoAbrirPrivacidade: () -> Unit = {}
 ) {
     var abaSelecionada by remember { mutableIntStateOf(AbaCache.abaSelecionada) }
 
@@ -108,7 +113,11 @@ fun MainScaffold(
                 )
                 1 -> DescobrirScreen(aoClicarEmItem = aoClicarEmItem)
                 2 -> MinhaListaScreen(aoClicarEmItem = aoClicarEmItem)
-                3 -> UsuarioScreen(aoSair = aoSair)
+                3 -> UsuarioScreen(
+                    aoSair = aoSair,
+                    aoAbrirTermos = aoAbrirTermos,
+                    aoAbrirPrivacidade = aoAbrirPrivacidade
+                )
             }
         }
     }

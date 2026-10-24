@@ -20,6 +20,9 @@ import com.seriando.app.data.local.PreferenciasApp
 import com.seriando.app.ui.details.DetailsScreen
 import com.seriando.app.ui.home.CategoriaScreen
 import com.seriando.app.ui.introducao.IntroducaoScreen
+import com.seriando.app.ui.legal.POLITICA_DE_PRIVACIDADE
+import com.seriando.app.ui.legal.TERMOS_DE_USO
+import com.seriando.app.ui.legal.TextoLegalScreen
 import com.seriando.app.ui.login.EntradaScreen
 import com.seriando.app.ui.pessoa.PessoaScreen
 import com.seriando.app.ui.search.SearchScreen
@@ -71,6 +74,9 @@ fun SeriandoNavHost(
         // popUpTo remove a introdução da pilha, para o botão Voltar não retornar a ela.
         composable(Rotas.INTRODUCAO) {
             IntroducaoScreen(
+                // Links da frase "Ao continuar, você concorda..." abrem os textos legais
+                aoAbrirTermos = { navController.navigate(Rotas.TERMOS) },
+                aoAbrirPrivacidade = { navController.navigate(Rotas.PRIVACIDADE) },
                 aoConcluir = {
                     escopo.launch { preferencias.marcarIntroducaoVista() }
                     navController.navigate(Rotas.ENTRADA) {
@@ -84,6 +90,8 @@ fun SeriandoNavHost(
         // e a entrada sai da pilha para o botão Voltar não retornar a ela.
         composable(Rotas.ENTRADA) {
             EntradaScreen(
+                aoAbrirTermos = { navController.navigate(Rotas.TERMOS) },
+                aoAbrirPrivacidade = { navController.navigate(Rotas.PRIVACIDADE) },
                 aoEntrarComSucesso = {
                     navController.navigate(Rotas.HOME) {
                         popUpTo(Rotas.ENTRADA) { inclusive = true }
@@ -99,6 +107,9 @@ fun SeriandoNavHost(
 
         composable(Rotas.HOME) {
             MainScaffold(
+                // Linhas "Termos de Uso" e "Política de Privacidade" da aba Conta
+                aoAbrirTermos = { navController.navigate(Rotas.TERMOS) },
+                aoAbrirPrivacidade = { navController.navigate(Rotas.PRIVACIDADE) },
                 aoClicarEmPesquisar = { navController.navigate(Rotas.BUSCA) },
                 aoClicarEmItem = { id, tipoMidia ->
                     navController.navigate(Rotas.detalhesComId(tipoMidia, id))
@@ -115,6 +126,22 @@ fun SeriandoNavHost(
                         popUpTo(navController.graph.id) { inclusive = true }
                     }
                 }
+            )
+        }
+
+        // Termos de Uso e Política de Privacidade: o texto está no código, então abrem offline
+        // e para visitante. O botão Voltar da barra superior desempilha a tela.
+        composable(Rotas.TERMOS) {
+            TextoLegalScreen(
+                documento = TERMOS_DE_USO,
+                aoVoltar = { navController.popBackStack() }
+            )
+        }
+
+        composable(Rotas.PRIVACIDADE) {
+            TextoLegalScreen(
+                documento = POLITICA_DE_PRIVACIDADE,
+                aoVoltar = { navController.popBackStack() }
             )
         }
 

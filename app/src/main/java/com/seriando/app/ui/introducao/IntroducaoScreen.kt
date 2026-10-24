@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.seriando.app.R
 import com.seriando.app.ui.comum.LogoSeriando
+import com.seriando.app.ui.legal.AvisoDeTermosEPolitica
 import kotlinx.coroutines.launch
 
 // Fonte Poppins já presente no projeto (res/font/poppins_semibold.ttf), usada nos títulos
@@ -76,9 +77,15 @@ private val paginas = listOf(
  * @param aoConcluir chamada ao tocar em "Pular" (em qualquer página) ou em "Começar" (última).
  *   Quem a recebe (o SeriandoNavHost) grava a flag "introducao_vista" e navega; a tela não
  *   conhece navegação nem DataStore.
+ * @param aoAbrirTermos      chamada ao tocar em "Termos de Uso" na frase do rodapé.
+ * @param aoAbrirPrivacidade chamada ao tocar em "Política de Privacidade" na frase do rodapé.
  */
 @Composable
-fun IntroducaoScreen(aoConcluir: () -> Unit) {
+fun IntroducaoScreen(
+    aoConcluir: () -> Unit,
+    aoAbrirTermos: () -> Unit,
+    aoAbrirPrivacidade: () -> Unit
+) {
     // Estado do pager: guarda a página atual; o lambda informa quantas páginas existem
     val estadoPager = rememberPagerState { paginas.size }
     // Escopo para animar a rolagem do pager ao tocar em "Avançar"
@@ -132,11 +139,20 @@ fun IntroducaoScreen(aoConcluir: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 24.dp)
                 .height(52.dp)
         ) {
             Text(if (ehUltimaPagina) "Começar" else "Avançar")
         }
+
+        // Rodapé legal, visível nas 3 páginas: os dois nomes abrem os textos dentro do app
+        AvisoDeTermosEPolitica(
+            aoAbrirTermos = aoAbrirTermos,
+            aoAbrirPrivacidade = aoAbrirPrivacidade,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(top = 12.dp, bottom = 16.dp)
+        )
     }
 }
 

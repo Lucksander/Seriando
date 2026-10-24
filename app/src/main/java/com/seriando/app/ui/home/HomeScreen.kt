@@ -56,6 +56,7 @@ import com.seriando.app.model.PerfilPublico
 import com.seriando.app.model.ResultadoBusca
 import com.seriando.app.ui.comum.LogoSeriando
 import com.seriando.app.ui.comum.MensagemSemConexao
+import com.seriando.app.ui.usuario.AvatarDoUsuario
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -286,8 +287,8 @@ fun HomeScreen(
 }
 
 /**
- * Avatar redondo do cabeçalho da Home: mostra a foto da conta Google ou o emoji
- * escolhido no app, conforme o avatarId do perfil. Tocar nele abre a aba Conta.
+ * Avatar redondo do cabeçalho da Home: mostra a foto da conta Google ou a foto
+ * escolhida no app, conforme o avatarId do perfil. Tocar nele abre a aba Conta.
  * Enquanto o perfil não chega do banco local, mostra um boneco genérico, para o
  * toque continuar funcionando.
  *
@@ -309,18 +310,18 @@ private fun AvatarDoCabecalho(
             .clickable(onClickLabel = "Abrir minha conta") { aoClicar() },
         contentAlignment = Alignment.Center
     ) {
-        when {
+        if (perfil == null) {
             // Perfil ainda não carregado: boneco genérico
-            perfil == null -> Icon(Icons.Outlined.Person, contentDescription = "Minha conta")
-            // Foto da conta Google, recortada em círculo pelo clip do Box
-            perfil.avatarId == "google" -> AsyncImage(
-                model = fotoGoogle,
-                contentDescription = "Minha conta",
+            Icon(Icons.Outlined.Person, contentDescription = "Minha conta")
+        } else {
+            // Foto do Google, foto do app ou, na falta delas, a inicial do apelido
+            AvatarDoUsuario(
+                avatarId = perfil.avatarId,
+                apelido = perfil.apelido,
+                fotoGoogle = fotoGoogle,
                 modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
+                descricao = "Minha conta"
             )
-            // Avatar do app: o próprio emoji
-            else -> Text(text = perfil.avatarId, style = MaterialTheme.typography.headlineSmall)
         }
     }
 }

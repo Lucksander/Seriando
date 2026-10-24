@@ -32,6 +32,7 @@ import com.seriando.app.model.Avaliacao
 import com.seriando.app.model.EMOCOES_DISPONIVEIS
 import com.seriando.app.model.VotoResumo
 import com.seriando.app.ui.theme.corDaEmocao
+import com.seriando.app.ui.usuario.AvatarDoUsuario
 
 /**
  * Cartão de uma opinião da comunidade (RF21 a RF26, RF35, RF36, RF48).
@@ -55,16 +56,14 @@ fun OpiniaoCard(
     Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (opiniao.avatarAutor != "google") {
-                    Text(text = opiniao.avatarAutor, style = MaterialTheme.typography.titleMedium)
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                    )
-                }
+                // Avatar do autor: a foto do app que ele escolheu. Quem usa a foto do Google (que não
+                // é copiada para a opinião) e avatares antigos aparecem com a inicial do apelido.
+                AvatarDoUsuario(
+                    avatarId = opiniao.avatarAutor,
+                    apelido = opiniao.apelidoAutor,
+                    fotoGoogle = null,
+                    modifier = Modifier.size(28.dp)
+                )
                 Spacer(modifier = Modifier.padding(start = 6.dp))
                 Text(text = opiniao.apelidoAutor, style = MaterialTheme.typography.titleSmall)
                 if (ehMinha && !opiniao.publica) {

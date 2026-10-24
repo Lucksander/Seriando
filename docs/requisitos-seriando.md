@@ -25,7 +25,7 @@ Aplicativo Android para acompanhar séries e filmes, com lista pessoal, progress
 | RF11 | Ver destaques na Home e navegar por abas | Concluído |
 | RF12 | Aba Conta (antes chamada Usuário): exibir apelido, foto e e-mail | Concluído (aba renomeada no app: RF58) |
 | RF13 | Editar apelido | Concluído |
-| RF14 | Informar data de aniversário (opcional, visível apenas ao próprio usuário) | Concluído |
+| RF14 | Informar data de aniversário (opcional, visível apenas ao próprio usuário) | Concluído (substituído pelo RF59) |
 | RF15 | Foto de perfil: usar a foto da conta Google ou escolher um avatar do app | Concluído |
 | RF16 | Avaliar filme ou série com 1 a 5 estrelas | Concluído |
 | RF17 | Editar e remover a própria avaliação | Concluído |
@@ -69,19 +69,21 @@ Aplicativo Android para acompanhar séries e filmes, com lista pessoal, progress
 | RF52 | Telas de introdução na primeira abertura do app: três páginas deslizáveis com indicador de pontos (boas-vindas, onde assistir e comunidade), botão "Pular" no topo de todas e botão "Avançar" que vira "Começar" na última; mostradas apenas uma vez, com a indicação guardada só no aparelho (DataStore, `introducao_vista`) | Concluído |
 | RF53 | Tela de entrada, mostrada depois da introdução e em toda abertura em que não houver usuário logado, e também depois de sair da conta ou excluí-la: logotipo, botão "Entrar com o Google", opção "Continuar como visitante" e links para a Política de Privacidade e os Termos de Uso | Concluído |
 | RF54 | Modo visitante: permite navegar na Home, usar a Descobrir e o sorteio, pesquisar, ver detalhes, onde assistir, elenco e página da pessoa; ao tentar adicionar à lista, marcar episódios, avaliar ou ver a comunidade, abre uma folha inferior (BottomSheet) com os benefícios de ter conta (lista sincronizada, opinião e comunidade, modo offline) e o botão "Entrar com o Google"; as abas Minha Lista e Conta mostram um aviso com o botão "Entrar" | Concluído |
+| RF77 | Política de Privacidade (LGPD) e Termos de Uso dentro do app, em texto guardado no código (funcionam sem internet e para o visitante), com o e-mail de contato; abrem a partir das telas de introdução, da tela de entrada e da seção Sobre da aba Conta | Concluído |
+| RF78 | Avatares do app em imagem: 11 fotos escolhidas em uma folha inferior, junto da foto da conta Google quando houver; substituem os avatares em emoji (quem tinha um emoji vê a inicial do apelido até escolher uma foto) | Concluído |
+| RF79 | Aba Conta reorganizada em cartões: cabeçalho com avatar, seção Perfil (apelido, e-mail, data de nascimento e classificação liberada), seção Sobre (Termos de Uso, Política de Privacidade e versão) e seção Conta (sair e excluir a conta) | Concluído |
+| RF49 | Exibir a classificação indicativa do Brasil (L, 10, 12, 14, 16, 18) nos detalhes da obra | Concluído |
+| RF50 | Ocultar as obras acima da idade do usuário na Home, na busca, nas categorias, na filmografia da pessoa, na Descobrir e no histórico de obras vistas | Concluído |
+| RF51 | Bloquear a tela de Detalhes de uma obra acima da idade do usuário, mesmo quando acessada por outro caminho, com um aviso e o botão Voltar | Concluído |
+| RF59 | Informar a data de nascimento completa (dia, mês e ano) com seletor de data na aba Conta, necessária para calcular a idade; substitui o aniversário em texto livre do RF14 | Concluído |
+| RF73 | Botão de compartilhar na tela de Detalhes (ícone Outlined ao lado do nome da obra): abre o menu de compartilhar do Android com uma mensagem e o link da página da obra na TMDB; funciona também para o visitante | Concluído |
+| RF74 | Exibir, nos detalhes, um selo com a situação da obra segundo a TMDB (séries: em exibição, finalizada, cancelada, em produção, planejada ou piloto; filmes: só quando ainda não lançado ou cancelado) | Concluído |
+| RF75 | Exibir o ano de lançamento nos detalhes: filmes mostram o ano; séries mostram o intervalo ("2019 – 2024" ou "2019 – atual") | Concluído |
+| RF76 | Exibir as temporadas como cartões selecionáveis, com nome, quantidade de episódios, ano e barra de progresso dos episódios assistidos | Concluído |
 
 ### 1.2 A implementar (escopo atual)
 
-Os blocos A a J, L e M foram concluídos. Falta o bloco K.
-
-**Bloco K — Controle de idade (classificação indicativa)**
-
-| ID | Requisito | Situação |
-|----|-----------|----------|
-| RF49 | Exibir a classificação indicativa do Brasil (L, 10, 12, 14, 16, 18) nos detalhes da obra | A implementar |
-| RF50 | Ocultar as obras acima da idade do usuário na Home, na busca, nas categorias e na filmografia da pessoa | A implementar |
-| RF51 | Bloquear a tela de Detalhes de uma obra acima da idade do usuário, mesmo quando acessada por outro caminho | A implementar |
-| RF59 | Informar a data de nascimento completa (dia, mês e ano) com seletor de data na aba Conta, necessária para calcular a idade; substitui o aniversário em texto livre do RF14 | A implementar |
+Todos os blocos do escopo atual foram concluídos.
 
 ### 1.3 Opcionais (se sobrar tempo, por ordem de prioridade)
 
@@ -95,7 +97,6 @@ Os blocos A a J, L e M foram concluídos. Falta o bloco K.
 | RF68 | Ocultar imediatamente, para quem denunciou, a opinião denunciada, com o aviso "Opinião denunciada e oculta" (RN26) | Opcional |
 | RF66 | Buscar por nome e ordenar (data de adição, nome ou status) dentro da Minha Lista | Opcional |
 | RF67 | Exibir estatísticas na aba Conta: total de filmes assistidos, de séries completas e de episódios assistidos | Opcional |
-| RF73 | Botão de compartilhar na tela de Detalhes (ícone Outlined ao lado do nome da obra): abre o menu de compartilhar do Android com uma mensagem e o link da página da obra na TMDB; funciona também para o visitante | Opcional |
 
 RF60 e RF61 dependem dos pré-requisitos descritos na seção 1.5. O RF32 é um deles quando não houver Sign in with Apple.
 
@@ -115,7 +116,7 @@ Os RF63 a RF68 vieram do documento propostas_e_melhorias_seriando.md. Os RF63, R
 
 O Seriando precisa ser multiplataforma, e a versão iOS (RF60 e RF61) está registrada como requisito opcional. Ela não foi implementada nesta entrega pelos motivos abaixo, e o projeto fica com a base preparada para ela (RNF11).
 
-1. **Prazo.** A entrega é em novembro. A prioridade é fechar os requisitos obrigatórios (Blocos K, L e N), a documentação final e os testes.
+1. **Prazo.** A entrega é em novembro. Os requisitos obrigatórios (Blocos K, L e N) foram concluídos; a prioridade agora é a documentação final e os testes.
 2. **Ponto de partida Android.** O app nasceu como projeto Android nativo, com Jetpack Compose, Retrofit, Credential Manager e DataStore. Esse código de cliente não roda no iOS sem migrar para uma stack multiplataforma (por exemplo, Ktor no lugar do Retrofit, biblioteca multiplataforma para o Firebase e um login com Google específico para cada plataforma). Fazer isso agora consumiria o tempo dos requisitos obrigatórios sem entregar funcionalidade nova.
 3. **Exigências da plataforma Apple.** Publicar no iOS exige um Mac com Xcode, uma conta Apple Developer (paga, anual) e testes em simulador ou aparelho iOS.
 4. **Exigências da App Store que o app ainda não cumpre.** Por oferecer login de terceiros, é preciso oferecer um login equivalente (Sign in with Apple ou e-mail e senha, RF32). Por conter conteúdo gerado por usuários, a Apple também pede um mecanismo de bloqueio de usuários, que não existe nos requisitos atuais. O app já cumpre a exclusão de conta dentro do app (RF29) e a denúncia de conteúdo (RF28).
@@ -128,6 +129,14 @@ O Seriando precisa ser multiplataforma, e a versão iOS (RF60 e RF61) está regi
 - Implementar o login com Google no iOS e um login equivalente (Sign in with Apple ou RF32).
 - Criar o bloqueio de usuários.
 - Registrar o app no Firebase para iOS (arquivo de configuração próprio).
+
+**Justificativa da decisão de priorizar uma única plataforma:**
+
+O objetivo principal do projeto Seriando sempre foi entregar uma solução completa, estável e com alto nível de acabamento funcional e visual. Diante do prazo delimitado para o desenvolvimento, a equipe compreendeu que tentar abraçar o lançamento simultâneo para Android e iOS exigiria dividir esforços entre duas plataformas distintas. Isso poderia comprometer a profundidade das funcionalidades exigidas — como o suporte offline completo, o controle de classificação indicativa e os recursos de comunidade.
+
+Em alinhamento com a orientação do professor, tomou-se a decisão estratégica de priorizar uma única plataforma. A escolha pelo ecossistema Android nativo (com Jetpack Compose) permitiu concentrar 100% da capacidade técnica na construção de uma arquitetura sólida, robusta e pronta para produção.
+
+Apesar do foco inicial, o projeto foi estruturado com os princípios de desacoplamento da camada de dados (RNF11). Dessa forma, a base de código fica devidamente preparada para que a versão iOS possa ser implementada como uma evolução futura do sistema, mantendo o mesmo padrão de qualidade.
 
 ---
 
@@ -150,6 +159,7 @@ O Seriando precisa ser multiplataforma, e a versão iOS (RF60 e RF61) está regi
 | RNF13 | Estratégia de cache das chamadas à TMDB definida: cache em memória com tempo de validade na camada Repository e dados das obras da lista guardados no Room (obrasCache), para reduzir chamadas redundantes e consumo de dados | Desempenho |
 | RNF14 | Conteúdo das telas começa abaixo da barra de status e não rola por baixo dos ícones dela, mantendo a barra transparente (tela de ponta a ponta) | Usabilidade |
 | RNF15 | Ícones da interface no estilo Outlined do Material Icons, de forma consistente (preenchidos só onde o preenchimento tem significado, como a estrela da avaliação) | Usabilidade (identidade visual) |
+| RNF16 | Backup automático do Android desativado (`allowBackup="false"`), para que o banco local com dados pessoais não seja copiado para a nuvem do Google (STRIDE I4) | Segurança / Privacidade |
 
 ---
 
@@ -172,7 +182,7 @@ O Seriando precisa ser multiplataforma, e a versão iOS (RF60 e RF61) está regi
 | RN13 | A idade do usuário é calculada a partir da data de nascimento (RF14 e RF59) no momento do uso; a idade em si não é guardada |
 | RN14 | A classificação indicativa considerada é a do Brasil (BR); obra sem classificação para o Brasil fica oculta para usuários menores de 18 anos |
 | RN15 | O filtro por idade é aplicado em um único ponto da camada de dados (Repository), valendo para todas as telas |
-| RN16 | Usuário sem data de nascimento informada e visitante são tratados como menores, com uma faixa de classificação restrita: até 12 anos (classificações L, 10 e 12) |
+| RN16 | Usuário sem data de nascimento informada (ou com data inválida, como o aniversário antigo em texto livre) e visitante são tratados como menores, com uma faixa de classificação restrita: até 12 anos (classificações L, 10 e 12) |
 | RN17 | Depois de preenchida, a data de nascimento não pode ser alterada livremente (travada nas regras do Firestore, com no máximo uma correção) |
 | RN18 | O visitante não grava dados no Firestore e não lê a comunidade (RN08 continua valendo); ações que exigem conta pedem o login |
 | RN19 | Ao excluir a conta (RF29), são apagados o perfil, a lista, o progresso, as avaliações, as opiniões (públicas e privadas) e os votos do usuário; as denúncias feitas por ele são mantidas como registro de moderação, e os votos de outras pessoas nas opiniões dele ficam órfãos e invisíveis, porque só cada autor pode apagar o próprio voto |
@@ -187,13 +197,15 @@ O Seriando precisa ser multiplataforma, e a versão iOS (RF60 e RF61) está regi
 | RN28 | Sem conexão, as alterações ficam pendentes e o app não tenta enviá-las; a sincronização completa roda ao abrir o app, no login e quando a internet volta |
 | RN29 | O histórico de busca (pesquisas e obras vistas recentemente) fica só no aparelho (SharedPreferences), nunca é enviado ao Firestore e vale também para o visitante; não é apagado no logout nem na exclusão de conta, e o usuário o apaga pelos botões "Limpar" da tela de busca |
 | RN30 | A escolha de "Continuar como visitante" vale só para aquela abertura do app e não é guardada: sem usuário logado, a tela de entrada aparece em toda abertura. Só a indicação de "introdução já vista" é guardada, no aparelho (DataStore) |
+| RN31 | Se a classificação indicativa de uma obra não puder ser consultada (por exemplo, sem conexão), ela é tratada como sem classificação e fica oculta para menores de 18 anos (RN14) |
+| RN32 | As listas guardadas em memória (Home, busca e Descobrir) são descartadas e recarregadas quando a idade do usuário muda: login, logout, data de nascimento salva ou recebida da nuvem |
 
 ---
 
 ## 4. Modelo de Dados (Firestore)
 
 ```
-usuarios/{uid}                                  -> dados privados (aniversário, e-mail)
+usuarios/{uid}                                  -> dados privados (data de nascimento AAAA-MM-DD, aniversarioAlterado, e-mail)
 perfisPublicos/{uid}                            -> apelido, avatar
 usuarios/{uid}/series/{serieId}                 -> lista pessoal e status
 usuarios/{uid}/series/{serieId}/episodiosAssistidos
@@ -207,7 +219,7 @@ Observações sobre os blocos K e L e sobre o RF29:
 
 - Nenhuma coleção nova no Firestore. A classificação indicativa vem da TMDB a cada consulta (com cache em memória) e a idade é calculada a partir da data de nascimento guardada em `usuarios/{uid}` (campo `aniversario`, que passa de texto livre, como "15/03", para data completa; RF59).
 - A indicação de "introdução já vista" (RF52) é guardada apenas no aparelho (DataStore), não no Firestore.
-- Para RN17, o campo de aniversário em `usuarios/{uid}` passa a ter regra de atualização restrita.
+- Para RN17, o campo de aniversário em `usuarios/{uid}` passa a ter regra de atualização restrita. O campo `aniversarioAlterado` (booleano) marca que a única correção já foi usada: as regras do Firestore só permitem mudar a data uma vez, quando essa marca passa de falsa para verdadeira.
 - A exclusão de conta (RF29) não cria coleções: apaga os documentos descritos acima. Depende de uma regra de leitura em `/{path=**}/opinioes/{opiniaoId}` (consulta em todas as obras, só para usuário logado), usada para achar as avaliações e os votos do usuário.
 - A aba Descobrir (RF63 a RF65) e o histórico de busca (RF72) não criam coleções no Firestore: a Descobrir só consulta a TMDB, e o histórico fica no aparelho, em SharedPreferences (RN29).
 
@@ -218,7 +230,7 @@ O Firestore não ganha coleções com o modo offline. O Bloco N cria apenas um b
 ```
 lista                 -> id da TMDB (chave), tipo, título, sinopse, capa, status, dataAdicao, pendenteSincronizacao, atualizadoEm, removido
 episodiosAssistidos   -> série, temporada, episódio (chave composta), pendenteSincronizacao, atualizadoEm, removido
-perfil                -> uid, apelido, avatar, aniversário (data de nascimento a partir do Bloco K), pendenteSincronizacao, atualizadoEm
+perfil                -> uid, apelido, avatar, aniversário (data de nascimento a partir do Bloco K), aniversarioCorrigido, pendenteSincronizacao, atualizadoEm
 obrasCache            -> tipo, id da TMDB e parte (detalhes, onde assistir ou temporada), json da resposta da TMDB, atualizadoEm
 ```
 
@@ -242,8 +254,9 @@ Observações sobre o Bloco N:
 - Diagrama de arquitetura (camadas ui, data, model, navigation + Firebase + TMDB; incluir o banco local Room e a sincronização com o Firestore)
 - Modelagem do banco: coleções e documentos, campos e exemplos de leitura e escrita; incluir as tabelas locais do Room (seção 4.1)
 - Diagramas de sequência: login, adicionar à lista, publicar opinião, votar, sincronizar alterações feitas offline
-- Modelo de ameaças (STRIDE) e checklist de segurança (OWASP MASVS), incluindo o risco de data de nascimento falsa e de app adulterado no controle de idade (RF50 e RF51), tratado como risco parcialmente aceito, os dados guardados no aparelho pelo modo offline (RF33), além das limitações conhecidas das regras do Firestore (campo `data` vindo do relógio do celular, lista de 24 emoções não validada no servidor, votos órfãos após a exclusão de conta)
+- Modelo de ameaças (STRIDE) e checklist de segurança (OWASP MASVS), produzidos em `stride-seriando.md` (itens verificados no código em 24/10/2026), incluindo o risco de data de nascimento falsa e de app adulterado no controle de idade (RF50 e RF51), tratado como risco parcialmente aceito, os dados guardados no aparelho pelo modo offline (RF33), além das limitações conhecidas das regras do Firestore (campo `data` vindo do relógio do celular, lista de 24 emoções não validada no servidor, votos órfãos após a exclusão de conta)
 - Nota LGPD: registrar o tratamento de dados de crianças e adolescentes decorrente do controle de idade, a exclusão de conta (RF29), com o que é mantido: denúncias feitas pelo usuário (registro de moderação) e votos de terceiros nas opiniões dele, e os dados pessoais guardados no aparelho, apagados no logout e na exclusão de conta (RN25)
+- Política de Privacidade e Termos de Uso (RF77): produzidos em `politica-de-privacidade.md` e `termos-de-uso.md`, com o mesmo texto exibido no app
 - Justificativa de por que a versão iOS não está no escopo atual (seção 1.5)
 - Esteira de publicação (RNF12), descrita abaixo
 
@@ -255,6 +268,7 @@ Observações sobre o Bloco N:
 - Publicar a política de privacidade e preencher a seção de segurança dos dados (Data safety).
 - Distribuir primeiro em teste interno e depois em produção.
 - Atender à exigência de exclusão de conta dentro do app (RF29).
+- Fixar o número de versão do banco local (Room) e escrever a migração antes de qualquer mudança de tabela depois da publicação.
 
 **Apple App Store (preparação documentada; execução opcional, RF61)**
 - Conta Apple Developer, app criado no App Store Connect e bundle ID registrado.

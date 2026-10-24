@@ -5,9 +5,10 @@
     <!-- Permite saber se há conexão (aviso de modo offline, RF62); permissão comum, sem pedir ao usuário -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- allowBackup="false": o banco local (lista, progresso, perfil e data de nascimento) não entra no backup automático do Android (STRIDE I4) -->
     <application
         android:name=".SeriandoApp"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"

@@ -9,6 +9,8 @@ object Rotas {
     const val DETALHES = "detalhes/{tipoMidia}/{serieId}"
     const val PESSOA = "pessoa/{pessoaId}" // página do ator/atriz (RF40)
     const val CATEGORIA = "categoria/{categoriaId}" // lista completa de uma categoria (RF46)
+    const val TERMOS = "termos" // Termos de Uso, texto dentro do app (abre offline e para visitante)
+    const val PRIVACIDADE = "privacidade" // Política de Privacidade, texto dentro do app
 
     fun detalhesComId(tipoMidia: String, serieId: Int) = "detalhes/$tipoMidia/$serieId"
     fun pessoaComId(pessoaId: Int) = "pessoa/$pessoaId"

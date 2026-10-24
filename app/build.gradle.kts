@@ -58,7 +58,6 @@ dependencies {
 
     implementation(platform(libs.androidx.compose.bom))
     implementation("com.google.firebase:firebase-firestore")
-    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-auth")
     implementation("androidx.credentials:credentials:1.3.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")

@@ -2,23 +2,30 @@ package com.seriando.app.ui.usuario
 
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Cake
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -31,18 +38,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.credentials.exceptions.GetCredentialCancellationException
-import coil3.compose.AsyncImage
+import com.seriando.app.BuildConfig
 import com.seriando.app.R
 import com.seriando.app.data.auth.AuthRepository
 import com.seriando.app.data.repository.ContaRepository
 import com.seriando.app.data.repository.PerfilRepository
 import com.seriando.app.data.repository.ResultadoDataNascimento
+import com.seriando.app.model.ControleDeIdade
 import com.seriando.app.model.DataNascimento
 import com.seriando.app.model.PerfilPublico
 import com.seriando.app.ui.comum.BotaoSair
@@ -52,16 +58,35 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
 /**
- * Aba Conta (RF12 a RF15, RF29, RF33, RF59): apelido, foto/avatar, e-mail, data de nascimento
- * e exclusão da conta.
+ * Texto da faixa de classificação indicativa liberada para uma idade efetiva (RF50).
+ * As classificações do Brasil são L, 10, 12, 14, 16 e 18; vale a maior que não passa da idade.
+ */
+private fun textoDaFaixaLiberada(idadeEfetiva: Int): String = when {
+    idadeEfetiva >= ControleDeIdade.MAIORIDADE -> "Todas as classificações"
+    idadeEfetiva >= 16 -> "Até 16 anos"
+    idadeEfetiva >= 14 -> "Até 14 anos"
+    idadeEfetiva >= 12 -> "Até 12 anos"
+    idadeEfetiva >= 10 -> "Até 10 anos"
+    else -> "Apenas livre para todos os públicos (L)"
+}
+
+/**
+ * Aba Conta (RF12 a RF15, RF29, RF33, RF59): cabeçalho com avatar, apelido e e-mail;
+ * seções Perfil (apelido, e-mail, data de nascimento e faixa liberada), Sobre (Termos de Uso,
+ * Política de Privacidade e versão) e Conta (sair e excluir).
  * O perfil vem do banco local (Room), que a tela observa: funciona sem internet e se atualiza
  * sozinho quando a sincronização traz mudanças da nuvem (RN21).
  * Toda gravação tem try/catch com Log e Toast, porque a falha não pode derrubar o app.
+ *
+ * @param aoSair             chamado depois do logout ou da exclusão da conta; quem navega é o SeriandoNavHost (RF53).
+ * @param aoAbrirTermos      abre a tela dos Termos de Uso.
+ * @param aoAbrirPrivacidade abre a tela da Política de Privacidade.
  */
 @Composable
 fun UsuarioScreen(
-    // Chamado depois do logout ou da exclusão da conta; quem navega é o SeriandoNavHost (RF53)
-    aoSair: () -> Unit = {}
+    aoSair: () -> Unit = {},
+    aoAbrirTermos: () -> Unit = {},
+    aoAbrirPrivacidade: () -> Unit = {}
 ) {
 
     val authRepository = remember { AuthRepository() }
@@ -82,6 +107,9 @@ fun UsuarioScreen(
     }.collectAsState(initial = null)
 
     var mostrarDialogoApelido by remember { mutableStateOf(false) }
+
+    // Escolha do avatar (RF15): folha inferior com a foto do Google e as 11 fotos do app
+    var mostrarSeletorAvatar by remember { mutableStateOf(false) }
 
     // Data de nascimento (RF59): o seletor de data e a confirmação antes de gravar
     var mostrarSeletorData by remember { mutableStateOf(false) }
@@ -163,10 +191,11 @@ fun UsuarioScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(24.dp)
+            .padding(horizontal = 20.dp, vertical = 24.dp),
+        // Espaço fixo entre o título, o cabeçalho e cada seção
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         Text(text = "Conta", style = MaterialTheme.typography.headlineLarge)
-        Spacer(modifier = Modifier.height(24.dp))
 
         if (usuario == null || uid == null) {
             // Visitante (RF54): aviso com botão "Entrar", que abre a folha de login
@@ -177,119 +206,128 @@ fun UsuarioScreen(
         } else if (perfilAtual == null) {
             // O perfil ainda não chegou ao banco local; na primeira abertura depois de entrar
             // ele vem da nuvem, o que precisa de internet
-            Text(text = "Carregando perfil...", style = MaterialTheme.typography.bodyMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Na primeira vez, o perfil é baixado da nuvem e precisa de conexão com a internet.",
-                style = MaterialTheme.typography.bodySmall
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = "Carregando perfil...", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    text = "Na primeira vez, o perfil é baixado da nuvem e precisa de conexão com a internet.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
         } else {
             val publico = perfilAtual.publico
 
-            // Avatar: foto do Google, ou o emoji escolhido pelo usuário.
-            if (publico.avatarId == "google") {
-                AsyncImage(
-                    model = usuario.photoUrl,
-                    contentDescription = "Foto de perfil",
-                    modifier = Modifier
-                        .size(96.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Text(text = publico.avatarId, style = MaterialTheme.typography.displayMedium)
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(text = "Escolher avatar do app:", style = MaterialTheme.typography.labelMedium)
-            SeletorAvatar(
-                avatarSelecionado = publico.avatarId,
-                aoSelecionar = { novoAvatar ->
-                    salvarPublico(uid, publico.copy(avatarId = novoAvatar))
-                }
+            // Cabeçalho: avatar grande (toque abre a escolha), apelido e e-mail
+            CabecalhoDaConta(
+                avatarId = publico.avatarId,
+                apelido = publico.apelido,
+                email = usuario.email.orEmpty(),
+                fotoGoogle = usuario.photoUrl,
+                aoEditarAvatar = { mostrarSeletorAvatar = true }
             )
-            TextButton(onClick = {
-                salvarPublico(uid, publico.copy(avatarId = "google"))
-            }) {
-                Text("Usar foto do Google")
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = publico.apelido, style = MaterialTheme.typography.headlineSmall)
-                TextButton(onClick = { mostrarDialogoApelido = true }) {
-                    Text("Editar")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(text = "E-mail", style = MaterialTheme.typography.labelMedium)
-            Text(text = usuario.email.orEmpty(), style = MaterialTheme.typography.bodyMedium)
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // ---------- Data de nascimento (RF59) ----------
+            // ---------- Seção Perfil: apelido, e-mail, data de nascimento (RF59) e faixa liberada ----------
             val temData = DataNascimento.valida(dataSalva)
             val corrigida = perfilAtual.aniversarioCorrigido
+            // Primeira data é livre; depois dela, uma única correção (RN17); depois, travada
+            val podeEditarData = !temData || !corrigida
+            val faixa = textoDaFaixaLiberada(ControleDeIdade.idadeEfetiva(dataSalva))
 
-            Text(text = "Data de nascimento", style = MaterialTheme.typography.labelMedium)
-            Text(
-                text = if (temData) DataNascimento.paraExibicao(dataSalva).orEmpty() else "Não informada",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Text(
-                text = "Só você vê esta data. Ela é usada para filtrar a classificação indicativa das obras.",
-                style = MaterialTheme.typography.bodySmall
-            )
-            // Aniversário antigo em texto livre (ex: "15/03"): não serve para calcular a idade
-            if (!temData && !dataSalva.isNullOrBlank()) {
-                Text(
-                    text = "Seu aniversário antigo (\"$dataSalva\") não vale mais: informe a data completa.",
-                    style = MaterialTheme.typography.bodySmall
+            CartaoDeSecao(titulo = "Perfil") {
+                LinhaDaConta(
+                    icone = Icons.Outlined.Person,
+                    titulo = "Apelido",
+                    valor = publico.apelido,
+                    textoDaAcao = "Editar",
+                    aoClicar = { mostrarDialogoApelido = true }
                 )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            when {
-                // Ainda não há data válida: o primeiro preenchimento é livre
-                !temData -> Button(onClick = { mostrarSeletorData = true }) {
-                    Text("Informar data de nascimento")
-                }
-                // Há data e a correção ainda não foi usada: uma única correção (RN17)
-                !corrigida -> {
-                    OutlinedButton(onClick = { mostrarSeletorData = true }) {
-                        Text("Corrigir data")
-                    }
-                    Text(
-                        text = "Você pode corrigir a data uma única vez.",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-                // A correção já foi usada: a data está travada
-                else -> Text(
-                    text = "A data está travada: a única correção já foi usada.",
-                    style = MaterialTheme.typography.bodySmall
+                SeparadorDeLinhas()
+                LinhaDaConta(
+                    icone = Icons.Outlined.Email,
+                    titulo = "E-mail",
+                    valor = usuario.email.orEmpty()
                 )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Pede confirmação se houver alterações não sincronizadas (RN27)
-            BotaoSair(texto = "Sair da conta", aoSairConfirmado = aoSair)
-
-            // Exclusão da conta (RF29): em vermelho, separada dos outros botões
-            Spacer(modifier = Modifier.height(24.dp))
-            TextButton(
-                onClick = { mostrarDialogoExcluir = true },
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-            ) {
-                Text("Excluir minha conta")
+                SeparadorDeLinhas()
+                LinhaDaConta(
+                    icone = Icons.Outlined.Cake,
+                    titulo = "Data de nascimento",
+                    valor = if (temData) DataNascimento.paraExibicao(dataSalva).orEmpty() else "Não informada",
+                    textoDaAcao = when {
+                        !temData -> "Informar"
+                        !corrigida -> "Corrigir"
+                        else -> null // travada: sem ação
+                    },
+                    aoClicar = if (podeEditarData) ({ mostrarSeletorData = true }) else null
+                )
+                NotaDoCartao("Só você vê esta data. Ela é usada para filtrar a classificação indicativa das obras.")
+                // Aniversário antigo em texto livre (ex: "15/03"): não serve para calcular a idade
+                if (!temData && !dataSalva.isNullOrBlank()) {
+                    NotaDoCartao("Seu aniversário antigo (\"$dataSalva\") não vale mais: informe a data completa.")
+                }
+                when {
+                    temData && !corrigida -> NotaDoCartao("Você pode corrigir a data uma única vez.")
+                    temData && corrigida -> NotaDoCartao("A data está travada: a única correção já foi usada.")
+                }
+                SeparadorDeLinhas()
+                LinhaDaConta(
+                    icone = Icons.Outlined.Lock,
+                    titulo = "Classificação liberada",
+                    valor = if (temData) faixa else "$faixa (sem data informada)"
+                )
             }
         }
+
+        // ---------- Seção Sobre: aparece também para o visitante ----------
+        CartaoDeSecao(titulo = "Sobre") {
+            LinhaDaConta(
+                icone = Icons.Outlined.Description,
+                titulo = "Termos de Uso",
+                aoClicar = aoAbrirTermos
+            )
+            SeparadorDeLinhas()
+            LinhaDaConta(
+                icone = Icons.Outlined.PrivacyTip,
+                titulo = "Política de Privacidade",
+                aoClicar = aoAbrirPrivacidade
+            )
+            SeparadorDeLinhas()
+            LinhaDaConta(
+                icone = Icons.Outlined.Info,
+                titulo = "Versão",
+                valor = "Seriando ${BuildConfig.VERSION_NAME}"
+            )
+        }
+
+        // ---------- Seção Conta: sair e excluir (só para quem tem conta e perfil carregado) ----------
+        if (usuario != null && uid != null && perfilAtual != null) {
+            CartaoDeSecao(titulo = "Conta") {
+                // Pede confirmação se houver alterações não sincronizadas (RN27)
+                Box(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
+                    BotaoSair(texto = "Sair da conta", aoSairConfirmado = aoSair)
+                }
+                SeparadorDeLinhas()
+                // Exclusão da conta (RF29): em vermelho, separada do botão de sair
+                LinhaDaConta(
+                    icone = Icons.Outlined.Delete,
+                    titulo = "Excluir minha conta",
+                    valor = "Apaga todos os seus dados. Não tem como desfazer.",
+                    corDeDestaque = MaterialTheme.colorScheme.error,
+                    aoClicar = { mostrarDialogoExcluir = true }
+                )
+            }
+        }
+    }
+
+    // Escolha do avatar: grava assim que o usuário toca em uma opção (a folha fecha em seguida)
+    if (mostrarSeletorAvatar && uid != null && perfilAtual != null) {
+        SeletorAvatar(
+            avatarSelecionado = perfilAtual.publico.avatarId,
+            apelido = perfilAtual.publico.apelido,
+            fotoGoogle = usuario?.photoUrl,
+            aoSelecionar = { novoAvatar ->
+                salvarPublico(uid, perfilAtual.publico.copy(avatarId = novoAvatar))
+            },
+            aoFechar = { mostrarSeletorAvatar = false }
+        )
     }
 
     if (mostrarDialogoApelido && uid != null && perfilAtual != null) {

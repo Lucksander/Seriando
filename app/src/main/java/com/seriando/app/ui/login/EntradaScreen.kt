@@ -16,33 +16,26 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextLinkStyles
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.seriando.app.ui.comum.LogoSeriando
-
-// TODO: trocar pelos endereços reais da Política de Privacidade e dos Termos de Uso
-// (a política será obrigatória na publicação do Google Play, RNF12).
-private const val URL_PRIVACIDADE = "https://example.com/privacidade"
-private const val URL_TERMOS = "https://example.com/termos"
+import com.seriando.app.ui.legal.AvisoDeTermosEPolitica
 
 /**
  * Tela de entrada (RF53): logotipo, botão de login com Google e opção de entrar como visitante.
  *
  * @param aoEntrarComSucesso      chamada depois do login com Google dar certo.
  * @param aoContinuarComoVisitante chamada ao tocar em "Continuar como visitante" (RF54).
+ * @param aoAbrirTermos           chamada ao tocar em "Termos de Uso" no rodapé.
+ * @param aoAbrirPrivacidade      chamada ao tocar em "Política de Privacidade" no rodapé.
  *   A tela não conhece a navegação: quem decide o destino é o SeriandoNavHost.
  */
 @Composable
 fun EntradaScreen(
     aoEntrarComSucesso: () -> Unit,
-    aoContinuarComoVisitante: () -> Unit
+    aoContinuarComoVisitante: () -> Unit,
+    aoAbrirTermos: () -> Unit,
+    aoAbrirPrivacidade: () -> Unit
 ) {
     // Estado e ação do login, compartilhados com a folha inferior do RF54
     val login = rememberLoginComGoogle(aoLogarComSucesso = aoEntrarComSucesso)
@@ -83,34 +76,13 @@ fun EntradaScreen(
             Text("Continuar como visitante")
         }
 
-        // Rodapé: texto com links para a política de privacidade e os termos de uso
+        // Rodapé: texto com links para a política de privacidade e os termos de uso,
+        // que abrem as telas de texto legal dentro do app
         Spacer(modifier = Modifier.height(16.dp))
-        TextoLegal(modifier = Modifier.padding(bottom = 16.dp))
-    }
-}
-
-// Texto do rodapé com dois trechos tocáveis. LinkAnnotation.Url abre o navegador sozinho.
-@Composable
-private fun TextoLegal(modifier: Modifier = Modifier) {
-    // Estilo dos trechos tocáveis: cor da marca e sublinhado
-    val estiloLink = TextLinkStyles(
-        style = SpanStyle(
-            color = MaterialTheme.colorScheme.primary,
-            textDecoration = TextDecoration.Underline
+        AvisoDeTermosEPolitica(
+            aoAbrirTermos = aoAbrirTermos,
+            aoAbrirPrivacidade = aoAbrirPrivacidade,
+            modifier = Modifier.padding(bottom = 16.dp)
         )
-    )
-    val texto = buildAnnotatedString {
-        append("Ao continuar, você concorda com a ")
-        withLink(LinkAnnotation.Url(URL_PRIVACIDADE, estiloLink)) { append("Política de Privacidade") }
-        append(" e com os ")
-        withLink(LinkAnnotation.Url(URL_TERMOS, estiloLink)) { append("Termos de Uso") }
-        append(".")
     }
-    Text(
-        text = texto,
-        modifier = modifier,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        textAlign = TextAlign.Center
-    )
 }
