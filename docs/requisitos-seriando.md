@@ -160,6 +160,7 @@ Apesar do foco inicial, o projeto foi estruturado com os princípios de desacopl
 | RNF14 | Conteúdo das telas começa abaixo da barra de status e não rola por baixo dos ícones dela, mantendo a barra transparente (tela de ponta a ponta) | Usabilidade |
 | RNF15 | Ícones da interface no estilo Outlined do Material Icons, de forma consistente (preenchidos só onde o preenchimento tem significado, como a estrela da avaliação) | Usabilidade (identidade visual) |
 | RNF16 | Backup automático do Android desativado (`allowBackup="false"`), para que o banco local com dados pessoais não seja copiado para a nuvem do Google (STRIDE I4) | Segurança / Privacidade |
+| RNF17 | Testes automatizados das regras de negócio puras (data de nascimento e idade, controle de idade, leitura da classificação indicativa e status), executados na JVM sem emulador, e do banco local (Room), executados no Android com banco em memória | Qualidade / Manutenibilidade |
 
 ---
 

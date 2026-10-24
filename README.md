@@ -8,10 +8,14 @@ Projeto desenvolvido em **Kotlin** com **Jetpack Compose**, seguindo boas práti
 
 ## 📌 Versão Atual
 
-**Versão: V0.14** *(em desenvolvimento — rumo à V1.0)*
+**Versão: V1.0**
 
 ### 🆕 Novidades & Destaques da Versão
 
+- **Política de Privacidade & Termos de Uso dentro do app (`TextoLegalScreen`, `TextosLegais`, RF77)**: textos em conformidade com a LGPD guardados no código (funcionam sem internet e para o visitante), acessíveis pelas telas de introdução, pela tela de entrada e pela seção *Sobre* da aba Conta. Os mesmos textos estão em `docs/`.
+- **Avatares em imagem (`AvatarDoUsuario`, `SeletorAvatar`, RF78)**: 11 avatares do app, escolhidos em uma folha inferior junto da foto da conta Google, no lugar dos antigos emojis.
+- **Aba Conta reorganizada (`ComponentesDaConta`, RF79)**: perfil, classificação liberada, seção *Sobre* (Termos, Política e versão) e ações da conta (sair e excluir) em cartões.
+- **Segurança & Testes (RNF16, RNF17)**: modelo de ameaças STRIDE e checklist OWASP MASVS verificados no código ([stride-seriando.md](docs/stride-seriando.md)), backup automático do Android desativado (`allowBackup="false"`), BoM do Firebase duplicado removido e testes unitários das regras de negócio (data de nascimento, controle de idade, classificação indicativa e status).
 - **Controle de Idade & Classificação Indicativa do Brasil (`FiltroDeIdadeRepository`, `ControleDeIdade`, `ClassificacaoIndicativa`, RF49, RF50, RF51, RF59, RN13 a RN17)**: Sistema completo e centralizado de controle de idade e filtragem de conteúdo baseado na classificação indicativa brasileira (L, 10, 12, 14, 16 e 18 anos).
   - **Filtro Unificado na Camada de Dados ([FiltroDeIdadeRepository](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/data/repository/FiltroDeIdadeRepository.kt))**: Ponto único de decisão na camada de dados que oculta obras inadequadas na Home, categorias ("Ver mais"), busca, aba Descobrir e filmografia de artistas, sem duplicar regras de negócio na UI (RN15).
   - **Bloqueio da Tela de Detalhes ([ObraBloqueada](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/details/ObraBloqueada.kt), RF51)**: Interceptação e bloqueio do acesso direto a obras acima da faixa etária permitida, exibindo o selo de classificação e mensagem orientativa.
@@ -476,7 +480,7 @@ TMDB_API_KEY=sua_chave_aqui_sem_aspas
 
 ## 🧪 Testes e Qualidade de Código
 
-O projeto conta com infraestrutura para testes unitários e testes instrumentados de interface.
+O projeto conta com testes unitários das regras de negócio (JVM, sem emulador) e testes instrumentados do banco local (Room).
 
 ### Executar Testes Unitários (JVM)
 
@@ -484,7 +488,7 @@ O projeto conta com infraestrutura para testes unitários e testes instrumentado
 ./gradlew testDebugUnitTest
 ```
 
-Os testes unitários cobrem repositórios, lógica de negócios, parsing de modelos e manipuladores de status.
+Os testes unitários (`app/src/test/java/com/seriando/app/model/`) cobrem as regras puras do app: `DataNascimentoTest` (validação da data e cálculo da idade, RN13), `ControleDeIdadeTest` (idade efetiva e filtro por classificação, RN14 a RN16 e RN31), `ClassificacaoIndicativaTest` (leitura da classificação do Brasil nas respostas da TMDB, RF49) e `StatusHelperTest` (status de séries e filmes, RF08). Repositórios, telas e regras do Firestore ainda não têm testes automatizados.
 
 ### Executar Testes Instrumentados do Banco Room (Android)
 
@@ -543,11 +547,12 @@ Os testes do banco de dados local ([BancoLocalTest.kt](file:///C:/Users/Lucas/An
 - **V0.11**: Tela completa de atores/atrizes com foto, biografia expansível (fallback em inglês) e filmografia paginada por popularidade.
 - **V0.12**: Home organizada por categorias de gênero com botão "Ver mais", lista paginada em grade de 3 colunas, regras de segurança estritas no Firestore, opiniões privadas em coleções isoladas, exclusão permanente de conta (RF29 / LGPD), Design System Velvet Purple e documentação completa de requisitos.
 - **V0.13**: Onboarding de apresentação com carrossel de 3 páginas (`IntroducaoScreen`), persistência via DataStore (`PreferenciasApp`), Tela de Entrada (`EntradaScreen`) e Modo Visitante interceptado por `DialogoLoginObrigatorio`. Faixa de status de conectividade em tempo real (`ComFaixaDeConexao`), nova Aba Descobrir (`DescobrirScreen`) com botão "Sortear", persistência offline completa com Room Database (`SeriandoDatabase`), motor de sincronização em segundo plano com Firestore (`Sincronizador`) e testes instrumentados ([BancoLocalTest](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/androidTest/java/com/seriando/app/data/local/BancoLocalTest.kt)).
-- **V0.14**: **(Versão Atual)** Implementação completa do Controle de Idade e Classificação Indicativa do Brasil (Bloco K / RF49, RF50, RF51, RF59, RN13 a RN17), com o repositório centralizado [FiltroDeIdadeRepository](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/data/repository/FiltroDeIdadeRepository.kt), cálculo dinâmico de idade, selos visuais de classificação indicativa (L, 10, 12, 14, 16, 18), bloqueio de detalhes ([ObraBloqueada](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/details/ObraBloqueada.kt)), seletor de data de nascimento com DatePicker M3 ([SeletorDataNascimento](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/usuario/SeletorDataNascimento.kt)), trava de correção única no Firestore (`aniversarioAlterado`) e invalidação de cache em tempo de execução via `VersaoDaIdade`. Melhorias na tela de Detalhes: compartilhar (RF73), situação da obra (RF74), ano de lançamento (RF75) e temporadas em cartões com progresso (RF76).
+- **V0.14**: Implementação completa do Controle de Idade e Classificação Indicativa do Brasil (Bloco K / RF49, RF50, RF51, RF59, RN13 a RN17), com o repositório centralizado [FiltroDeIdadeRepository](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/data/repository/FiltroDeIdadeRepository.kt), cálculo dinâmico de idade, selos visuais de classificação indicativa (L, 10, 12, 14, 16, 18), bloqueio de detalhes ([ObraBloqueada](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/details/ObraBloqueada.kt)), seletor de data de nascimento com DatePicker M3 ([SeletorDataNascimento](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/usuario/SeletorDataNascimento.kt)), trava de correção única no Firestore (`aniversarioAlterado`) e invalidação de cache em tempo de execução via `VersaoDaIdade`. Melhorias na tela de Detalhes: compartilhar (RF73), situação da obra (RF74), ano de lançamento (RF75) e temporadas em cartões com progresso (RF76).
+- **V1.0**: **(Versão Atual)** Política de Privacidade (LGPD) e Termos de Uso dentro do app (RF77), avatares em imagem (RF78), aba Conta reorganizada em cartões (RF79), modelo de ameaças STRIDE e checklist OWASP MASVS (`docs/stride-seriando.md`), backup automático do Android desativado (RNF16), BoM do Firebase unificado, testes unitários das regras de negócio (RNF17) e documentação completa em `docs/`.
 
 ---
 
-## 📌 Planejamento Futuro (Roadmap V1.0)
+## 📌 Planejamento Futuro
 
 - [x] **Home por Categorias**: Organização de títulos por gêneros cinematográficos com navegação expandida.
 - [x] **Regras de Segurança do Firestore**: Consolidação de permissões rígidas no banco de dados.
@@ -557,7 +562,9 @@ Os testes do banco de dados local ([BancoLocalTest.kt](file:///C:/Users/Lucas/An
 - [x] **Onboarding & Modo Visitante**: Introdução em 3 etapas, salvamento em DataStore e interceptação de login para visitantes.
 - [x] **Aba Descobrir & Recomendações**: Filtros avançados com ordenação e botão "Sortear" (*"O que assistir hoje?"*).
 - [x] **Controle de Idade e Classificação Indicativa (Bloco K)**: Filtro de conteúdo por idade e classificação indicativa no Brasil.
-- [ ] **Testes Automatizados**: Expansão de testes unitários para repositórios/caches e testes de UI com Compose Testing.
+- [x] **Testes unitários das regras de negócio**: data de nascimento, controle de idade, classificação indicativa e status.
+- [x] **Política de Privacidade, Termos de Uso e modelo de ameaças (STRIDE)**.
+- [ ] **Testes Automatizados (expansão)**: testes para repositórios/caches, regras do Firestore (emulador) e testes de UI com Compose Testing.
 - [ ] **Publicação na Google Play Store**.
 
 ---
