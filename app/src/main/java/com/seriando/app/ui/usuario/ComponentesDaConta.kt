@@ -86,7 +86,8 @@ fun CabecalhoDaConta(
                         apelido = apelido,
                         fotoGoogle = fotoGoogle,
                         modifier = Modifier.fillMaxSize(),
-                        descricao = "Seu avatar"
+                        descricao = "Seu avatar",
+                        usarFotoLocal = true // foto do aparelho (RF30), quando existir
                     )
                 }
                 // Selo de lápis no canto inferior direito: indica que o avatar pode ser trocado

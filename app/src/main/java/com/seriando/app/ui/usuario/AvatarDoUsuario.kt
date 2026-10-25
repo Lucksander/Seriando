@@ -10,6 +10,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,6 +22,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.seriando.app.data.local.FotoDePerfilLocal
 
 // ---------------------------------------------------------------------------------------
 // Avatares do app (RF15)
@@ -66,6 +69,7 @@ private fun inicialDoApelido(apelido: String): String =
 /**
  * Avatar redondo de um usuário, usado na aba Conta, na Home e nas opiniões.
  * Concentra as regras de exibição para as telas ficarem iguais:
+ *  - [usarFotoLocal] e foto escolhida neste aparelho (RF30): a foto do aparelho;
  *  - "google" com foto disponível: a foto da conta Google;
  *  - "foto_NN" com a imagem no app: a foto do app;
  *  - qualquer outro caso (emoji antigo, imagem ausente, sem foto do Google): a inicial do
@@ -77,6 +81,9 @@ private fun inicialDoApelido(apelido: String): String =
  * @param apelido    usado para a inicial quando não há imagem.
  * @param fotoGoogle endereço da foto da conta Google, ou null quando não se tem (ex: outro autor).
  * @param descricao  texto para leitores de tela; null deixa o avatar decorativo.
+ * @param usarFotoLocal true só nos avatares do PRÓPRIO usuário (Home, Conta, seletor): a foto do
+ *                   aparelho tem prioridade sobre o avatarId. Nos avatares de outros usuários
+ *                   fica false, porque a foto local nunca sai do aparelho.
  */
 @Composable
 fun AvatarDoUsuario(
@@ -84,11 +91,19 @@ fun AvatarDoUsuario(
     apelido: String,
     fotoGoogle: Any?,
     modifier: Modifier = Modifier,
-    descricao: String? = null
+    descricao: String? = null,
+    usarFotoLocal: Boolean = false
 ) {
     val context = LocalContext.current
     // Só recalcula quando o avatarId muda
     val recurso = remember(avatarId) { recursoDoAvatar(context, avatarId) }
+
+    // Foto do aparelho (RF30): a versão muda quando a foto é trocada ou removida, o que refaz
+    // a leitura do arquivo e atualiza o avatar na hora, em todas as telas
+    val versaoDaFoto by FotoDePerfilLocal.versao.collectAsState()
+    val fotoLocal = remember(usarFotoLocal, versaoDaFoto) {
+        if (usarFotoLocal) FotoDePerfilLocal.existente(context) else null
+    }
 
     BoxWithConstraints(
         modifier = modifier
@@ -97,6 +112,15 @@ fun AvatarDoUsuario(
         contentAlignment = Alignment.Center
     ) {
         when {
+            // Foto do aparelho: tem prioridade. O Coil já considera a data de modificação do
+            // arquivo, então uma foto nova substitui a antiga sem ficar presa no cache
+            fotoLocal != null -> AsyncImage(
+                model = fotoLocal,
+                contentDescription = descricao,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+
             avatarId == AVATAR_GOOGLE && fotoGoogle != null -> AsyncImage(
                 model = fotoGoogle,
                 contentDescription = descricao,

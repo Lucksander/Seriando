@@ -15,8 +15,12 @@ object Dependencias {
 
     private lateinit var banco: SeriandoDatabase
 
+    // Contexto do aplicativo (vive o mesmo tempo que o app), usado para apagar a foto de perfil local
+    private lateinit var contextoDoApp: Context
+
     /** Cria o banco. Chamado uma única vez, em SeriandoApp.onCreate. */
     fun iniciar(contexto: Context) {
+        contextoDoApp = contexto.applicationContext
         banco = Room.databaseBuilder(
             contexto.applicationContext,
             SeriandoDatabase::class.java,
@@ -38,9 +42,13 @@ object Dependencias {
 
     /**
      * Apaga todas as tabelas do banco local (RN25), no logout e na exclusão da conta.
+     * Apaga também a foto de perfil guardada no aparelho (RF30), que é dado do usuário.
      * Roda fora da thread principal porque o Room não permite apagar nela.
      */
     suspend fun limparBancoLocal() {
-        withContext(Dispatchers.IO) { banco.clearAllTables() }
+        withContext(Dispatchers.IO) {
+            banco.clearAllTables()
+            FotoDePerfilLocal.remover(contextoDoApp)
+        }
     }
 }

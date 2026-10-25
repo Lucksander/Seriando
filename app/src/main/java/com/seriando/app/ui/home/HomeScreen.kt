@@ -320,7 +320,8 @@ private fun AvatarDoCabecalho(
                 apelido = perfil.apelido,
                 fotoGoogle = fotoGoogle,
                 modifier = Modifier.fillMaxSize(),
-                descricao = "Minha conta"
+                descricao = "Minha conta",
+                usarFotoLocal = true // foto do aparelho (RF30), quando existir
             )
         }
     }
