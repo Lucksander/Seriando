@@ -32,7 +32,8 @@ import com.seriando.app.data.repository.MinhaListaRepository
 import com.seriando.app.model.SerieSalva
 import com.seriando.app.model.StatusFilme
 import com.seriando.app.model.StatusSerie
-import com.seriando.app.model.labelDoStatus
+import com.seriando.app.model.OrdemDaLista
+import com.seriando.app.model.organizarMinhaLista
 import com.seriando.app.ui.home.DialogoRemoverDaLista
 import com.seriando.app.ui.home.SerieCardSalva
 import kotlinx.coroutines.launch
@@ -40,7 +41,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import com.seriando.app.ui.login.AvisoDeLoginNecessario
 
 /**
- * Aba Minha Lista (RF07, RF08, RF33): séries e filmes salvos, com filtro por status.
+ * Aba Minha Lista (RF07, RF08, RF33, RF66): séries e filmes salvos, com filtro por status,
+ * busca por nome e ordenação.
  * A lista vem do banco local (Room), que a tela observa: funciona sem internet e se
  * atualiza sozinha quando a sincronização traz mudanças da nuvem (RN21).
  */
@@ -63,6 +65,11 @@ fun MinhaListaScreen(aoClicarEmItem: (Int, String) -> Unit) {
     // null = "Todos"; senão guarda o rótulo de status escolhido (texto, não enum,
     // já que a lista mistura os rótulos de StatusSerie e StatusFilme).
     var filtroLabel by remember { mutableStateOf<String?>(null) }
+
+    // Busca por nome e ordem da lista (RF66). Ficam só na memória da tela: ao sair da aba,
+    // a lista volta ao padrão (sem busca, mais recentes primeiro).
+    var busca by remember { mutableStateOf("") }
+    var ordem by remember { mutableStateOf(OrdemDaLista.RECENTES) }
 
     // Item que o usuário tocou em "remover" e ainda não confirmou (null = nenhum diálogo aberto)
     var serieParaRemover by remember { mutableStateOf<SerieSalva?>(null) }
@@ -101,11 +108,8 @@ fun MinhaListaScreen(aoClicarEmItem: (Int, String) -> Unit) {
         StatusSerie.ABANDONEI.label
     )
 
-    val seriesFiltradas = if (filtroLabel == null) {
-        lista.orEmpty()
-    } else {
-        lista.orEmpty().filter { labelDoStatus(it.tipoMidia, it.status) == filtroLabel }
-    }
+    // Aplica filtro de status, busca por nome e ordem (RF66), nesta ordem
+    val seriesFiltradas = organizarMinhaLista(lista.orEmpty(), filtroLabel, busca, ordem)
 
     Column(
         modifier = Modifier
@@ -120,8 +124,13 @@ fun MinhaListaScreen(aoClicarEmItem: (Int, String) -> Unit) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Chips de filtro: só quando há itens para filtrar
+        // Busca, filtro e ordem: só quando há itens para filtrar
         if (uid != null && !lista.isNullOrEmpty()) {
+            // Busca por nome (RF66)
+            BarraDeBuscaDaLista(texto = busca, aoMudar = { busca = it })
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Chips de filtro por status
             Row(modifier = Modifier.horizontalScroll(rememberScrollState())) {
                 FilterChip(
                     selected = filtroLabel == null,
@@ -137,6 +146,10 @@ fun MinhaListaScreen(aoClicarEmItem: (Int, String) -> Unit) {
                     )
                 }
             }
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Ordem da lista (RF66)
+            SeletorDeOrdemDaLista(ordemAtual = ordem, aoEscolher = { ordem = it })
             Spacer(modifier = Modifier.height(16.dp))
         }
 
@@ -160,7 +173,9 @@ fun MinhaListaScreen(aoClicarEmItem: (Int, String) -> Unit) {
             }
             seriesFiltradas.isEmpty() -> {
                 Text(
-                    text = "Nenhum item com esse status ainda.",
+                    // Com texto na busca, a mensagem fala da busca; senão, do filtro de status
+                    text = if (busca.isNotBlank()) "Nenhum item encontrado para \"${busca.trim()}\"."
+                    else "Nenhum item com esse status ainda.",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
