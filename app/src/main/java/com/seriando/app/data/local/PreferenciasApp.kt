@@ -7,7 +7,9 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.seriando.app.model.ModoDoTema
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -21,8 +23,9 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 /**
  * Preferências do app guardadas SOMENTE no aparelho (nunca vão ao Firestore).
  *
- * Hoje guarda apenas a flag da introdução (RF52). Não depende do login: a introdução é
- * mostrada uma vez por instalação, mesmo que o usuário saia da conta depois.
+ * Guarda a flag da introdução (RF52) e o modo do tema claro/escuro (RF80). Nenhuma das duas
+ * depende do login: a introdução é mostrada uma vez por instalação e o tema escolhido vale
+ * mesmo que o usuário saia da conta depois.
  * Recebe o Context só para abrir o DataStore (por isso fica ao lado do HistoricoBusca em data/local).
  */
 class PreferenciasApp(context: Context) {
@@ -33,6 +36,9 @@ class PreferenciasApp(context: Context) {
     private companion object {
         // Nome da chave conforme a especificação do Bloco L
         val INTRODUCAO_VISTA = booleanPreferencesKey("introducao_vista")
+
+        // Modo do tema (RF80): guarda a chave do enum ModoDoTema ("sistema", "claro" ou "escuro")
+        val MODO_DO_TEMA = stringPreferencesKey("modo_do_tema")
     }
 
     /**
@@ -62,6 +68,36 @@ class PreferenciasApp(context: Context) {
         } catch (erro: IOException) {
             // Se não conseguir gravar, a introdução reaparece na próxima abertura; não é grave
             Log.e("PreferenciasApp", "Falha ao gravar introducao_vista", erro)
+        }
+    }
+
+    /**
+     * Emite o modo do tema escolhido (RF80). Chave ausente (nunca escolheu) ou desconhecida
+     * vira [ModoDoTema.SISTEMA], ou seja, o app segue o aparelho. É um Flow: o tema do app
+     * muda na hora quando o usuário escolhe outro modo na aba Conta.
+     */
+    val modoDoTema: Flow<ModoDoTema> = dataStore.data
+        // Falha de leitura não derruba o app: usa o padrão (segue o aparelho)
+        .catch { erro ->
+            if (erro is IOException) {
+                Log.e("PreferenciasApp", "Falha ao ler o modo do tema", erro)
+                emit(emptyPreferences())
+            } else {
+                throw erro
+            }
+        }
+        .map { preferencias -> ModoDoTema.deChave(preferencias[MODO_DO_TEMA]) }
+
+    /**
+     * Grava o modo do tema escolhido na aba Conta (RF80).
+     * É suspend: deve rodar dentro de uma corrotina (por exemplo, rememberCoroutineScope).
+     */
+    suspend fun definirModoDoTema(modo: ModoDoTema) {
+        try {
+            dataStore.edit { preferencias -> preferencias[MODO_DO_TEMA] = modo.chave }
+        } catch (erro: IOException) {
+            // Se não conseguir gravar, o tema volta ao anterior na próxima abertura; não é grave
+            Log.e("PreferenciasApp", "Falha ao gravar modo_do_tema", erro)
         }
     }
 }

@@ -11,13 +11,16 @@ val VelvetSurface = Color(0xFF282333)          // cartões, campos e áreas elev
 val TextoPrincipalEscuro = Color(0xFFF7F5FC)   // títulos e informações importantes
 val TextoSecundarioEscuro = Color(0xFFC9C4D3)  // sinopses, metadados e informações complementares
 
-// Tema CLARO: derivado da marca. O roxo é mais escuro porque o #A98AF5 sobre fundo claro
-// tem contraste baixo (cerca de 2,7:1); o #6B47C7 com texto branco passa de 6:1.
-val PrimariaClara = Color(0xFF6B47C7)
-val FundoClaro = Color(0xFFFBF9FF)
-val SuperficieClara = Color(0xFFEAE4F7)
-val TextoPrincipalClaro = Color(0xFF1D1A27)
-val TextoSecundarioClaro = Color(0xFF5F5A6E)
+// Tema CLARO: derivado da marca, com lilás mais vivo. O roxo é mais escuro que o do tema
+// escuro porque o #A98AF5 sobre fundo claro tem contraste baixo (cerca de 2,7:1); o #7C4DFF
+// com texto branco dá cerca de 4,8:1, e ainda é um violeta saturado.
+val PrimariaClara = Color(0xFF7C4DFF)
+// Fundo com toque de lilás; os cartões (SuperficieClara) são brancos para destacar do fundo
+val FundoClaro = Color(0xFFF5EEFF)
+val SuperficieClara = Color(0xFFFFFFFF)
+// Texto com tom de violeta bem escuro: mais quente, sem perder contraste
+val TextoPrincipalClaro = Color(0xFF1E1233)
+val TextoSecundarioClaro = Color(0xFF5E4F7E)
 
 // Lilás brilhante: fio fino ao redor das capas das obras
 val LilasBrilhante = Color(0xFFC7ADFF)

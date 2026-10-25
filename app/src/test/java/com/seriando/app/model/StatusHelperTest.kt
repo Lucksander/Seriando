@@ -12,14 +12,14 @@ class StatusHelperTest {
     // ---------- opcoesDeStatus(): os rótulos mostrados nos chips ----------
 
     @Test
-    fun filmeTemDoisStatus() {
-        assertEquals(listOf("Quero assistir", "Assistido"), opcoesDeStatus("movie"))
+    fun filmeTemTresStatus() {
+        assertEquals(listOf("Quero assistir", "Concluído", "Abandonei"), opcoesDeStatus("movie"))
     }
 
     @Test
     fun serieTemQuatroStatus() {
         assertEquals(
-            listOf("Quero assistir", "Assistindo", "Completo", "Abandonei"),
+            listOf("Quero assistir", "Assistindo", "Maratonei", "Abandonei"),
             opcoesDeStatus("tv")
         )
     }
@@ -28,7 +28,7 @@ class StatusHelperTest {
 
     @Test
     fun rotuloDoStatusDeFilme() {
-        assertEquals("Assistido", labelDoStatus("movie", "ASSISTIDO"))
+        assertEquals("Concluído", labelDoStatus("movie", "ASSISTIDO"))
     }
 
     @Test
@@ -44,22 +44,29 @@ class StatusHelperTest {
     }
 
     @Test
+    fun filmeTambemPodeSerAbandonado() {
+        // Às vezes a pessoa não termina o filme
+        assertEquals("Abandonei", labelDoStatus("movie", "ABANDONEI"))
+        assertEquals("ABANDONEI", nomeDoStatus("movie", "Abandonei"))
+    }
+
+    @Test
     fun statusDeSerieNaoExisteParaFilme() {
-        // "ABANDONEI" só existe em séries: num filme, cai no padrão
-        assertEquals("Quero assistir", labelDoStatus("movie", "ABANDONEI"))
+        // "ASSISTINDO" só existe em séries: num filme, cai no padrão
+        assertEquals("Quero assistir", labelDoStatus("movie", "ASSISTINDO"))
     }
 
     // ---------- nomeDoStatus(): do rótulo escolhido para o texto salvo ----------
 
     @Test
     fun nomeSalvoDoStatusDeFilme() {
-        assertEquals("ASSISTIDO", nomeDoStatus("movie", "Assistido"))
+        assertEquals("ASSISTIDO", nomeDoStatus("movie", "Concluído"))
         assertEquals("QUERO_ASSISTIR", nomeDoStatus("movie", "Quero assistir"))
     }
 
     @Test
     fun nomeSalvoDoStatusDeSerie() {
-        assertEquals("COMPLETO", nomeDoStatus("tv", "Completo"))
+        assertEquals("COMPLETO", nomeDoStatus("tv", "Maratonei"))
         assertEquals("ASSISTINDO", nomeDoStatus("tv", "Assistindo"))
     }
 

@@ -28,14 +28,12 @@ import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -768,21 +766,19 @@ fun DetailsScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     if (minhaOpiniaoExistente == null || editandoOpiniao) {
-                        OutlinedTextField(
-                            value = textoOpiniao,
-                            onValueChange = { if (it.length <= 500) textoOpiniao = it },
-                            label = { Text("Escreva sua opinião (máx. 500 caracteres)") },
-                            modifier = Modifier.fillMaxWidth()
+                        // Campo arredondado no estilo da Home; já traz o contador e o limite de 500 (RN03)
+                        CampoDeOpiniao(
+                            texto = textoOpiniao,
+                            aoMudar = { textoOpiniao = it }
                         )
-                        Text(text = "${textoOpiniao.length}/500", style = MaterialTheme.typography.labelSmall)
 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(
-                                checked = spoilerMarcado,
-                                onCheckedChange = { spoilerMarcado = it }
-                            )
-                            Text("Contém spoiler")
-                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Marcador de spoiler: vira um cartão vermelho de alerta quando marcado (RF20)
+                        MarcadorDeSpoilerNoFormulario(
+                            marcado = spoilerMarcado,
+                            aoMudar = { spoilerMarcado = it }
+                        )
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Switch(

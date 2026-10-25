@@ -2,7 +2,6 @@ package com.seriando.app.ui.details
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -109,12 +108,13 @@ fun OpiniaoCard(
             Spacer(modifier = Modifier.padding(top = 8.dp))
 
             if (opiniao.spoiler && !revelado) {
-                Text(
-                    text = "Contém spoiler — toque para revelar",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.clickable { revelado = true }
-                )
+                // Aviso vermelho no lugar do texto; tocar revela (RN07)
+                AvisoDeSpoiler(aoRevelar = { revelado = true })
             } else {
+                // Já revelado: o selo lembra que o texto abaixo é spoiler
+                if (opiniao.spoiler) {
+                    SeloDeSpoiler(modifier = Modifier.padding(bottom = 6.dp))
+                }
                 Text(text = opiniao.texto, style = MaterialTheme.typography.bodyMedium)
             }
 

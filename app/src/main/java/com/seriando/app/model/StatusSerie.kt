@@ -6,7 +6,8 @@ package com.seriando.app.model
 enum class StatusSerie(val label: String) {
     QUERO_ASSISTIR("Quero assistir"),
     ASSISTINDO("Assistindo"),
-    COMPLETO("Completo"),
+    // O "name" (COMPLETO) é o texto gravado no Firestore e não muda; só o rótulo mostrado é "Maratonei"
+    COMPLETO("Maratonei"),
     ABANDONEI("Abandonei");
 
     companion object {

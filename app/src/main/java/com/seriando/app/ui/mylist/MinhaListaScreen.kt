@@ -30,6 +30,8 @@ import androidx.compose.ui.unit.dp
 import com.seriando.app.data.auth.AuthRepository
 import com.seriando.app.data.repository.MinhaListaRepository
 import com.seriando.app.model.SerieSalva
+import com.seriando.app.model.StatusFilme
+import com.seriando.app.model.StatusSerie
 import com.seriando.app.model.labelDoStatus
 import com.seriando.app.ui.home.DialogoRemoverDaLista
 import com.seriando.app.ui.home.SerieCardSalva
@@ -89,10 +91,15 @@ fun MinhaListaScreen(aoClicarEmItem: (Int, String) -> Unit) {
     // Cópia local da lista, para o Kotlin permitir testar null e usar o valor em seguida
     val lista = minhasSeries
 
-    // Rótulos de status realmente presentes na lista, sem repetir, para os chips de filtro
-    val labelsPresentes = lista.orEmpty()
-        .map { labelDoStatus(it.tipoMidia, it.status) }
-        .distinct()
+    // Chips de filtro: sempre todos os status possíveis, na ordem do ciclo de acompanhamento,
+    // e não só os que já aparecem na lista. "Maratonei" é o status de série; "Concluído", o de filme.
+    val labelsDosFiltros = listOf(
+        StatusSerie.QUERO_ASSISTIR.label,
+        StatusSerie.ASSISTINDO.label,
+        StatusSerie.COMPLETO.label,   // Maratonei (séries)
+        StatusFilme.ASSISTIDO.label,  // Concluído (filmes)
+        StatusSerie.ABANDONEI.label
+    )
 
     val seriesFiltradas = if (filtroLabel == null) {
         lista.orEmpty()
@@ -121,7 +128,7 @@ fun MinhaListaScreen(aoClicarEmItem: (Int, String) -> Unit) {
                     onClick = { filtroLabel = null },
                     label = { Text("Todos") }
                 )
-                labelsPresentes.forEach { label ->
+                labelsDosFiltros.forEach { label ->
                     Spacer(modifier = Modifier.width(8.dp))
                     FilterChip(
                         selected = filtroLabel == label,

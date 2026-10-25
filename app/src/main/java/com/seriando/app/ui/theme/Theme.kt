@@ -53,49 +53,55 @@ private val EsquemaEscuro = darkColorScheme(
     surfaceContainerHighest = VelvetSurface
 )
 
-/** Esquema de cores do tema CLARO, derivado da identidade da marca. */
+/**
+ * Esquema de cores do tema CLARO, derivado da identidade da marca.
+ * Lilás mais vivo: primária saturada, fundo com toque de lilás e cartões brancos por cima
+ * (o cartão é mais claro que o fundo, ao contrário do que era antes).
+ */
 private val EsquemaClaro = lightColorScheme(
     primary = PrimariaClara,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFE9DDFF),
+    primaryContainer = Color(0xFFE2D3FF),          // áreas grandes com lilás visível
     onPrimaryContainer = Color(0xFF25005A),
-    secondary = Color(0xFF63597C),
+    secondary = Color(0xFF6B4FB0),                 // roxo médio saturado (antes cinza-arroxeado)
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFE8DEF8),
-    onSecondaryContainer = Color(0xFF1D192B),
-    tertiary = Color(0xFF8A4B67),
+    secondaryContainer = Color(0xFFE6DAFB),
+    onSecondaryContainer = Color(0xFF1E1233),
+    tertiary = Color(0xFFC2185B),                  // rosa vivo que combina com o lilás
     onTertiary = Color.White,
-    tertiaryContainer = Color(0xFFFFD8E8),
-    onTertiaryContainer = Color(0xFF3A0B26),
+    tertiaryContainer = Color(0xFFFFD9E8),
+    onTertiaryContainer = Color(0xFF3E0420),
     background = FundoClaro,
     onBackground = TextoPrincipalClaro,
     surface = FundoClaro,
     onSurface = TextoPrincipalClaro,
-    surfaceVariant = SuperficieClara,              // cartões e campos
+    surfaceVariant = SuperficieClara,              // cartões e campos (brancos)
     onSurfaceVariant = TextoSecundarioClaro,       // texto secundário
     surfaceTint = PrimariaClara,
-    inverseSurface = Color(0xFF322F3D),
-    inverseOnSurface = Color(0xFFF5F0FF),
+    inverseSurface = Color(0xFF2B1F45),
+    inverseOnSurface = Color(0xFFF5EEFF),
     inversePrimary = VelvetPurple,
-    outline = Color(0xFF7D7690),
-    outlineVariant = Color(0xFFCDC6DB),
+    outline = Color(0xFF7D6DA3),
+    outlineVariant = Color(0xFFD9CCF2),            // contorno lilás fino dos cartões brancos
     error = Color(0xFFBA1A1A),
     onError = Color.White,
     errorContainer = Color(0xFFFFDAD6),
     onErrorContainer = Color(0xFF410002),
     scrim = Color.Black,
-    surfaceDim = Color(0xFFDDD8E6),
+    surfaceDim = Color(0xFFE0D5F2),
     surfaceBright = FundoClaro,
     surfaceContainerLowest = Color.White,
-    surfaceContainerLow = Color(0xFFF6F2FD),
-    surfaceContainer = Color(0xFFF1ECFA),          // barra de navegação
-    surfaceContainerHigh = Color(0xFFEDE7F7),
+    surfaceContainerLow = Color(0xFFF8F3FF),
+    surfaceContainer = Color(0xFFEBE0FF),          // barra de navegação, com lilás visível
+    surfaceContainerHigh = Color(0xFFE6DAFB),
     surfaceContainerHighest = SuperficieClara
 )
 
 /**
  * Tema do Seriando. Segue a configuração do aparelho: escuro quando o celular
- * está no modo escuro, claro nos demais casos. O escuro é o tema principal da marca.
+ * está no modo escuro, claro nos demais casos, a não ser que o usuário escolha um modo fixo
+ * na aba Conta (ModoDoTema, RF80): a MainActivity decide e passa o resultado em [darkTheme].
+ * O escuro é o tema principal da marca.
  * As cores dinâmicas do Android 12+ (tiradas do papel de parede) foram removidas, porque
  * trocariam o roxo da marca pelas cores do usuário.
  */

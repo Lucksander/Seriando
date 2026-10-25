@@ -45,11 +45,13 @@ import androidx.credentials.exceptions.GetCredentialCancellationException
 import com.seriando.app.BuildConfig
 import com.seriando.app.R
 import com.seriando.app.data.auth.AuthRepository
+import com.seriando.app.data.local.PreferenciasApp
 import com.seriando.app.data.repository.ContaRepository
 import com.seriando.app.data.repository.PerfilRepository
 import com.seriando.app.data.repository.ResultadoDataNascimento
 import com.seriando.app.model.ControleDeIdade
 import com.seriando.app.model.DataNascimento
+import com.seriando.app.model.ModoDoTema
 import com.seriando.app.model.PerfilPublico
 import com.seriando.app.ui.comum.BotaoSair
 import com.seriando.app.ui.home.DialogoEditarApelido
@@ -94,6 +96,11 @@ fun UsuarioScreen(
     val context = LocalContext.current
     val perfilRepository = remember { PerfilRepository() }
     val scope = rememberCoroutineScope()
+
+    // Modo do tema (RF80): preferência só do aparelho, lida e gravada no DataStore. A MainActivity
+    // observa a mesma preferência, então o tema do app muda assim que o usuário escolhe.
+    val preferencias = remember { PreferenciasApp(context) }
+    val modoDoTema by preferencias.modoDoTema.collectAsState(initial = ModoDoTema.SISTEMA)
     val webClientId = stringResource(R.string.default_web_client_id)
     // Sobe quando o visitante faz login pela folha; como é lido nos remember abaixo,
     // força a tela a recompor e trocar o aviso pelo perfil
@@ -108,7 +115,7 @@ fun UsuarioScreen(
 
     var mostrarDialogoApelido by remember { mutableStateOf(false) }
 
-    // Escolha do avatar (RF15): folha inferior com a foto do Google e as 11 fotos do app
+    // Escolha do avatar (RF15): folha inferior com a foto do Google e as 15 fotos do app
     var mostrarSeletorAvatar by remember { mutableStateOf(false) }
 
     // Data de nascimento (RF59): o seletor de data e a confirmação antes de gravar
@@ -275,6 +282,12 @@ fun UsuarioScreen(
                 )
             }
         }
+
+        // ---------- Seção Aparência (RF80): tema claro, escuro ou do aparelho; vale também para o visitante ----------
+        CartaoDeAparencia(
+            modoAtual = modoDoTema,
+            aoEscolher = { modo -> scope.launch { preferencias.definirModoDoTema(modo) } }
+        )
 
         // ---------- Seção Sobre: aparece também para o visitante ----------
         CartaoDeSecao(titulo = "Sobre") {

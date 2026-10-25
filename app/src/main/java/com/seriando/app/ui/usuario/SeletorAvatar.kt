@@ -33,7 +33,7 @@ import androidx.compose.ui.unit.dp
 
 /**
  * Folha inferior para escolher o avatar (RF15): a foto da conta Google (quando existe) e as
- * 11 fotos do app. Os emojis das versões anteriores foram removidos.
+ * 15 fotos do app. Os emojis das versões anteriores foram removidos.
  *
  * A escolha é gravada por quem chama, em [aoSelecionar]; a folha fecha logo depois.
  *
@@ -80,7 +80,7 @@ fun SeletorAvatar(
                 Spacer(modifier = Modifier.height(20.dp))
             }
 
-            // Grade com as 11 fotos: até 4 por linha, centralizadas
+            // Grade com as 15 fotos: até 4 por linha, centralizadas
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),

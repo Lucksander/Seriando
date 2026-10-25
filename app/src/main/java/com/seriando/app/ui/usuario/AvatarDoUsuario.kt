@@ -27,7 +27,7 @@ import coil3.compose.AsyncImage
 // O perfil guarda só um texto curto em avatarId (cabe no limite de 20 caracteres das regras
 // do Firestore). Valores possíveis:
 //   "google"  -> foto da conta Google;
-//   "foto_01" até "foto_11" -> uma das 11 fotos do app;
+//   "foto_01" até "foto_15" -> uma das 15 fotos do app;
 //   qualquer outro valor (ex: um emoji de versões antigas) -> inicial do apelido.
 // ---------------------------------------------------------------------------------------
 
@@ -35,9 +35,9 @@ import coil3.compose.AsyncImage
 const val AVATAR_GOOGLE = "google"
 
 /** Quantas fotos de avatar o app oferece. */
-const val TOTAL_AVATARES_FOTO = 11
+const val TOTAL_AVATARES_FOTO = 15
 
-/** Ids das fotos do app, na ordem em que aparecem no seletor: "foto_01" ... "foto_11". */
+/** Ids das fotos do app, na ordem em que aparecem no seletor: "foto_01" ... "foto_15". */
 val AVATARES_DISPONIVEIS: List<String> =
     (1..TOTAL_AVATARES_FOTO).map { "foto_" + it.toString().padStart(2, '0') }
 
