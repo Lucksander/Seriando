@@ -324,8 +324,9 @@ fun UsuarioScreen(
         // ---------- Seção Conta: sair e excluir (só para quem tem conta e perfil carregado) ----------
         if (usuario != null && uid != null && perfilAtual != null) {
             CartaoDeSecao(titulo = "Conta") {
-                // Pede confirmação se houver alterações não sincronizadas (RN27)
-                Box(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
+                // Botão cheio em destaque; sempre pede confirmação e avisa das alterações
+                // não sincronizadas (RN27)
+                Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
                     BotaoSair(texto = "Sair da conta", aoSairConfirmado = aoSair)
                 }
                 SeparadorDeLinhas()
