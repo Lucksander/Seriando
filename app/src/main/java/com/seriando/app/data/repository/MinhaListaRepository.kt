@@ -6,8 +6,12 @@ import com.seriando.app.data.local.ListaDao
 import com.seriando.app.data.local.paraEntity
 import com.seriando.app.data.local.paraSerieSalva
 import com.seriando.app.data.sync.Sincronizador
+import com.seriando.app.model.EstatisticasDoUsuario
 import com.seriando.app.model.SerieSalva
+import com.seriando.app.model.StatusFilme
+import com.seriando.app.model.StatusSerie
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
@@ -32,6 +36,23 @@ class MinhaListaRepository(
     /** A lista, atualizada sozinha sempre que o banco local mudar (inclusive após sincronizar). */
     fun observarSeries(): Flow<List<SerieSalva>> =
         local.observarItens().map { itens -> itens.map { it.paraSerieSalva() } }
+
+    /**
+     * Estatísticas da aba Conta (RF67): filmes concluídos, séries maratonadas e episódios
+     * assistidos. Junta três contagens do banco local; o Flow emite de novo sempre que
+     * qualquer uma delas muda, então o cartão atualiza sozinho (e funciona sem internet).
+     */
+    fun observarEstatisticas(): Flow<EstatisticasDoUsuario> = combine(
+        local.observarQuantidadePorStatus("movie", StatusFilme.ASSISTIDO.name),
+        local.observarQuantidadePorStatus("tv", StatusSerie.COMPLETO.name),
+        episodios.observarTotalAssistidos()
+    ) { filmes, series, totalEpisodios ->
+        EstatisticasDoUsuario(
+            filmesConcluidos = filmes,
+            seriesMaratonadas = series,
+            episodiosAssistidos = totalEpisodios
+        )
+    }
 
     /** A lista numa leitura única, do banco local. */
     suspend fun buscarSeries(uid: String): List<SerieSalva> =

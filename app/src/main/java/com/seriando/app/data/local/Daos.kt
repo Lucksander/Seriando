@@ -67,6 +67,14 @@ interface ListaDao {
     /** Total de itens na tabela (também usado no teste de fumaça ao abrir o app). */
     @Query("SELECT COUNT(*) FROM lista")
     suspend fun contar(): Int
+
+    /**
+     * Quantos itens da lista são do tipo e têm o status informado (RF67), ignorando os removidos.
+     * É um Flow: o número da aba Conta muda sozinho quando o status de uma obra muda.
+     * Exemplo: tipo "movie" + status "ASSISTIDO" = filmes concluídos.
+     */
+    @Query("SELECT COUNT(*) FROM lista WHERE removido = 0 AND tipoMidia = :tipoMidia AND status = :status")
+    fun observarQuantidadePorStatus(tipoMidia: String, status: String): Flow<Int>
 }
 
 @Dao
@@ -79,6 +87,10 @@ interface EpisodioDao {
     /** O mesmo, em leitura única. */
     @Query("SELECT * FROM episodiosAssistidos WHERE serieId = :serieId AND removido = 0")
     suspend fun listarDaSerie(serieId: Int): List<EpisodioAssistidoEntity>
+
+    /** Total de episódios assistidos de todas as séries (RF67), sem contar os desmarcados. */
+    @Query("SELECT COUNT(*) FROM episodiosAssistidos WHERE removido = 0")
+    fun observarTotalAssistidos(): Flow<Int>
 
     /** Marca um episódio como assistido (ou o reativa, se estava desmarcado). */
     @Insert(onConflict = OnConflictStrategy.REPLACE)

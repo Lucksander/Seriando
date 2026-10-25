@@ -46,11 +46,13 @@ import com.seriando.app.BuildConfig
 import com.seriando.app.R
 import com.seriando.app.data.auth.AuthRepository
 import com.seriando.app.data.local.PreferenciasApp
+import com.seriando.app.data.repository.MinhaListaRepository
 import com.seriando.app.data.repository.ContaRepository
 import com.seriando.app.data.repository.PerfilRepository
 import com.seriando.app.data.repository.ResultadoDataNascimento
 import com.seriando.app.model.ControleDeIdade
 import com.seriando.app.model.DataNascimento
+import com.seriando.app.model.EstatisticasDoUsuario
 import com.seriando.app.model.ModoDoTema
 import com.seriando.app.model.PerfilPublico
 import com.seriando.app.ui.comum.BotaoSair
@@ -112,6 +114,12 @@ fun UsuarioScreen(
     val perfil by remember(uid) {
         if (uid != null) perfilRepository.observarPerfil(uid) else flowOf(null)
     }.collectAsState(initial = null)
+
+    // Estatísticas (RF67): contadas no banco local, então funcionam offline e atualizam sozinhas
+    // quando o usuário muda um status ou marca um episódio. Zeradas até a primeira leitura.
+    val estatisticas by remember(uid) {
+        if (uid != null) MinhaListaRepository().observarEstatisticas() else flowOf(EstatisticasDoUsuario())
+    }.collectAsState(initial = EstatisticasDoUsuario())
 
     var mostrarDialogoApelido by remember { mutableStateOf(false) }
 
@@ -231,6 +239,9 @@ fun UsuarioScreen(
                 fotoGoogle = usuario.photoUrl,
                 aoEditarAvatar = { mostrarSeletorAvatar = true }
             )
+
+            // ---------- Seção Minha atividade (RF67): filmes concluídos, séries maratonadas e episódios ----------
+            CartaoDeEstatisticas(estatisticas = estatisticas)
 
             // ---------- Seção Perfil: apelido, e-mail, data de nascimento (RF59) e faixa liberada ----------
             val temData = DataNascimento.valida(dataSalva)

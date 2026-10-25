@@ -41,10 +41,13 @@ class BancoLocalTest {
 
     // ---------- Funções auxiliares para montar linhas de teste ----------
 
-    private fun item(id: Int, atualizadoEm: Long, pendente: Boolean = true, removido: Boolean = false, tipo: String = "tv") =
+    private fun item(
+        id: Int, atualizadoEm: Long, pendente: Boolean = true, removido: Boolean = false,
+        tipo: String = "tv", status: String = "QUERO_ASSISTIR"
+    ) =
         ListaEntity(
             id = id, nome = "Obra $id", sinopse = "", caminhoCapa = null, tipoMidia = tipo,
-            status = "QUERO_ASSISTIR", dataAdicao = 1L, atualizadoEm = atualizadoEm,
+            status = status, dataAdicao = 1L, atualizadoEm = atualizadoEm,
             pendenteSincronizacao = pendente, removido = removido,
         )
 
@@ -133,6 +136,47 @@ class BancoLocalTest {
             dao.salvar(item(id = 2, atualizadoEm = 100, pendente = false))
 
             assertEquals(1, dao.observarQuantidadePendentes().first())
+        }
+    }
+
+    // ---------- Estatísticas da aba Conta (RF67) ----------
+
+    @Test
+    fun contagemPorStatusConsideraTipoStatusEItensRemovidos() {
+        runBlocking {
+            val dao = banco.listaDao()
+            dao.salvar(item(id = 1, atualizadoEm = 1, tipo = "movie", status = "ASSISTIDO"))       // conta (filme concluído)
+            dao.salvar(item(id = 2, atualizadoEm = 1, tipo = "movie", status = "ASSISTIDO"))       // conta
+            dao.salvar(item(id = 3, atualizadoEm = 1, tipo = "movie", status = "ASSISTIDO", removido = true)) // removido: não conta
+            dao.salvar(item(id = 4, atualizadoEm = 1, tipo = "movie", status = "QUERO_ASSISTIR"))  // outro status: não conta
+            dao.salvar(item(id = 5, atualizadoEm = 1, tipo = "tv", status = "COMPLETO"))           // conta (série maratonada)
+            dao.salvar(item(id = 6, atualizadoEm = 1, tipo = "tv", status = "ASSISTIDO"))          // status de filme numa série: não conta como filme
+            dao.salvar(item(id = 7, atualizadoEm = 1, tipo = "tv", status = "COMPLETO", removido = true))     // removida: não conta
+
+            assertEquals(2, dao.observarQuantidadePorStatus("movie", "ASSISTIDO").first())
+            assertEquals(1, dao.observarQuantidadePorStatus("tv", "COMPLETO").first())
+            // Status sem nenhum item dá zero, e não erro
+            assertEquals(0, dao.observarQuantidadePorStatus("movie", "ABANDONEI").first())
+        }
+    }
+
+    @Test
+    fun totalDeEpisodiosAssistidosIgnoraOsDesmarcados() {
+        runBlocking {
+            val dao = banco.episodioDao()
+            assertEquals(0, dao.observarTotalAssistidos().first())
+
+            // Duas séries diferentes entram na mesma soma; o desmarcado (lápide) fica de fora
+            dao.salvarVarios(
+                listOf(
+                    episodio(7, 1, 1),
+                    episodio(7, 1, 2),
+                    episodio(8, 1, 1),
+                    episodio(8, 1, 2, removido = true)
+                )
+            )
+
+            assertEquals(3, dao.observarTotalAssistidos().first())
         }
     }
 
