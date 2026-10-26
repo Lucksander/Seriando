@@ -128,19 +128,23 @@ class CatalogoRepository {
      * @param pagina    número da página, começando em 1.
      */
     suspend fun buscarPagina(categoria: Categoria, pagina: Int): PaginaCatalogo {
-        return if (categoria.emAlta) buscarEmAlta(pagina) else buscarPorGenero(categoria, pagina)
+        val tipoEmAlta = categoria.tipoEmAlta
+        return if (tipoEmAlta != null) buscarEmAlta(tipoEmAlta, pagina) else buscarPorGenero(categoria, pagina)
     }
 
-    // "Em alta" (RF45): o trending já devolve media_type em cada item.
-    private suspend fun buscarEmAlta(pagina: Int): PaginaCatalogo {
+    // "Séries em alta" / "Filmes em alta" (RF45): trending de um único tipo ("tv" ou "movie").
+    private suspend fun buscarEmAlta(tipo: String, pagina: Int): PaginaCatalogo {
         val resposta = RetrofitInstance.api.buscarEmAlta(
+            tipo = tipo,
             apiKey = BuildConfig.TMDB_API_KEY,
             pagina = pagina
         )
         val itens = filtroDeIdade.filtrar(
             resposta.results
-                // Remove pessoas (e qualquer tipo desconhecido) e itens sem capa
-                .filter { (it.ehFilme || it.ehSerie) && it.caminhoCapa != null },
+                // Garante o tipo certo em cada item (não depende do media_type da resposta)
+                .map { it.copy(tipoMidia = tipo) }
+                // Descarta itens sem capa
+                .filter { it.caminhoCapa != null },
             tipoDe = { it.tipoMidia },
             idDe = { it.id }
         )

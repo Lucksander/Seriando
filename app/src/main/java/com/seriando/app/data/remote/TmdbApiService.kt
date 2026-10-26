@@ -71,10 +71,11 @@ interface TmdbApiService {
         @Query("language") idioma: String = "pt-BR"
     ): TemporadaDetalhe
 
-    // Categoria "Em alta" (RF45). O parâmetro page permite paginar na tela
-    // "Ver mais" (RF46); o valor padrão 1 preserva as chamadas já existentes.
-    @GET("trending/all/week")
+    // Categorias "Séries em alta" e "Filmes em alta" (RF45). O tipo ("tv" ou "movie") vai
+    // no caminho. O parâmetro page permite paginar na tela "Ver mais" (RF46).
+    @GET("trending/{tipo}/week")
     suspend fun buscarEmAlta(
+        @Path("tipo") tipo: String,
         @Query("api_key") apiKey: String,
         @Query("language") idioma: String = "pt-BR",
         @Query("page") pagina: Int = 1

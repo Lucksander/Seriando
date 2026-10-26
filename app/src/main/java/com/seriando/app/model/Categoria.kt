@@ -8,16 +8,19 @@ package com.seriando.app.model
  * @param generoFilmeId  id do gênero na TMDB para filmes (discover/movie). Nulo em "Em alta".
  * @param generoSerieId  id do gênero na TMDB para séries (discover/tv).
  *                       Nulo quando o gênero só existe para filmes (Terror e Romance).
- * @param emAlta         true apenas para a categoria "Em alta", que não usa gênero e sim
- *                       o endpoint trending/all/week.
+ * @param tipoEmAlta     "movie" ou "tv" nas categorias "Filmes em alta" e "Séries em alta", que não
+ *                       usam gênero e sim o endpoint trending/{tipo}/week. Nulo nas demais.
  */
 data class Categoria(
     val id: String,
     val nome: String,
     val generoFilmeId: Int? = null,
     val generoSerieId: Int? = null,
-    val emAlta: Boolean = false
-)
+    val tipoEmAlta: String? = null
+) {
+    // Verdadeiro nas categorias de "em alta" (usa o trending em vez do discover por gênero)
+    val emAlta: Boolean get() = tipoEmAlta != null
+}
 
 /**
  * Lista fixa de categorias, na ordem em que aparecem na Home.
@@ -30,7 +33,9 @@ object Categorias {
 
     // Todas as categorias exibidas na Home, de cima para baixo
     val todas: List<Categoria> = listOf(
-        Categoria(id = "em_alta", nome = "Em alta", emAlta = true),
+        // Duas fileiras de "em alta" separadas: uma só de séries e outra só de filmes (RF45)
+        Categoria(id = "series_em_alta", nome = "Séries em alta", tipoEmAlta = "tv"),
+        Categoria(id = "filmes_em_alta", nome = "Filmes em alta", tipoEmAlta = "movie"),
         Categoria(id = "acao", nome = "Ação", generoFilmeId = 28, generoSerieId = 10759),
         Categoria(id = "comedia", nome = "Comédia", generoFilmeId = 35, generoSerieId = 35),
         Categoria(id = "suspense", nome = "Suspense", generoFilmeId = 53, generoSerieId = 9648),

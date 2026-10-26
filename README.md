@@ -294,7 +294,7 @@ A comunicação remota com a API da TMDB é intermediada pela interface [TmdbApi
 
 | Endpoint TMDB | Método HTTP | Função no App | Requisito Relacionado |
 | :--- | :--- | :--- | :--- |
-| `/trending/all/week` | `GET` | Busca obras populares da semana para a fileira "Em Alta" e o carrossel de destaques | **RF45** |
+| `/trending/{tv\|movie}/week` | `GET` | Busca séries e filmes populares da semana para as fileiras "Séries em alta" e "Filmes em alta" | **RF45** |
 | `/discover/movie` | `GET` | Descobre filmes por popularidade, lançamentos, notas ou gênero no Descobrir/Home | **RF44, RF63** |
 | `/discover/tv` | `GET` | Descobre séries por popularidade, lançamentos, notas ou gênero no Descobrir/Home | **RF44, RF63** |
 | `/search/multi` | `GET` | Pesquisa unificada de filmes, séries e pessoas com consulta textual | **RF03** |
@@ -341,7 +341,7 @@ A comunicação remota com a API da TMDB é intermediada pela interface [TmdbApi
 - **Resolução Automática de Conflitos**: Algoritmo *last-write-wins* por estampa de tempo (`atualizadoEm`), preservando sempre a versão mais recente dos dados.
 
 ### 📂 Home por Categorias & Navegação Expandida (RF44, RF45, RF46, RF55, RF56)
-- **Fileiras Temáticas**: Categorias horizontais (*Em alta*, *Ação*, *Comédia*, *Suspense*, *Drama*, *Terror*, *Romance*, etc.) com rolagem suave.
+- **Fileiras Temáticas**: Categorias horizontais (*Séries em alta*, *Filmes em alta*, *Ação*, *Comédia*, *Suspense*, *Drama*, *Terror*, *Romance*, etc.) com rolagem suave.
 - **Botão "Ver mais" & Título Clicável**: Acesso direto à tela [CategoriaScreen](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/home/CategoriaScreen.kt) exibindo a lista completa paginada em grade de 3 colunas.
 
 ### 🎭 Perfil de Artista (Atores/Atrizes) (RF40, RF41, RF42, RF43)

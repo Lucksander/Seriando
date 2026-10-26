@@ -92,7 +92,7 @@ graph LR
 | UC24 | Sair da conta (botão em destaque, sempre com confirmação) | Usuário autenticado | Logado | RF27, RN25, RN27 |
 | UC25 | Ver a introdução do app (três páginas, com opção de pular) | Visitante | Primeira abertura do app | RF52, RN30 |
 | UC26 | Continuar como visitante | Visitante | Nenhum usuário logado | RF53, RF54, RN18, RN30 |
-| UC27 | Navegar pelas categorias da Home (fileiras por gênero, "Em alta", "Ver mais") | Visitante | — | RF44, RF45, RF46, RF55, RF56 |
+| UC27 | Navegar pelas categorias da Home (fileiras por gênero, "Séries em alta", "Filmes em alta", "Ver mais") | Visitante | — | RF44, RF45, RF46, RF55, RF56 |
 | UC28 | Descobrir obras por tipo, catálogo (Popular, Novos ou streaming) e gênero | Visitante | — | RF63, RF64 |
 | UC29 | Sortear o que assistir ("O que assistir hoje?") | Visitante | Há obras carregadas na grade da Descobrir | RF65 |
 | UC30 | Usar o histórico de busca (obras vistas e pesquisas recentes) | Visitante | Campo de busca vazio | RF72, RN29 |

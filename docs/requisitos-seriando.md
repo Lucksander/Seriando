@@ -50,7 +50,7 @@ Aplicativo Android para acompanhar séries e filmes, com lista pessoal, progress
 | RF47 | Exibir a imagem (thumbnail) de cada episódio na lista de episódios da tela de Detalhes | Concluído |
 | RF48 | Marcar a própria opinião como pública (visível a todos) ou privada (visível só ao autor) | Concluído |
 | RF44 | Organizar a Home em categorias por gênero (ação, suspense, comédia etc.), cada uma como uma fileira com rolagem horizontal | Concluído |
-| RF45 | Incluir uma categoria "Em alta" com os títulos mais populares do momento | Concluído |
+| RF45 | Incluir as categorias "Séries em alta" e "Filmes em alta", cada uma só com o seu tipo, com os títulos mais populares da semana | Concluído |
 | RF46 | Ao rolar uma categoria até o fim, mostrar um botão "Ver mais" que leva a uma lista completa só daquela categoria | Concluído |
 | RF29 | Excluir a conta e todos os dados do usuário (LGPD e Play Store) | Concluído |
 | RF55 | Tocar no nome de uma categoria de gênero na Home abre a lista completa daquela categoria (mesmo destino do "Ver mais"), com uma seta ao lado do título indicando que ele é tocável | Concluído |
