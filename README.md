@@ -19,6 +19,10 @@ Projeto desenvolvido em **Kotlin** com **Jetpack Compose**, seguindo boas práti
 - **Tema do app e novo visual (`ModoDoTema`, `CartaoDeAparencia`, RF80)**: seção Aparência na aba Conta (aparelho, claro ou escuro), guardada em DataStore, e paleta clara lilás mais viva.
 - **Opinião com campo, emoções e spoiler renovados (`CampoDeOpiniao`, `SeletorEmocoes`, `MarcadorDeSpoiler`)**: campo arredondado no estilo da Home, seletor de emoções com animação de cor e marcador de spoiler em linha.
 - **Recomendados para você (`FileiraDeRecomendacoes`, `Recomendacoes`, RF81, RN38)**: fileira no topo da Home com obras parecidas com as últimas séries e filmes que o usuário terminou, usando o endpoint de recomendações da TMDB. A lógica de escolha e combinação é pura e testada (`RecomendacoesTest`); obras já na lista não aparecem e o controle de idade vale.
+- **Carrossel de destaques (`CarrosselDeDestaques`, `DestaquesDaHome`, RF84)**: cartões grandes com a imagem horizontal de séries e filmes em alta, passagem automática a cada 5 segundos, pontinhos de posição e toque para abrir os detalhes. Reaproveita as listas já carregadas (sem requisição extra); a escolha das obras é pura e testada (`DestaquesDaHomeTest`).
+- **Continuar assistindo (`FileiraContinuarAssistindo`, `ContinuarAssistindoRepository`, RF83)**: fileira para quem está logado com as séries "Assistindo", o próximo episódio e a barra de progresso. Funciona offline, só com dados do aparelho; a regra do próximo episódio é pura e testada (`ContinuarAssistindoTest`).
+- **Séries em alta e Filmes em alta com ranking (`CategoriaRow`, RF45, RF85)**: duas fileiras separadas (endpoint `trending/{tv|movie}/week`), com o Top 10 numerado sobre as capas.
+- **Imagens com fade (`SeriandoApp`, RNF20)**: o Coil foi configurado com crossfade de 350 ms para todas as capas e fotos.
 - **Puxar para atualizar na Home (`PullToRefreshBox`, RF82)**: arrastar a Home para baixo recarrega categorias e recomendações, ignorando o cache.
 - **Botão "Sair da conta" em destaque (`BotaoSair`, RF27, RN27)**: botão largo na aba Conta que sempre pede confirmação e avisa quando há alterações não sincronizadas.
 
@@ -373,8 +377,8 @@ A comunicação remota com a API da TMDB é intermediada pela interface [TmdbApi
 A especificação técnica detalhada do projeto encontra-se disponível no diretório `docs/`:
 
 - 📋 [**Levantamento Completo de Requisitos (`requisitos-seriando.md`)**](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/docs/requisitos-seriando.md):
-  - **Requisitos Funcionais (RF01 a RF82)**: Detalhamento dos blocos implementados e em desenvolvimento.
-  - **Requisitos Não Funcionais (RNF01 a RNF19)**: Segurança, LGPD, portabilidade para Compose Multiplatform e regras de banco.
+  - **Requisitos Funcionais (RF01 a RF85)**: Detalhamento dos blocos implementados e em desenvolvimento.
+  - **Requisitos Não Funcionais (RNF01 a RNF20)**: Segurança, LGPD, portabilidade para Compose Multiplatform e regras de banco.
   - **Regras de Negócio (RN01 a RN41)**: Comportamento das avaliações, pontuação, privacidade, concorrência e sincronização offline.
   - **Análise de Risco & Segurança**: Modelo de ameaças STRIDE e checklist OWASP MASVS.
   - **Esteira de Publicação**: Procedimento de envio para Google Play Store e preparação para Apple App Store.
@@ -429,7 +433,7 @@ com.seriando.app
 │   ├── local/         # Persistência local: SeriandoDatabase, DAOs (ListaDao, EpisodioDao, PerfilDao, ObraCacheDao),
 │   │                  # Entidades, Mapeamentos, Dependencias, PreferenciasApp (DataStore) e HistoricoBusca (SharedPrefs)
 │   ├── remote/        # RetrofitInstance e TmdbApiService (Endpoints e clientes HTTP)
-│   ├── repository/    # Repositórios (Avaliacao, Catalogo, Conta, Denuncia, FiltroDeIdade, MinhaLista, ObraCache, Perfil, Progresso)
+│   ├── repository/    # Repositórios (Avaliacao, Catalogo, ContinuarAssistindo, Conta, Denuncia, FiltroDeIdade, MinhaLista, ObraCache, Perfil, Progresso)
 │   └── sync/          # Motor de sincronização: MonitorConexao e Sincronizador (Room <-> Firestore)
 │
 ├── model/             # Data Classes (Movie, Serie, Pessoa, Avaliacao, Categoria, ClassificacaoIndicativa, ControleDeIdade, DataNascimento, Descobrir, Emocao, Status, etc.)
@@ -443,7 +447,7 @@ com.seriando.app
 │   ├── comum/         # Componentes compartilhados: BotaoSair, ComFaixaDeConexao, LogoSeriando, MensagemSemConexao
 │   ├── descobrir/     # DescobrirScreen (Aba Descobrir com filtros, grade de 4 colunas e botão "Sortear")
 │   ├── details/       # DetailsScreen, CartaoEpisodio, CartaoTemporada, DialogoDenuncia, ElencoCard, InformacoesDaObra, ObraBloqueada, OpiniaoCard, SecaoOndeAssistir, SeletorEmocoes, SeletorEstrelas
-│   ├── home/          # HomeScreen, CategoriaRow, CategoriaScreen, DestaqueCard, ResultadoCard, DialogoEditarApelido, DialogoRemoverDaLista
+│   ├── home/          # HomeScreen, CarrosselDeDestaques, FileiraContinuarAssistindo, CategoriaRow, CategoriaScreen, DestaqueCard, ResultadoCard, DialogoEditarApelido, DialogoRemoverDaLista
 │   ├── introducao/    # IntroducaoScreen (3 páginas de boas-vindas com animação radial)
 │   ├── login/         # EntradaScreen, LoginComGoogle, FolhaDeLoginPorEmail, AvisoDeLoginNecessario, DialogoLoginObrigatorio
 │   ├── mylist/        # MinhaListaScreen (filtros por status, busca e ordenação), BarraDeBuscaDaLista
@@ -524,7 +528,7 @@ O projeto conta com testes unitários das regras de negócio (JVM, sem emulador)
 ./gradlew testDebugUnitTest
 ```
 
-Os testes unitários (`app/src/test/java/com/seriando/app/model/`) cobrem as regras puras do app: `DataNascimentoTest` (validação da data e cálculo da idade, RN13), `ControleDeIdadeTest` (idade efetiva e filtro por classificação, RN14 a RN16 e RN31), `ClassificacaoIndicativaTest` (leitura da classificação do Brasil nas respostas da TMDB, RF49) `StatusHelperTest` (status de séries e filmes, RF08), `OrganizadorDaListaTest` (busca e ordenação da Minha Lista, RF66), `ValidacaoDeContaTest` (e-mail, senha e apelido, RN34) `ErrosDeAuthTest` (mensagens neutras de erro, RN35) e `RecomendacoesTest` (recomendações da Home, RF81). Repositórios, telas e regras do Firestore ainda não têm testes automatizados.
+Os testes unitários (`app/src/test/java/com/seriando/app/model/`) cobrem as regras puras do app: `DataNascimentoTest` (validação da data e cálculo da idade, RN13), `ControleDeIdadeTest` (idade efetiva e filtro por classificação, RN14 a RN16 e RN31), `ClassificacaoIndicativaTest` (leitura da classificação do Brasil nas respostas da TMDB, RF49) `StatusHelperTest` (status de séries e filmes, RF08), `OrganizadorDaListaTest` (busca e ordenação da Minha Lista, RF66), `ValidacaoDeContaTest` (e-mail, senha e apelido, RN34) `ErrosDeAuthTest` (mensagens neutras de erro, RN35) e `RecomendacoesTest` (recomendações da Home, RF81), `ContinuarAssistindoTest` (próximo episódio, RF83) e `DestaquesDaHomeTest` (carrossel de destaques, RF84). Repositórios, telas e regras do Firestore ainda não têm testes automatizados.
 
 ### Executar Testes Instrumentados do Banco Room (Android)
 
@@ -584,7 +588,7 @@ Os testes do banco de dados local ([BancoLocalTest.kt](file:///C:/Users/Lucas/An
 - **V0.12**: Home organizada por categorias de gênero com botão "Ver mais", lista paginada em grade de 3 colunas, regras de segurança estritas no Firestore, opiniões privadas em coleções isoladas, exclusão permanente de conta (RF29 / LGPD), Design System Velvet Purple e documentação completa de requisitos.
 - **V0.13**: Onboarding de apresentação com carrossel de 3 páginas (`IntroducaoScreen`), persistência via DataStore (`PreferenciasApp`), Tela de Entrada (`EntradaScreen`) e Modo Visitante interceptado por `DialogoLoginObrigatorio`. Faixa de status de conectividade em tempo real (`ComFaixaDeConexao`), nova Aba Descobrir (`DescobrirScreen`) com botão "Sortear", persistência offline completa com Room Database (`SeriandoDatabase`), motor de sincronização em segundo plano com Firestore (`Sincronizador`) e testes instrumentados ([BancoLocalTest](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/androidTest/java/com/seriando/app/data/local/BancoLocalTest.kt)).
 - **V0.14**: Implementação completa do Controle de Idade e Classificação Indicativa do Brasil (Bloco K / RF49, RF50, RF51, RF59, RN13 a RN17), com o repositório centralizado [FiltroDeIdadeRepository](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/data/repository/FiltroDeIdadeRepository.kt), cálculo dinâmico de idade, selos visuais de classificação indicativa (L, 10, 12, 14, 16, 18), bloqueio de detalhes ([ObraBloqueada](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/details/ObraBloqueada.kt)), seletor de data de nascimento com DatePicker M3 ([SeletorDataNascimento](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/usuario/SeletorDataNascimento.kt)), trava de correção única no Firestore (`aniversarioAlterado`) e invalidação de cache em tempo de execução via `VersaoDaIdade`. Melhorias na tela de Detalhes: compartilhar (RF73), situação da obra (RF74), ano de lançamento (RF75) e temporadas em cartões com progresso (RF76).
-- **V1.0**: **(Versão Atual)** Login com e-mail e senha (RF32), foto de perfil própria no aparelho (RF30), busca e ordenação na Minha Lista (RF66), estatísticas na aba Conta (RF67), escolha do tema (RF80), recomendações na Home (RF81), status renovados, 15 avatares, opinião com novo visual e botão de sair em destaque, além de Política de Privacidade (LGPD) e Termos de Uso dentro do app (RF77), avatares em imagem (RF78), aba Conta reorganizada em cartões (RF79), modelo de ameaças STRIDE e checklist OWASP MASVS (`docs/stride-seriando.md`), backup automático do Android desativado (RNF16), BoM do Firebase unificado, testes unitários das regras de negócio (RNF17) e documentação completa em `docs/`.
+- **V1.0**: **(Versão Atual)** Login com e-mail e senha (RF32), foto de perfil própria no aparelho (RF30), busca e ordenação na Minha Lista (RF66), estatísticas na aba Conta (RF67), escolha do tema (RF80), recomendações na Home (RF81), continuar assistindo (RF83), carrossel de destaques (RF84), ranking nas fileiras em alta (RF85), status renovados, 15 avatares, opinião com novo visual e botão de sair em destaque, além de Política de Privacidade (LGPD) e Termos de Uso dentro do app (RF77), avatares em imagem (RF78), aba Conta reorganizada em cartões (RF79), modelo de ameaças STRIDE e checklist OWASP MASVS (`docs/stride-seriando.md`), backup automático do Android desativado (RNF16), BoM do Firebase unificado, testes unitários das regras de negócio (RNF17) e documentação completa em `docs/`.
 
 ---
 
@@ -602,6 +606,7 @@ Os testes do banco de dados local ([BancoLocalTest.kt](file:///C:/Users/Lucas/An
 - [x] **Política de Privacidade, Termos de Uso e modelo de ameaças (STRIDE)**.
 - [x] **Login com e-mail e senha, foto de perfil local, busca e ordenação da Minha Lista, estatísticas e escolha de tema** (RF32, RF30, RF66, RF67, RF80).
 - [x] **Recomendações na Home** (RF81): fileira "Recomendados para você" a partir das obras terminadas.
+- [x] **Home mais rica** (RF83 a RF85): Continuar assistindo, carrossel de destaques e ranking Top 10 nas fileiras em alta.
 - [ ] **Login com a conta Microsoft**: avaliado e adiado (esforço maior que o benefício neste momento).
 - [ ] **Testes Automatizados (expansão)**: testes para repositórios/caches, regras do Firestore (emulador) e testes de UI com Compose Testing.
 - [ ] **Publicação na Google Play Store**.

@@ -60,6 +60,8 @@ graph LR
   Usuario --- UC42([Buscar e ordenar a Minha Lista])
   Usuario --- UC43([Ver estatísticas da atividade])
   Usuario --- UC45([Ver recomendações parecidas com o que assistiu])
+  Usuario --- UC47([Continuar assistindo de onde parou])
+  Visitante --- UC46([Ver o carrossel de destaques da Home])
 ```
 
 ## 3. Descrição textual por caso de uso
@@ -92,7 +94,7 @@ graph LR
 | UC24 | Sair da conta (botão em destaque, sempre com confirmação) | Usuário autenticado | Logado | RF27, RN25, RN27 |
 | UC25 | Ver a introdução do app (três páginas, com opção de pular) | Visitante | Primeira abertura do app | RF52, RN30 |
 | UC26 | Continuar como visitante | Visitante | Nenhum usuário logado | RF53, RF54, RN18, RN30 |
-| UC27 | Navegar pelas categorias da Home (fileiras por gênero, "Séries em alta", "Filmes em alta", "Ver mais") | Visitante | — | RF44, RF45, RF46, RF55, RF56 |
+| UC27 | Navegar pelas categorias da Home (fileiras por gênero, "Séries em alta" e "Filmes em alta" com ranking Top 10, "Ver mais") | Visitante | — | RF44, RF45, RF46, RF55, RF56, RF85 |
 | UC28 | Descobrir obras por tipo, catálogo (Popular, Novos ou streaming) e gênero | Visitante | — | RF63, RF64 |
 | UC29 | Sortear o que assistir ("O que assistir hoje?") | Visitante | Há obras carregadas na grade da Descobrir | RF65 |
 | UC30 | Usar o histórico de busca (obras vistas e pesquisas recentes) | Visitante | Campo de busca vazio | RF72, RN29 |
@@ -109,6 +111,8 @@ graph LR
 | UC42 | Buscar por nome e ordenar a Minha Lista (data, nome ou status), com filtros fixos por status | Usuário autenticado | Logado | RF66, RF08 |
 | UC43 | Ver as estatísticas (filmes concluídos, séries maratonadas, episódios assistidos) | Usuário autenticado | Logado | RF67 |
 | UC45 | Ver a fileira "Recomendados para você" na Home (obras parecidas com as últimas terminadas) | Usuário autenticado | Ter ao menos uma obra Maratonei ou Concluído na lista | RF81, RN38, RN15 |
+| UC46 | Ver o carrossel de destaques da Home (séries e filmes em alta com imagem grande, passagem automática e abertura dos detalhes ao toque) | Visitante | Categorias em alta carregadas | RF84, RN15 |
+| UC47 | Continuar assistindo de onde parou (fileira com as séries em andamento, próximo episódio e progresso, funciona offline) | Usuário autenticado | Ter ao menos uma série com status Assistindo | RF83 |
 | UC44 | Escolher o tema do app (do aparelho, claro ou escuro) | Visitante | — | RF80 |
 | UC38 | Ler a Política de Privacidade e os Termos de Uso (textos guardados no app, a partir da introdução, da tela de entrada e da seção Sobre da aba Conta) | Visitante | — (funciona sem internet) | RF77, RF79, RNF08 |
 

@@ -51,11 +51,14 @@ import com.seriando.app.data.auth.AuthRepository
 import com.seriando.app.data.cache.CatalogoCache
 import com.seriando.app.data.remote.RetrofitInstance
 import com.seriando.app.data.repository.CatalogoRepository
+import com.seriando.app.data.repository.ContinuarAssistindoRepository
+import com.seriando.app.model.ContinuarAssistindo
 import com.seriando.app.data.repository.MinhaListaRepository
 import com.seriando.app.model.Recomendacoes
 import com.seriando.app.data.repository.PerfilRepository
 import com.seriando.app.data.sync.MonitorConexao
 import com.seriando.app.model.Categorias
+import com.seriando.app.model.DestaquesDaHome
 import com.seriando.app.model.PerfilPublico
 import com.seriando.app.model.ResultadoBusca
 import com.seriando.app.ui.comum.LogoSeriando
@@ -189,6 +192,21 @@ fun HomeScreen(
     // usuário já terminou; só quando elas mudam a fileira é buscada de novo.
     val minhaLista by remember { MinhaListaRepository().observarSeries() }
         .collectAsState(initial = emptyList())
+    // ---------- Carrossel de destaques (RF84) ----------
+    // Usa as listas de "Séries em alta" e "Filmes em alta" que a Home já carregou: nenhuma
+    // requisição extra. Recalcula só quando uma das duas listas muda.
+    val listaSeriesEmAlta = itensPorCategoria["series_em_alta"]
+    val listaFilmesEmAlta = itensPorCategoria["filmes_em_alta"]
+    val destaques = remember(listaSeriesEmAlta, listaFilmesEmAlta) {
+        DestaquesDaHome.escolher(listaSeriesEmAlta.orEmpty(), listaFilmesEmAlta.orEmpty())
+    }
+
+    // ---------- Continuar assistindo (RF83) ----------
+    // Séries "Assistindo" com próximo episódio e progresso, lidas só do banco local (sem
+    // requisições). O Flow atualiza a fileira sozinho quando um episódio é marcado.
+    val continuarAssistindo by remember { ContinuarAssistindoRepository().observar() }
+        .collectAsState(initial = emptyList<ContinuarAssistindo>())
+
     val basesDeRecomendacao = Recomendacoes.escolherBases(minhaLista).map { it.tipoMidia to it.id }
     var recomendacoes by remember { mutableStateOf<List<ResultadoBusca>>(emptyList()) }
 
@@ -319,6 +337,27 @@ fun HomeScreen(
                 }
             }
 
+            // Carrossel de destaques (RF84) no topo, logo abaixo da barra de pesquisa
+            if (destaques.isNotEmpty()) {
+                item(key = "carrossel_destaques") {
+                    CarrosselDeDestaques(
+                        itens = destaques,
+                        aoClicarEmItem = aoClicarEmItem
+                    )
+                }
+            }
+
+            // "Continuar assistindo" (RF83) vem do banco local: aparece mesmo sem internet e mesmo
+            // que as categorias da TMDB tenham falhado
+            if (usuario != null && continuarAssistindo.isNotEmpty()) {
+                item(key = "continuar_assistindo") {
+                    FileiraContinuarAssistindo(
+                        itens = continuarAssistindo,
+                        aoClicarEmItem = aoClicarEmItem
+                    )
+                }
+            }
+
             if (todasFalharam) {
                 // Uma mensagem só, com ícone e o botão para tentar de novo (RF62)
                 item {
@@ -333,7 +372,7 @@ fun HomeScreen(
                     )
                 }
             } else {
-                // Fileira personalizada no topo, só quando há recomendações (RF81)
+                // Fileira personalizada, só quando há recomendações (RF81)
                 if (recomendacoes.isNotEmpty()) {
                     item(key = "recomendados") {
                         FileiraDeRecomendacoes(

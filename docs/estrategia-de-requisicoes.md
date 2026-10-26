@@ -30,7 +30,7 @@ Usuário de exemplo: logado, com 20 séries na lista e cerca de 50 episódios ma
 | Ação | Antes | Depois | Como |
 |---|---|---|---|
 | Abrir o app (sincronizar episódios) | ~1.022 leituras do Firestore (20 séries × 50 episódios, mais a lista e o perfil) | ~62 leituras (2 por série, mais a lista e o perfil) | Conferência por diferença (RN41) |
-| Abrir a Home | ~26 chamadas à TMDB (21 das fileiras, mais até 5 de recomendações), a cada abertura | 0 enquanto o cache em disco valer (3 a 6 horas) | Cache HTTP em disco (RN39) |
+| Abrir a Home | ~27 chamadas à TMDB (22 das fileiras, mais até 5 de recomendações), a cada abertura | 0 enquanto o cache em disco valer (3 a 6 horas) | Cache HTTP em disco (RN39) |
 | Abrir Detalhes (TMDB) | 2 chamadas por abertura (obra e "onde assistir") | 1 chamada na primeira vez e 0 nas seguintes, por 6 horas | `append_to_response` e cache no Room (RN39) |
 | Abrir Detalhes (comunidade) | ~122 leituras: 30 da média, 30 da lista, 2 da sua opinião e ~60 dos votos | ~44 leituras: 1 da média, até 20 da primeira página, 2 da sua opinião, 1 das ocultas e ~20 dos votos | Agregação, paginação e votos só das opiniões exibidas (RN40) |
 | Abrir Detalhes de uma obra com 300 opiniões | ~1.200 leituras | ~44 leituras | O custo deixa de crescer com o número de opiniões |

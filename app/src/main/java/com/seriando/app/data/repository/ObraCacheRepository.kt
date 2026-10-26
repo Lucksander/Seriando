@@ -57,6 +57,20 @@ class ObraCacheRepository(
         return detalhe
     }
 
+    /**
+     * Detalhes da série guardados no aparelho, de qualquer idade, SEM consultar a rede.
+     * Usado pela fileira "Continuar assistindo" (RF83). Devolve null se nunca foram guardados
+     * ou se a cópia estiver ilegível.
+     */
+    suspend fun detalheSerieGuardado(id: Int): SerieDetalhe? {
+        val copia = cache.obter(SERIE, id, PARTE_DETALHE) ?: return null
+        return try {
+            gson.fromJson(copia.json, SerieDetalhe::class.java)
+        } catch (e: JsonParseException) {
+            null
+        }
+    }
+
     /** Detalhes de um filme. */
     suspend fun buscarDetalheFilme(id: Int): MovieDetalhe =
         comCache(FILME, id, PARTE_DETALHE, MovieDetalhe::class.java, VALIDADE_DETALHE) {

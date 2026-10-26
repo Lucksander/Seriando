@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -27,6 +27,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.seriando.app.model.Categoria
 import com.seriando.app.model.ResultadoBusca
@@ -35,6 +38,9 @@ import com.seriando.app.ui.theme.capaDeObra
 // Largura de cada cartão dentro da fileira. O DestaqueCard ocupa a largura
 // inteira do espaço que recebe, então fixamos o tamanho aqui, por fora.
 private val larguraCartao = 110.dp
+
+// Quantos títulos entram no ranking das fileiras "em alta" (a lista completa fica no "Ver mais")
+private const val TAMANHO_DO_RANKING = 10
 
 /**
  * Uma fileira horizontal de uma categoria da Home (RF44, RF45, RF46, RF55, RF56):
@@ -113,7 +119,9 @@ fun CategoriaRow(
                 ) {
                     // A chave combina tipo + id porque um filme e uma série
                     // podem ter o mesmo id na TMDB
-                    items(itens, key = { "${it.tipoMidia}_${it.id}" }) { item ->
+                    // Nas fileiras "em alta" é um ranking: só o Top 10, com a posição na capa (RF85)
+                    val itensDaFileira = if (categoria.emAlta) itens.take(TAMANHO_DO_RANKING) else itens
+                    itemsIndexed(itensDaFileira, key = { _, it -> "${it.tipoMidia}_${it.id}" }) { indice, item ->
                         Box(modifier = Modifier.width(larguraCartao)) {
                             DestaqueCard(
                                 resultado = item,
@@ -123,6 +131,22 @@ fun CategoriaRow(
                                     aoClicarEmItem(item.id, tipoMidia)
                                 }
                             )
+                            // Número grande no canto da capa, só no ranking
+                            if (categoria.emAlta) {
+                                Text(
+                                    text = "${indice + 1}",
+                                    style = MaterialTheme.typography.displaySmall.copy(
+                                        fontWeight = FontWeight.Black,
+                                        // Sombra escura: o número fica legível sobre qualquer capa
+                                        shadow = Shadow(color = Color.Black, blurRadius = 12f)
+                                    ),
+                                    color = Color.White,
+                                    modifier = Modifier
+                                        .align(Alignment.BottomStart)
+                                        // Sobe o suficiente para não cobrir o nome embaixo da capa
+                                        .padding(start = 10.dp, bottom = 26.dp)
+                                )
+                            }
                         }
                     }
 

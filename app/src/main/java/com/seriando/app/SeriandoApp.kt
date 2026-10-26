@@ -2,6 +2,10 @@ package com.seriando.app
 
 import android.app.Application
 import android.util.Log
+import coil3.ImageLoader
+import coil3.PlatformContext
+import coil3.SingletonImageLoader
+import coil3.request.crossfade
 import com.google.firebase.auth.FirebaseAuth
 import com.seriando.app.data.local.Dependencias
 import com.seriando.app.data.remote.RetrofitInstance
@@ -16,7 +20,17 @@ import kotlinx.coroutines.launch
  * Prepara o banco local (Room), começa a acompanhar a conexão e pede a sincronização com a
  * nuvem ao abrir o app e sempre que a internet voltar.
  */
-class SeriandoApp : Application() {
+class SeriandoApp : Application(), SingletonImageLoader.Factory {
+
+    /**
+     * Configuração única do carregador de imagens (Coil) usado por todas as capas e fotos.
+     * Com crossfade, cada imagem aparece com um fade suave quando termina de carregar, em vez
+     * de surgir de repente no lugar do espaço vazio.
+     */
+    override fun newImageLoader(context: PlatformContext): ImageLoader =
+        ImageLoader.Builder(context)
+            .crossfade(350) // duração do fade, em milissegundos
+            .build()
 
     override fun onCreate() {
         super.onCreate()

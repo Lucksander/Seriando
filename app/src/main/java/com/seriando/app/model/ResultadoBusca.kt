@@ -14,6 +14,8 @@ data class ResultadoBusca(
     @SerializedName("title") private val tituloFilme: String? = null,
     @SerializedName("overview") val sinopse: String = "",
     @SerializedName("poster_path") val caminhoCapa: String? = null,
+    // Imagem horizontal (backdrop) usada no carrossel de destaques da Home (RF84); opcional
+    @SerializedName("backdrop_path") val caminhoFundo: String? = null,
     @SerializedName("first_air_date") private val dataEstreiaSerie: String? = null,
     @SerializedName("release_date") private val dataLancamentoFilme: String? = null
 ) {
