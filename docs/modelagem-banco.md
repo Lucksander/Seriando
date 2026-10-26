@@ -92,7 +92,7 @@ erDiagram
 
 | Campo | Tipo | Observações |
 |---|---|---|
-| `email` | string | Vindo da conta Google no primeiro login |
+| `email` | string | Vindo da conta Google ou do cadastro com e-mail e senha (RF32), no primeiro login confirmado. A senha nunca é gravada aqui: fica só no Firebase Authentication |
 | `aniversario` | string ou null | Data de nascimento completa no formato `AAAA-MM-DD` (RF59). Usada só para calcular a idade (RN13) e para o controle de idade (Bloco K); a idade em si não é guardada. Valores antigos em texto livre (como "15/03") são tratados como data inválida e o usuário vira menor até informar a data (RN16) |
 | `aniversarioAlterado` | boolean | `true` depois que a data foi corrigida pela única vez permitida (RN17). As regras do Firestore recusam uma nova alteração da data quando este campo já é `true` |
 
@@ -104,8 +104,8 @@ Subcoleções: `usuarios/{uid}/series/{serieId}` (3.3) e `usuarios/{uid}/opinioe
 
 | Campo | Tipo | Observações |
 |---|---|---|
-| `apelido` | string | Sugerido do primeiro nome da conta Google; editável |
-| `avatarId` | string | `"google"` (usa a foto da conta) ou `"foto_01"` a `"foto_11"` (uma das 11 imagens de avatar do app, RF78). Valores antigos em emoji são aceitos pelas regras, mas o app mostra a inicial do apelido no lugar deles |
+| `apelido` | string | Sugerido do primeiro nome da conta Google, ou digitado no cadastro por e-mail e senha (até 40 caracteres); editável |
+| `avatarId` | string | `"google"` (usa a foto da conta) ou `"foto_01"` a `"foto_15"` (uma das 15 imagens de avatar do app, RF78). A foto própria do aparelho (RF30) não muda esse campo: ela existe só no aparelho do dono e os outros veem o avatar gravado aqui. Valores antigos em emoji são aceitos pelas regras, mas o app mostra a inicial do apelido no lugar deles |
 | `atualizadoEm` | long | Instante da última alteração do perfil, em milissegundos; vale para o perfil inteiro (inclui a data de nascimento de `usuarios/{uid}`) e resolve conflitos pela gravação mais recente (RN23) |
 
 ### 3.3 `usuarios/{uid}/series/{serieId}` — lista pessoal
@@ -340,4 +340,4 @@ suspend fun apagarForaDaLista()
 
 ### 6.4 Ciclo de vida do banco local (RN25)
 
-O banco guarda dados apenas do usuário logado: é apagado por completo no logout e na exclusão de conta. O app também registra de quem é o banco (preferência `dono_do_banco_local`) e o apaga no login se encontrar dados de outro usuário. Ao entrar, sair ou receber da nuvem uma data de nascimento diferente, a `VersaoDaIdade` é atualizada e as listas em memória são recarregadas (RN32).
+O banco guarda dados apenas do usuário logado: é apagado por completo no logout e na exclusão de conta. A foto de perfil própria (RF30) não está no Room nem no Firestore: é o arquivo `foto_perfil.jpg` na pasta interna do app, apagado junto com o banco (RN37). O app também registra de quem é o banco (preferência `dono_do_banco_local`) e o apaga no login se encontrar dados de outro usuário. Ao entrar, sair ou receber da nuvem uma data de nascimento diferente, a `VersaoDaIdade` é atualizada e as listas em memória são recarregadas (RN32).

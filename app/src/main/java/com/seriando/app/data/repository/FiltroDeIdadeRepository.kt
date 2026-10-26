@@ -1,5 +1,6 @@
 package com.seriando.app.data.repository
 
+import com.seriando.app.data.auth.AuthRepository
 import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.seriando.app.BuildConfig
@@ -33,7 +34,8 @@ class FiltroDeIdadeRepository(
      * a faixa restrita do visitante e de quem não informou a data (RN16).
      */
     suspend fun idadeEfetiva(): Int {
-        val uid = FirebaseAuth.getInstance().currentUser?.uid
+        // usuarioAtual() já trata conta de e-mail não confirmada como visitante (RF32)
+        val uid = AuthRepository().usuarioAtual()?.uid
             ?: return ControleDeIdade.IDADE_RESTRITA // visitante
         val data = perfilRepository.buscarPerfilPrivado(uid)?.aniversario
         return ControleDeIdade.idadeEfetiva(data)

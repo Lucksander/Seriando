@@ -1,5 +1,6 @@
 package com.seriando.app.data.sync
 
+import com.seriando.app.data.auth.AuthRepository
 import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentReference
@@ -102,6 +103,8 @@ object Sincronizador {
     }
 
     private suspend fun executar(uid: String, baixarDaNuvem: Boolean) {
+        // Conta de e-mail e senha ainda não confirmada não sincroniza nada (RF32)
+        if (!AuthRepository.contaConfirmada(FirebaseAuth.getInstance().currentUser)) return
         // Já há uma rodada em andamento: só pede que ela se repita no fim
         if (!trava.tryLock()) {
             repetir = true
@@ -514,15 +517,26 @@ object Sincronizador {
         }
     }
 
-    /** Perfil inicial de um usuário novo: apelido = primeiro nome da conta Google (ou "Usuário"). */
+    /**
+     * Perfil inicial de um usuário novo.
+     *  - Conta Google: apelido = primeiro nome da conta (ou "Usuário") e avatar = foto do Google.
+     *  - Conta de e-mail e senha (RF32): apelido = o que a pessoa escolheu no cadastro (guardado no
+     *    nome da conta), inteiro, e avatar = a primeira foto do app, já que não há foto do Google.
+     */
     private fun perfilPadrao(uid: String, aniversario: String?, aniversarioCorrigido: Boolean): PerfilEntity {
-        val nomeCompleto = FirebaseAuth.getInstance().currentUser?.displayName.orEmpty()
+        val usuario = FirebaseAuth.getInstance().currentUser
+        val nomeCompleto = usuario?.displayName.orEmpty()
+        val ehGoogle = usuario?.providerData?.any { it.providerId == "google.com" } == true
         // ifBlank: nome vazio viraria apelido vazio, que as regras do Firestore recusam
-        val primeiroNome = nomeCompleto.trim().split(" ").firstOrNull().orEmpty().ifBlank { "Usuário" }
+        val apelido = if (ehGoogle) {
+            nomeCompleto.trim().split(" ").firstOrNull().orEmpty().ifBlank { "Usuário" }
+        } else {
+            nomeCompleto.trim().take(40).ifBlank { "Usuário" } // 40 = limite das regras
+        }
         return PerfilEntity(
             uid = uid,
-            apelido = primeiroNome,
-            avatarId = "google",
+            apelido = apelido,
+            avatarId = if (ehGoogle) "google" else "foto_01",
             aniversario = aniversario,
             atualizadoEm = System.currentTimeMillis(),
             pendenteSincronizacao = true,

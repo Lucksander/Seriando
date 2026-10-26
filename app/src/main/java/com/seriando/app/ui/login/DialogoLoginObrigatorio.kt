@@ -20,10 +20,15 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -34,7 +39,7 @@ import androidx.compose.ui.unit.dp
 /**
  * Folha inferior exibida quando o visitante tenta fazer algo que exige conta (RF54):
  * adicionar à lista, marcar episódio, avaliar, opinar, votar ou denunciar.
- * Mostra os benefícios de ter uma conta e oferece o login com Google.
+ * Mostra os benefícios de ter uma conta e oferece o login com Google ou com e-mail e senha (RF32).
  *
  * Mantém o nome e os parâmetros do antigo diálogo, então as telas que a chamam não mudam.
  *
@@ -51,6 +56,9 @@ fun DialogoLoginObrigatorio(
 ) {
     // Estado e ação do login, o mesmo usado pela tela de entrada (RF53)
     val login = rememberLoginComGoogle(aoLogarComSucesso = aoLogarComSucesso)
+
+    // true enquanto a folha de login por e-mail está aberta (RF32)
+    var mostrarFolhaEmail by remember { mutableStateOf(false) }
 
     // skipPartiallyExpanded: a folha abre inteira, sem parar na metade da altura
     val estadoFolha = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -118,6 +126,18 @@ fun DialogoLoginObrigatorio(
                 Text(if (login.entrando) "Entrando..." else "Entrar com o Google")
             }
 
+            // Login com e-mail e senha (RF32)
+            OutlinedButton(
+                onClick = { mostrarFolhaEmail = true },
+                enabled = !login.entrando,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+                    .height(52.dp)
+            ) {
+                Text("Entrar com e-mail")
+            }
+
             // Ação secundária: fecha a folha e deixa o visitante seguir navegando
             TextButton(
                 onClick = aoFechar,
@@ -129,6 +149,17 @@ fun DialogoLoginObrigatorio(
                 Text("Continuar navegando")
             }
         }
+    }
+
+    // Folha do login por e-mail, aberta por cima desta; ao concluir, avisa a tela que pediu o login
+    if (mostrarFolhaEmail) {
+        FolhaDeLoginPorEmail(
+            aoFechar = { mostrarFolhaEmail = false },
+            aoLogarComSucesso = {
+                mostrarFolhaEmail = false
+                aoLogarComSucesso()
+            }
+        )
     }
 }
 

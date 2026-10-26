@@ -19,14 +19,14 @@ Aplicativo Android para acompanhar séries e filmes, com lista pessoal, progress
 | RF05 | Visualizar detalhes (sinopse, capa, elenco, trailer, nota da TMDB) | Concluído |
 | RF06 | Visualizar temporadas e episódios | Concluído |
 | RF07 | Adicionar e remover itens da minha lista | Concluído |
-| RF08 | Definir status de acompanhamento (séries e filmes têm conjuntos diferentes) | Concluído |
+| RF08 | Definir status de acompanhamento (séries e filmes têm conjuntos diferentes). Séries: Quero assistir, Assistindo, Maratonei e Abandonei. Filmes: Quero assistir, Concluído e Abandonei. Os nomes gravados no Firestore (`COMPLETO`, `ASSISTIDO`, `ABANDONEI`) não mudam; só os rótulos exibidos | Concluído |
 | RF09 | Marcar episódios e temporadas como assistidos | Concluído |
 | RF10 | Acompanhar o progresso da série | Concluído |
 | RF11 | Ver destaques na Home e navegar por abas | Concluído |
 | RF12 | Aba Conta (antes chamada Usuário): exibir apelido, foto e e-mail | Concluído (aba renomeada no app: RF58) |
 | RF13 | Editar apelido | Concluído |
 | RF14 | Informar data de aniversário (opcional, visível apenas ao próprio usuário) | Concluído (substituído pelo RF59) |
-| RF15 | Foto de perfil: usar a foto da conta Google ou escolher um avatar do app | Concluído |
+| RF15 | Foto de perfil: usar a foto da conta Google ou escolher um avatar do app (a foto própria da galeria é o RF30) | Concluído |
 | RF16 | Avaliar filme ou série com 1 a 5 estrelas | Concluído |
 | RF17 | Editar e remover a própria avaliação | Concluído |
 | RF18 | Ver a média das avaliações da comunidade | Concluído |
@@ -38,7 +38,7 @@ Aplicativo Android para acompanhar séries e filmes, com lista pessoal, progress
 | RF24 | Descurtir uma opinião | Concluído |
 | RF25 | Remover o próprio voto (tocar novamente desfaz) | Concluído |
 | RF26 | Ver a quantidade de curtidas e descurtidas de cada opinião | Concluído |
-| RF27 | Sair da conta (logout), limpando o cache local | Concluído |
+| RF27 | Sair da conta (logout), limpando o cache local. O botão "Sair da conta" é largo e em destaque na aba Conta, e sempre pede confirmação (RN27) | Concluído |
 | RF28 | Denunciar uma opinião (grava a denúncia em coleção de acesso restrito) | Concluído |
 | RF34 | Exibir, nos detalhes de séries e filmes, em quais serviços de streaming a obra está disponível no Brasil (assinatura, aluguel e compra), com link para a página da TMDB | Concluído |
 | RF35 | Ao escrever a opinião, marcar até 6 emoções de como se sentiu assistindo (conjunto fixo do app) | Concluído |
@@ -67,10 +67,10 @@ Aplicativo Android para acompanhar séries e filmes, com lista pessoal, progress
 | RF71 | Barra de pesquisa com lupa na Home (atalho que abre a tela de busca) e na tela de busca (campo de uma linha em que a tecla de pesquisa do teclado dispara a busca, com botão para limpar o texto) | Concluído |
 | RF72 | Histórico na tela de busca, mostrado com o campo vazio: obras vistas recentemente (capas, até 12, as abertas a partir da busca) e pesquisas recentes (até 10, só as que devolveram resultados), com opção de apagar uma pesquisa e de limpar cada lista | Concluído |
 | RF52 | Telas de introdução na primeira abertura do app: três páginas deslizáveis com indicador de pontos (boas-vindas, onde assistir e comunidade), botão "Pular" no topo de todas e botão "Avançar" que vira "Começar" na última; mostradas apenas uma vez, com a indicação guardada só no aparelho (DataStore, `introducao_vista`) | Concluído |
-| RF53 | Tela de entrada, mostrada depois da introdução e em toda abertura em que não houver usuário logado, e também depois de sair da conta ou excluí-la: logotipo, botão "Entrar com o Google", opção "Continuar como visitante" e links para a Política de Privacidade e os Termos de Uso | Concluído |
-| RF54 | Modo visitante: permite navegar na Home, usar a Descobrir e o sorteio, pesquisar, ver detalhes, onde assistir, elenco e página da pessoa; ao tentar adicionar à lista, marcar episódios, avaliar ou ver a comunidade, abre uma folha inferior (BottomSheet) com os benefícios de ter conta (lista sincronizada, opinião e comunidade, modo offline) e o botão "Entrar com o Google"; as abas Minha Lista e Conta mostram um aviso com o botão "Entrar" | Concluído |
+| RF53 | Tela de entrada, mostrada depois da introdução e em toda abertura em que não houver usuário logado, e também depois de sair da conta ou excluí-la: logotipo, botão "Entrar com o Google", botão "Entrar com e-mail" (RF32), opção "Continuar como visitante" e links para a Política de Privacidade e os Termos de Uso | Concluído |
+| RF54 | Modo visitante: permite navegar na Home, usar a Descobrir e o sorteio, pesquisar, ver detalhes, onde assistir, elenco e página da pessoa; ao tentar adicionar à lista, marcar episódios, avaliar ou ver a comunidade, abre uma folha inferior (BottomSheet) com os benefícios de ter conta (lista sincronizada, opinião e comunidade, modo offline) e os botões "Entrar com o Google" e "Entrar com e-mail"; as abas Minha Lista e Conta mostram um aviso com o botão "Entrar" | Concluído |
 | RF77 | Política de Privacidade (LGPD) e Termos de Uso dentro do app, em texto guardado no código (funcionam sem internet e para o visitante), com o e-mail de contato; abrem a partir das telas de introdução, da tela de entrada e da seção Sobre da aba Conta | Concluído |
-| RF78 | Avatares do app em imagem: 11 fotos escolhidas em uma folha inferior, junto da foto da conta Google quando houver; substituem os avatares em emoji (quem tinha um emoji vê a inicial do apelido até escolher uma foto) | Concluído |
+| RF78 | Avatares do app em imagem: 15 fotos escolhidas em uma folha inferior, junto da foto da conta Google quando houver; substituem os avatares em emoji (quem tinha um emoji vê a inicial do apelido até escolher uma foto) | Concluído |
 | RF79 | Aba Conta reorganizada em cartões: cabeçalho com avatar, seção Perfil (apelido, e-mail, data de nascimento e classificação liberada), seção Sobre (Termos de Uso, Política de Privacidade e versão) e seção Conta (sair e excluir a conta) | Concluído |
 | RF49 | Exibir a classificação indicativa do Brasil (L, 10, 12, 14, 16, 18) nos detalhes da obra | Concluído |
 | RF50 | Ocultar as obras acima da idade do usuário na Home, na busca, nas categorias, na filmografia da pessoa, na Descobrir e no histórico de obras vistas | Concluído |
@@ -80,6 +80,11 @@ Aplicativo Android para acompanhar séries e filmes, com lista pessoal, progress
 | RF74 | Exibir, nos detalhes, um selo com a situação da obra segundo a TMDB (séries: em exibição, finalizada, cancelada, em produção, planejada ou piloto; filmes: só quando ainda não lançado ou cancelado) | Concluído |
 | RF75 | Exibir o ano de lançamento nos detalhes: filmes mostram o ano; séries mostram o intervalo ("2019 – 2024" ou "2019 – atual") | Concluído |
 | RF76 | Exibir as temporadas como cartões selecionáveis, com nome, quantidade de episódios, ano e barra de progresso dos episódios assistidos | Concluído |
+| RF30 | Foto de perfil própria: escolher uma foto da galeria (Photo Picker), que o app recorta em quadrado (384 px) e guarda **somente no aparelho**, sem Firebase Storage e sem sincronização; os outros usuários continuam vendo o avatar do perfil público (RN37). Substitui a proposta original de enviar a foto ao Firebase Storage | Concluído |
+| RF32 | Login com e-mail e senha (Firebase Authentication) como alternativa ao Google: cadastro com apelido, confirmação obrigatória do e-mail (RN33), entrada, recuperação de senha e reenvio do e-mail de confirmação, em uma folha inferior de quatro etapas aberta pelo botão "Entrar com e-mail" da tela de entrada e do aviso de login. Quem já usa Google continua entrando normalmente com o mesmo endereço | Concluído |
+| RF66 | Buscar por nome (ignorando maiúsculas e acentos) e ordenar a Minha Lista por data de adição, nome ou status, com filtros fixos por status em chips | Concluído |
+| RF67 | Exibir estatísticas na aba Conta (cartão "Minha atividade"): filmes concluídos, séries maratonadas e episódios assistidos, contados na hora a partir do banco local | Concluído |
+| RF80 | Escolher o tema do app na aba Conta (seção Aparência): do aparelho, claro ou escuro; a escolha fica só no aparelho (DataStore) e vale também para o visitante. O tema claro usa uma paleta lilás mais viva | Concluído |
 
 ### 1.2 A implementar (escopo atual)
 
@@ -89,18 +94,14 @@ Todos os blocos do escopo atual foram concluídos.
 
 | ID | Requisito | Situação |
 |----|-----------|----------|
-| RF30 | Enviar foto de perfil própria (Photo Picker + Firebase Storage) | Opcional |
 | RF31 | Avaliar e opinar por episódio | Opcional |
-| RF32 | Login próprio com e-mail e senha (Firebase Authentication) | Opcional |
 | RF60 | Versão iOS do aplicativo em Compose Multiplatform, reaproveitando o código compartilhado (ui, ViewModels, Repository e model) | Opcional |
 | RF61 | Publicação na Apple App Store: distribuição de testes pelo TestFlight e envio para revisão | Opcional |
 | RF68 | Ocultar imediatamente, para quem denunciou, a opinião denunciada, com o aviso "Opinião denunciada e oculta" (RN26) | Opcional |
-| RF66 | Buscar por nome e ordenar (data de adição, nome ou status) dentro da Minha Lista | Opcional |
-| RF67 | Exibir estatísticas na aba Conta: total de filmes assistidos, de séries completas e de episódios assistidos | Opcional |
 
-RF60 e RF61 dependem dos pré-requisitos descritos na seção 1.5. O RF32 é um deles quando não houver Sign in with Apple.
+RF60 e RF61 dependem dos pré-requisitos descritos na seção 1.5. O RF32 (login com e-mail e senha), que seria o login equivalente exigido pela Apple quando não houver Sign in with Apple, já está concluído.
 
-Os RF63 a RF68 vieram do documento propostas_e_melhorias_seriando.md. Os RF63, RF64 e RF65 foram implementados com um desenho ajustado (seção 1.1): sem filtro por década nem nota mínima, e com o streaming escolhido no menu Catálogo. Seguem opcionais, na ordem sugerida de implementação, os RF66, RF67 e RF68.
+Os RF63 a RF68 vieram do documento propostas_e_melhorias_seriando.md. Os RF63, RF64 e RF65 foram implementados com um desenho ajustado (seção 1.1): sem filtro por década nem nota mínima, e com o streaming escolhido no menu Catálogo. Os RF66 e RF67 também foram implementados. Segue opcional, entre eles, apenas o RF68.
 
 ### 1.4 Sugestões para versões futuras (fora do escopo atual)
 
@@ -110,6 +111,7 @@ Os RF63 a RF68 vieram do documento propostas_e_melhorias_seriando.md. Os RF63, R
 | Descobrir obras pelas emoções registradas pela comunidade | Proposta do documento de propostas; exige contadores calculados no servidor (Cloud Function, plano pago do Firebase) e só teria resultados para obras avaliadas por usuários |
 | Notificação de novos episódios e temporadas das séries marcadas como "Assistindo" | Proposta do documento de propostas; exige tarefa em segundo plano (WorkManager) e permissão de notificação |
 | Média de estrelas dadas pelo usuário nas estatísticas da aba Conta | Proposta do documento de propostas; exige ler as avaliações do usuário em todas as obras |
+| Login com a conta Microsoft | Avaliado e adiado porque o esforço não compensa neste momento. Exigiria registrar um app no Microsoft Entra, ativar o provedor no Firebase, ajustar as regras do Firestore (a conta Microsoft pode vir com `email_verified` falso) e tratar "conta já existe com outra credencial" |
 | Compartilhamento que abre direto no Seriando | Evolução do RF73: o link da TMDB abre o site, e não o app. Exige deep links (App Links) e uma página própria para cada obra; depois da publicação, a mensagem de compartilhar pode incluir o link do app na Play Store |
 
 ### 1.5 Por que o aplicativo para iOS não está no escopo atual
@@ -160,7 +162,8 @@ Apesar do foco inicial, o projeto foi estruturado com os princípios de desacopl
 | RNF14 | Conteúdo das telas começa abaixo da barra de status e não rola por baixo dos ícones dela, mantendo a barra transparente (tela de ponta a ponta) | Usabilidade |
 | RNF15 | Ícones da interface no estilo Outlined do Material Icons, de forma consistente (preenchidos só onde o preenchimento tem significado, como a estrela da avaliação) | Usabilidade (identidade visual) |
 | RNF16 | Backup automático do Android desativado (`allowBackup="false"`), para que o banco local com dados pessoais não seja copiado para a nuvem do Google (STRIDE I4) | Segurança / Privacidade |
-| RNF17 | Testes automatizados das regras de negócio puras (data de nascimento e idade, controle de idade, leitura da classificação indicativa e status), executados na JVM sem emulador, e do banco local (Room), executados no Android com banco em memória | Qualidade / Manutenibilidade |
+| RNF17 | Testes automatizados das regras de negócio puras (data de nascimento e idade, controle de idade, leitura da classificação indicativa, status, busca e ordenação da Minha Lista, validação de e-mail, senha e apelido, e mensagens de erro do login), executados na JVM sem emulador, e do banco local (Room, incluindo as estatísticas), executados no Android com banco em memória | Qualidade / Manutenibilidade |
+| RNF18 | Contas de e-mail e senha: a senha nunca é guardada pelo app (fica só no Firebase Authentication), tem de 8 a 64 caracteres, e as mensagens de erro de entrada e cadastro são neutras para não revelar quais e-mails têm conta (proteção contra enumeração de e-mails, RN35) | Segurança / Privacidade |
 
 ---
 
@@ -194,12 +197,17 @@ Apesar do foco inicial, o projeto foi estruturado com os princípios de desacopl
 | RN24 | A comunidade (opiniões, avaliações, votos e médias) e o login exigem conexão, e RN08 continua valendo; sem conexão, o app avisa e mantém disponível o que está salvo no aparelho |
 | RN25 | O banco local guarda dados apenas do usuário logado e é apagado por completo no logout (RF27) e na exclusão de conta (RF29) |
 | RN26 | Uma opinião denunciada pelo usuário fica oculta para ele, guardada apenas no aparelho; a denúncia continua sendo gravada em denuncias, de acesso restrito (RF28) |
-| RN27 | Ao sair da conta com alterações ainda não sincronizadas, o app tenta enviá-las e, se não conseguir, avisa quantas serão perdidas e pede confirmação, porque o banco local é apagado no logout (RN25) |
+| RN27 | Ao sair da conta com alterações ainda não sincronizadas, o app tenta enviá-las e, se não conseguir, avisa quantas serão perdidas e pede confirmação, porque o banco local é apagado no logout (RN25); sem pendências, pede uma confirmação simples |
 | RN28 | Sem conexão, as alterações ficam pendentes e o app não tenta enviá-las; a sincronização completa roda ao abrir o app, no login e quando a internet volta |
 | RN29 | O histórico de busca (pesquisas e obras vistas recentemente) fica só no aparelho (SharedPreferences), nunca é enviado ao Firestore e vale também para o visitante; não é apagado no logout nem na exclusão de conta, e o usuário o apaga pelos botões "Limpar" da tela de busca |
 | RN30 | A escolha de "Continuar como visitante" vale só para aquela abertura do app e não é guardada: sem usuário logado, a tela de entrada aparece em toda abertura. Só a indicação de "introdução já vista" é guardada, no aparelho (DataStore) |
 | RN31 | Se a classificação indicativa de uma obra não puder ser consultada (por exemplo, sem conexão), ela é tratada como sem classificação e fica oculta para menores de 18 anos (RN14) |
 | RN32 | As listas guardadas em memória (Home, busca e Descobrir) são descartadas e recarregadas quando a idade do usuário muda: login, logout, data de nascimento salva ou recebida da nuvem |
+| RN33 | Uma conta de e-mail e senha só vale depois de o e-mail ser confirmado: até lá o app a trata como visitante (nada é gravado na nuvem ou na lista) e as regras do Firestore exigem `email_verified == true` para ler e gravar. Contas Google já chegam confirmadas |
+| RN34 | O cadastro exige e-mail em formato válido (até 254 caracteres), senha de 8 a 64 caracteres, confirmação da senha igual e apelido de até 40 caracteres |
+| RN35 | Os erros de entrada e de cadastro são neutros: "E-mail ou senha incorretos." vale para senha errada e para e-mail inexistente, e o aviso de e-mail já cadastrado orienta a usar "Esqueci minha senha" sem dizer se a conta é do Google ou de e-mail e senha |
+| RN36 | Ao excluir a conta (RF29), quem entrou com e-mail e senha digita a senha de novo (reautenticação); quem entrou com Google continua reautenticando pelo Google |
+| RN37 | A foto de perfil própria (RF30) existe em um único arquivo no armazenamento interno do app, nunca é enviada à nuvem e é apagada no logout, na exclusão da conta, na troca de usuário no aparelho e ao escolher outro avatar |
 
 ---
 
@@ -254,8 +262,8 @@ Observações sobre o Bloco N:
 - Diagrama de casos de uso (atualizar com os Blocos H, I, K, L, M e N, com o RF29, com a Descobrir e o sorteio, com o histórico de busca e incluindo o ator Visitante)
 - Diagrama de arquitetura (camadas ui, data, model, navigation + Firebase + TMDB; incluir o banco local Room e a sincronização com o Firestore)
 - Modelagem do banco: coleções e documentos, campos e exemplos de leitura e escrita; incluir as tabelas locais do Room (seção 4.1)
-- Diagramas de sequência: login, adicionar à lista, publicar opinião, votar, sincronizar alterações feitas offline
-- Modelo de ameaças (STRIDE) e checklist de segurança (OWASP MASVS), produzidos em `stride-seriando.md` (itens verificados no código em 24/10/2026), incluindo o risco de data de nascimento falsa e de app adulterado no controle de idade (RF50 e RF51), tratado como risco parcialmente aceito, os dados guardados no aparelho pelo modo offline (RF33), além das limitações conhecidas das regras do Firestore (campo `data` vindo do relógio do celular, lista de 24 emoções não validada no servidor, votos órfãos após a exclusão de conta)
+- Diagramas de sequência: login (Google e e-mail e senha), adicionar à lista, publicar opinião, votar, sincronizar alterações feitas offline
+- Modelo de ameaças (STRIDE) e checklist de segurança (OWASP MASVS), produzidos em `stride-seriando.md` (itens verificados no código em 24/10/2026 e atualizado em 26/10/2026 com o login por e-mail e senha e a foto local), incluindo o risco de data de nascimento falsa e de app adulterado no controle de idade (RF50 e RF51), tratado como risco parcialmente aceito, os dados guardados no aparelho pelo modo offline (RF33), além das limitações conhecidas das regras do Firestore (campo `data` vindo do relógio do celular, lista de 24 emoções não validada no servidor, votos órfãos após a exclusão de conta)
 - Nota LGPD: registrar o tratamento de dados de crianças e adolescentes decorrente do controle de idade, a exclusão de conta (RF29), com o que é mantido: denúncias feitas pelo usuário (registro de moderação) e votos de terceiros nas opiniões dele, e os dados pessoais guardados no aparelho, apagados no logout e na exclusão de conta (RN25)
 - Política de Privacidade e Termos de Uso (RF77): produzidos em `politica-de-privacidade.md` e `termos-de-uso.md`, com o mesmo texto exibido no app
 - Justificativa de por que a versão iOS não está no escopo atual (seção 1.5)
@@ -276,5 +284,5 @@ Observações sobre o Bloco N:
 - Certificados e perfis de provisionamento.
 - Build e envio pelo Xcode (ou Xcode Cloud / Fastlane), com distribuição de testes pelo TestFlight.
 - Ficha da loja, política de privacidade e informações de privacidade do app.
-- Pré-requisitos de revisão da Apple: login equivalente (Sign in with Apple ou RF32), exclusão de conta (RF29, já atendida), denúncia (RF28, já atendida) e bloqueio de usuários (a criar).
+- Pré-requisitos de revisão da Apple: login equivalente (Sign in with Apple ou e-mail e senha, RF32, já atendido), exclusão de conta (RF29, já atendida), denúncia (RF28, já atendida) e bloqueio de usuários (a criar).
 - Observação: o Expo EAS é a esteira de apps Expo/React Native. Como o Seriando é Kotlin com Compose Multiplatform, a esteira iOS equivalente passa pelo Xcode e pelo TestFlight, e o EAS não se aplica a esta stack.

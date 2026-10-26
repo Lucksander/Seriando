@@ -6,6 +6,7 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.DocumentReference
@@ -23,7 +24,7 @@ import kotlinx.coroutines.tasks.await
  * e avisa o usuário com Toast.
  *
  * Ordem segura de excluirConta:
- *  1. confirmarIdentidade: se o usuário cancelar aqui, NADA foi apagado.
+ *  1. confirmarIdentidade (Google ou senha, RF32): se o usuário cancelar ou errar a senha, NADA foi apagado.
  *  2. Bloqueia a sincronização: uma alteração pendente não pode recriar na nuvem o que estamos apagando.
  *  3. excluirDados: apaga o Firestore. É idempotente: se falhar no meio, dá para tentar de novo.
  *  4. Exclui a conta do Authentication e limpa o banco local (RN25), só depois dos dados.
@@ -44,14 +45,33 @@ class ContaRepository {
     private val tamanhoLote = 400
 
     /**
-     * Pede ao usuário que entre com o Google de novo. O Firebase só exclui a conta de quem
-     * entrou há pouco, e esta confirmação também evita exclusão por toque acidental.
-     * Se o usuário escolher outra conta, o reauthenticate lança exceção.
-     * Cancelar o seletor lança GetCredentialCancellationException.
+     * true se, para excluir a conta, o usuário precisa digitar a senha (RF32): conta de e-mail e
+     * senha SEM vínculo com o Google. Quem tem o Google vinculado (mesmo com senha) confirma pelo
+     * seletor de contas Google, como antes.
      */
-    suspend fun confirmarIdentidade(context: Context, webClientId: String) {
+    fun exigeSenhaParaExcluir(): Boolean {
+        val provedores = firebaseAuth.currentUser?.providerData?.map { it.providerId }.orEmpty()
+        return EmailAuthProvider.PROVIDER_ID in provedores && GoogleAuthProvider.PROVIDER_ID !in provedores
+    }
+
+    /**
+     * Confirma a identidade do usuário de novo. O Firebase só exclui a conta de quem entrou há
+     * pouco, e esta confirmação também evita exclusão por toque acidental.
+     *  - [senha] != null (conta de e-mail e senha): reautentica com a senha digitada; senha errada
+     *    lança FirebaseAuthInvalidCredentialsException.
+     *  - [senha] == null (conta Google): pede o login do Google; se o usuário escolher outra
+     *    conta, o reauthenticate lança exceção, e cancelar o seletor lança
+     *    GetCredentialCancellationException.
+     */
+    suspend fun confirmarIdentidade(context: Context, webClientId: String, senha: String? = null) {
         val usuario = firebaseAuth.currentUser
             ?: throw IllegalStateException("Nenhum usuário autenticado")
+
+        if (senha != null) {
+            val email = usuario.email ?: throw IllegalStateException("A conta não tem e-mail")
+            usuario.reauthenticate(EmailAuthProvider.getCredential(email, senha)).await()
+            return
+        }
 
         val opcaoGoogle = GetSignInWithGoogleOption.Builder(webClientId).build()
         val pedido = GetCredentialRequest.Builder().addCredentialOption(opcaoGoogle).build()
@@ -136,12 +156,12 @@ class ContaRepository {
      * e limpa o banco local (RN25). A tela chama isto e, no sucesso, limpa os caches
      * (AuthRepository.sair) e volta para a Home deslogada.
      */
-    suspend fun excluirConta(context: Context, webClientId: String) {
+    suspend fun excluirConta(context: Context, webClientId: String, senha: String? = null) {
         val usuario = firebaseAuth.currentUser
             ?: throw IllegalStateException("Nenhum usuário autenticado")
         val uid = usuario.uid
 
-        confirmarIdentidade(context, webClientId) // se falhar ou cancelar, nada foi apagado
+        confirmarIdentidade(context, webClientId, senha) // se falhar ou cancelar, nada foi apagado
 
         // A partir daqui nenhuma sincronização pode enviar nem gravar nada: uma pendência
         // enviada agora recriaria na nuvem dados que estamos apagando

@@ -1,5 +1,12 @@
 package com.seriando.app.ui.usuario
 
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -134,6 +141,10 @@ fun UsuarioScreen(
     var mostrarDialogoExcluir by remember { mutableStateOf(false) } // diálogo de confirmação aberto
     var excluindo by remember { mutableStateOf(false) }             // exclusão em andamento
 
+    // Conta de e-mail e senha (sem Google): a exclusão pede a senha em vez do seletor do Google (RF32)
+    val exigeSenhaParaExcluir = remember(uid) { contaRepository.exigeSenhaParaExcluir() }
+    var senhaDaExclusao by remember { mutableStateOf("") }
+
     /**
      * Grava apelido e avatar no banco local. A tela atualiza sozinha, porque observa o banco.
      */
@@ -171,15 +182,17 @@ fun UsuarioScreen(
 
     /**
      * Exclui a conta e todos os dados (RF29).
-     * O ContaRepository pede o login do Google de novo ANTES de apagar qualquer coisa:
-     * se o usuário cancelar ali, nada foi apagado.
+     * O ContaRepository confirma a identidade de novo ANTES de apagar qualquer coisa (login do
+     * Google, ou a senha para conta de e-mail): se o usuário cancelar ou errar a senha, nada foi apagado.
      * No sucesso, limpa os caches e o banco local (AuthRepository.sair).
+     *
+     * @param senha senha digitada, só para conta de e-mail e senha; null para conta Google.
      */
-    fun excluirConta() {
+    fun excluirConta(senha: String?) {
         excluindo = true
         scope.launch {
             try {
-                contaRepository.excluirConta(context, webClientId)
+                contaRepository.excluirConta(context, webClientId, senha)
                 authRepository.sair() // limpa os caches locais e o banco local
                 aoSair() // volta para a tela de entrada
                 Toast.makeText(context, "Conta excluída.", Toast.LENGTH_LONG).show()
@@ -187,6 +200,9 @@ fun UsuarioScreen(
                 // O usuário fechou o seletor de contas do Google: nada foi apagado
                 Log.d("Seriando", "Exclusão de conta cancelada pelo usuário")
                 Toast.makeText(context, "Exclusão cancelada. Nada foi apagado.", Toast.LENGTH_SHORT).show()
+            } catch (e: FirebaseAuthInvalidCredentialsException) {
+                // Senha digitada errada na confirmação (conta de e-mail): nada foi apagado
+                Toast.makeText(context, "Senha incorreta. Nada foi apagado.", Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 // Pode ter apagado só parte dos dados; tentar de novo termina o serviço
                 Log.e("Seriando", "Erro ao excluir a conta", e)
@@ -411,21 +427,44 @@ fun UsuarioScreen(
     // Confirmação da exclusão: explica o que será apagado e o que é mantido
     if (mostrarDialogoExcluir) {
         AlertDialog(
-            onDismissRequest = { mostrarDialogoExcluir = false },
+            onDismissRequest = {
+                mostrarDialogoExcluir = false
+                senhaDaExclusao = "" // não deixa a senha guardada na memória da tela
+            },
             title = { Text("Excluir sua conta?") },
             text = {
-                Text(
-                    "Isto apaga de forma permanente seu perfil, sua lista, seu progresso, " +
-                            "suas avaliações, suas opiniões e seus votos. Não tem como desfazer.\n\n" +
-                            "As denúncias que você enviou são mantidas para a moderação.\n\n" +
-                            "Para confirmar, você vai entrar com sua conta Google de novo."
-                )
+                Column {
+                    Text(
+                        "Isto apaga de forma permanente seu perfil, sua lista, seu progresso, " +
+                                "suas avaliações, suas opiniões e seus votos. Não tem como desfazer.\n\n" +
+                                "As denúncias que você enviou são mantidas para a moderação.\n\n" +
+                                if (exigeSenhaParaExcluir) "Para confirmar, digite sua senha."
+                                else "Para confirmar, você vai entrar com sua conta Google de novo."
+                    )
+                    // Conta de e-mail e senha: campo da senha, escondida por padrão
+                    if (exigeSenhaParaExcluir) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedTextField(
+                            value = senhaDaExclusao,
+                            onValueChange = { senhaDaExclusao = it },
+                            label = { Text("Senha") },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
             },
             confirmButton = {
                 TextButton(
+                    // Conta de e-mail: só continua com a senha preenchida
+                    enabled = !exigeSenhaParaExcluir || senhaDaExclusao.isNotEmpty(),
                     onClick = {
                         mostrarDialogoExcluir = false
-                        excluirConta()
+                        val senha = senhaDaExclusao
+                        senhaDaExclusao = ""
+                        excluirConta(if (exigeSenhaParaExcluir) senha else null)
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
@@ -433,7 +472,10 @@ fun UsuarioScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { mostrarDialogoExcluir = false }) {
+                TextButton(onClick = {
+                    mostrarDialogoExcluir = false
+                    senhaDaExclusao = ""
+                }) {
                     Text("Cancelar")
                 }
             }

@@ -25,7 +25,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -45,6 +45,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.seriando.app.ui.login.DialogoLoginObrigatorio
 import com.seriando.app.R
 import com.seriando.app.data.auth.AuthRepository
 import com.seriando.app.data.cache.CatalogoCache
@@ -89,6 +90,9 @@ fun HomeScreen(
     val webClientId = stringResource(R.string.default_web_client_id)
 
     var usuario by remember { mutableStateOf(authRepository.usuarioAtual()) }
+
+    // true enquanto a folha de login (Google ou e-mail, RF32) está aberta
+    var mostrarLogin by remember { mutableStateOf(false) }
     var perfilPublico by remember { mutableStateOf<PerfilPublico?>(null) }
 
     // true se há internet agora; quando muda, as categorias que falharam são tentadas de novo
@@ -193,38 +197,40 @@ fun HomeScreen(
                             aoClicar = aoClicarEmPerfil
                         )
                     } else {
-                        TextButton(onClick = {
-                            scope.launch {
-                                try {
-                                    usuario = authRepository.entrarComGoogle(context, webClientId)
-                                } catch (e: Exception) {
-                                    Log.e("HomeScreen", "Falha no login", e)
-                                    Toast.makeText(context, "Não foi possível entrar.", Toast.LENGTH_SHORT)
-                                        .show()
-                                }
-                            }
-                        }) {
+                        // "Entrar" abre a folha com as duas opções: Google ou e-mail e senha.
+                        // OutlinedButton desenha a borda que destaca o botão para o visitante.
+                        OutlinedButton(onClick = { mostrarLogin = true }) {
                             Text("Entrar")
+                        }
+                        if (mostrarLogin) {
+                            DialogoLoginObrigatorio(
+                                aoFechar = { mostrarLogin = false },
+                                aoLogarComSucesso = {
+                                    mostrarLogin = false
+                                    // Atualiza o usuário da Home (agora logado e com e-mail confirmado)
+                                    usuario = authRepository.usuarioAtual()
+                                }
+                            )
                         }
                     }
                 }
 
-                // Saudação do usuário logado, só leitura (editar fica na aba Conta)
+                // Saudação no lugar da antiga frase de efeito (só leitura; editar o apelido fica na aba Conta).
+                // Logado: "Olá, apelido!" (some até o perfil carregar, para não piscar um texto errado).
+                // Visitante: boas-vindas genéricas.
                 val publico = perfilPublico
-                if (usuario != null && publico != null) {
+                val saudacao = when {
+                    usuario == null -> "Bem-vindo ao Seriando"
+                    publico != null -> "Olá, ${publico.apelido}!"
+                    else -> null
+                }
+                if (saudacao != null) {
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "Olá, ${publico.apelido}!",
+                        text = saudacao,
                         style = MaterialTheme.typography.titleMedium
                     )
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = "Organize suas séries. Nunca perca onde parou.",
-                    style = MaterialTheme.typography.bodyLarge
-                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 

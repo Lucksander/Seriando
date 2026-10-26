@@ -7,14 +7,21 @@ service cloud.firestore {
 
     // ---------- Funções auxiliares ----------
 
-    // Verdadeiro se há um usuário autenticado (RN08).
-    function logado() {
-      return request.auth != null;
+    // Verdadeiro se o e-mail da conta está confirmado (RF32). Contas Google já vêm com
+    // email_verified = true; contas de e-mail e senha só passam a ter depois que o usuário toca
+    // no link enviado. Garante no servidor o que o app já faz: conta não confirmada não grava nem lê nada.
+    function emailConfirmado() {
+      return request.auth.token.email_verified == true;
     }
 
-    // Verdadeiro se o usuário autenticado é o dono do uid informado.
+    // Verdadeiro se há um usuário autenticado com e-mail confirmado (RN08).
+    function logado() {
+      return request.auth != null && emailConfirmado();
+    }
+
+    // Verdadeiro se o usuário autenticado (com e-mail confirmado) é o dono do uid informado.
     function dono(uid) {
-      return request.auth != null && request.auth.uid == uid;
+      return request.auth != null && request.auth.uid == uid && emailConfirmado();
     }
 
     // ---------- usuarios/{uid}: dados PRIVADOS (RNF03) ----------

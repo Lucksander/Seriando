@@ -2,7 +2,7 @@
 
 Aplicativo Android moderno e intuitivo para organizar as séries e filmes que você assiste, avaliar, comentar e acompanhar junto à comunidade. Pesquise títulos, acompanhe temporadas e episódios, veja a disponibilidade nos serviços de streaming, explore a biografia e filmografia de atores/atrizes e nunca mais perca onde parou.
 
-Projeto desenvolvido em **Kotlin** com **Jetpack Compose**, seguindo boas práticas de arquitetura Android (MVVM / Repository Pattern), consumo de APIs REST com Retrofit, autenticação com Google Credential Manager API, persistência local com **Room Database (Offline-First)**, armazenamento de preferências com **DataStore**, sincronização em nuvem com Cloud Firestore e gerenciamento de estado resiliente.
+Projeto desenvolvido em **Kotlin** com **Jetpack Compose**, seguindo boas práticas de arquitetura Android (MVVM / Repository Pattern), consumo de APIs REST com Retrofit, autenticação com Google Credential Manager API e com e-mail e senha (Firebase Authentication), persistência local com **Room Database (Offline-First)**, armazenamento de preferências com **DataStore**, sincronização em nuvem com Cloud Firestore e gerenciamento de estado resiliente.
 
 ---
 
@@ -12,8 +12,16 @@ Projeto desenvolvido em **Kotlin** com **Jetpack Compose**, seguindo boas práti
 
 ### 🆕 Novidades & Destaques da Versão
 
+- **Login com e-mail e senha (`FolhaDeLoginPorEmail`, `ValidacaoDeConta`, `ErrosDeAuth`, RF32, RN33 a RN36, RNF18)**: alternativa ao Google, em uma folha inferior de quatro etapas (entrar, criar conta, aguardar a confirmação do e-mail e recuperar a senha). A conta só vale depois de o e-mail ser confirmado: até lá o app a trata como visitante (`AuthRepository.usuarioAtual()` devolve nulo) e as regras do Firestore exigem `email_verified`. Mensagens de erro neutras, que não revelam quais e-mails têm conta, e exclusão de conta com reautenticação por senha. Quem já usa Google continua entrando normalmente.
+- **Foto de perfil própria só no aparelho (`FotoDePerfilLocal`, RF30, RN37)**: escolha pelo Photo Picker, recorte quadrado de 384 px e arquivo único na pasta interna do app, sem Firebase Storage e sem sincronização. Apagada no logout, na exclusão da conta e ao escolher outro avatar.
+- **Minha Lista com busca, ordenação e filtros (`BarraDeBuscaDaLista`, `OrganizadorDaLista`, RF66)**: busca por nome sem diferenciar maiúsculas e acentos, ordem por data, nome ou status e chips fixos por status. Os status ganharam rótulos novos (séries: *Maratonei*; filmes: *Concluído*) e o *Abandonei* passou a existir também para filmes, sem mudar os valores gravados no Firestore.
+- **Estatísticas na aba Conta (`CartaoDeEstatisticas`, RF67)**: cartão "Minha atividade" com filmes concluídos, séries maratonadas e episódios assistidos, contados do banco local.
+- **Tema do app e novo visual (`ModoDoTema`, `CartaoDeAparencia`, RF80)**: seção Aparência na aba Conta (aparelho, claro ou escuro), guardada em DataStore, e paleta clara lilás mais viva.
+- **Opinião com campo, emoções e spoiler renovados (`CampoDeOpiniao`, `SeletorEmocoes`, `MarcadorDeSpoiler`)**: campo arredondado no estilo da Home, seletor de emoções com animação de cor e marcador de spoiler em linha.
+- **Botão "Sair da conta" em destaque (`BotaoSair`, RF27, RN27)**: botão largo na aba Conta que sempre pede confirmação e avisa quando há alterações não sincronizadas.
+
 - **Política de Privacidade & Termos de Uso dentro do app (`TextoLegalScreen`, `TextosLegais`, RF77)**: textos em conformidade com a LGPD guardados no código (funcionam sem internet e para o visitante), acessíveis pelas telas de introdução, pela tela de entrada e pela seção *Sobre* da aba Conta. Os mesmos textos estão em `docs/`.
-- **Avatares em imagem (`AvatarDoUsuario`, `SeletorAvatar`, RF78)**: 11 avatares do app, escolhidos em uma folha inferior junto da foto da conta Google, no lugar dos antigos emojis.
+- **Avatares em imagem (`AvatarDoUsuario`, `SeletorAvatar`, RF78)**: 15 avatares do app, escolhidos em uma folha inferior junto da foto da conta Google, no lugar dos antigos emojis.
 - **Aba Conta reorganizada (`ComponentesDaConta`, RF79)**: perfil, classificação liberada, seção *Sobre* (Termos, Política e versão) e ações da conta (sair e excluir) em cartões.
 - **Segurança & Testes (RNF16, RNF17)**: modelo de ameaças STRIDE e checklist OWASP MASVS verificados no código ([stride-seriando.md](docs/stride-seriando.md)), backup automático do Android desativado (`allowBackup="false"`), BoM do Firebase duplicado removido e testes unitários das regras de negócio (data de nascimento, controle de idade, classificação indicativa e status).
 - **Controle de Idade & Classificação Indicativa do Brasil (`FiltroDeIdadeRepository`, `ControleDeIdade`, `ClassificacaoIndicativa`, RF49, RF50, RF51, RF59, RN13 a RN17)**: Sistema completo e centralizado de controle de idade e filtragem de conteúdo baseado na classificação indicativa brasileira (L, 10, 12, 14, 16 e 18 anos).
@@ -59,7 +67,7 @@ O Seriando possui uma identidade visual única desenvolvida sob o conceito **Vel
 
 - **Modificador Reutilizável `Modifier.capaDeObra()`**: Padroniza todas as capas do aplicativo aplicando cantos arredondados de 8dp (`FormaCapa`) e uma borda de destaque em `LilasBrilhante`, garantindo consistência visual em todas as telas (Home, Busca, Descobrir, Detalhes, Minha Lista e Artistas).
 - **Contraste e Acessibilidade Calibrados**: O texto do botão sobre `VelvetPurple` utiliza a cor `Midnight` em vez de branco, alcançando razão de contraste de 6,6:1 (em conformidade com as diretrizes WCAG AA).
-- **Tema Claro Derivado**: Suporte ao tema claro com primária em `#6B47C7` para manter alto contraste e visibilidade em ambientes muito iluminados.
+- **Tema Claro Vivo e Escolha do Tema (RF80)**: Tema claro lilás com primária em `#7C4DFF` e fundo `#F5EEFF`, mantendo alto contraste. O usuário escolhe entre aparelho, claro ou escuro na seção Aparência da aba Conta.
 
 ---
 
@@ -189,6 +197,29 @@ sequenceDiagram
     UI-->>User: Atualiza estado da interface para logado
 ```
 
+### Fluxo de Login com E-mail e Senha (RF32)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Usuário
+    participant UI as FolhaDeLoginPorEmail
+    participant Auth as AuthRepository
+    participant FB as Firebase Auth
+    participant Sync as Sincronizador
+
+    User->>UI: Informa apelido, e-mail e senha e toca em "Criar conta"
+    UI->>Auth: criarContaComEmail(email, senha, apelido)
+    Auth->>FB: createUserWithEmailAndPassword + sendEmailVerification
+    FB-->>User: E-mail com o link de confirmação
+    Note over Auth,Sync: Até confirmar, usuarioAtual() é nulo: o app o trata como visitante<br/>e o Sincronizador não grava nada
+    User->>UI: Abre o link e toca em "Já confirmei"
+    UI->>Auth: verificarConfirmacaoDoEmail()
+    Auth->>FB: reload() + getIdToken(true) (token com email_verified = true)
+    Auth->>Sync: disparar(uid) -> cria os perfis e sincroniza o Room
+    Auth-->>UI: Usuário autenticado
+```
+
 ### Modo Visitante & Interceptação de Ações (RF54)
 
 Para proporcionar uso sem barreiras, o Seriando permite navegação como visitante. Quando um visitante tenta executar ações que exigem identificação (adicionar à lista, marcar episódio, avaliar, opinar ou votar), a interface intercepta o toque e apresenta a folha de diálogo [DialogoLoginObrigatorio.kt](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/login/DialogoLoginObrigatorio.kt):
@@ -288,7 +319,7 @@ A comunicação remota com a API da TMDB é intermediada pela interface [TmdbApi
 
 ### 🌟 Introdução, Entrada & Modo Visitante (RF52, RF53, RF54)
 - **Telas de Introdução (`IntroducaoScreen`)**: Carrossel deslizante em 3 etapas apresentando os diferenciais do app, memorizado em DataStore local (`PreferenciasApp`).
-- **Tela de Entrada (`EntradaScreen`)**: Landing page com opções "Entrar com Google" e "Continuar como visitante".
+- **Tela de Entrada (`EntradaScreen`)**: Landing page com opções "Entrar com Google", "Entrar com e-mail" e "Continuar como visitante".
 - **Interrupção Graciosa para Visitantes**: Permite explorar todo o aplicativo e exibe o modal [DialogoLoginObrigatorio](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/login/DialogoLoginObrigatorio.kt) apenas ao solicitar uma ação que requer salvamento em conta.
 
 ### 📶 Faixa de Conectividade & Monitor de Rede (RF62)
@@ -365,7 +396,7 @@ A especificação técnica detalhada do projeto encontra-se disponível no diret
 | **Preferências** | Jetpack DataStore Preferences | Gravação assíncrona e reativa de preferências (`datastore-preferences:1.1.1`) |
 | **Rede & HTTP** | Retrofit 2 + Gson + OkHttp 4 | Consumo das APIs do TMDB (`retrofit:2.11.0`) |
 | **Imagens** | Coil 3 | Carregamento assíncrono e cache de imagens (`coil-compose:3.0.4`) |
-| **Autenticação** | Firebase Auth + Credential Manager API | Google Sign-In e Passkeys (`credentials:1.3.0`) |
+| **Autenticação** | Firebase Auth + Credential Manager API | Google Sign-In e Passkeys (`credentials:1.3.0`) e login com e-mail e senha (Firebase Auth) |
 | **Banco Nuvem** | Cloud Firestore | Armazenamento NoSQL relacional (`firebase-firestore`) |
 | **Build System** | Gradle | Kotlin DSL & Version Catalogs (`libs.versions.toml`) |
 
@@ -409,12 +440,12 @@ com.seriando.app
 │   ├── details/       # DetailsScreen, CartaoEpisodio, CartaoTemporada, DialogoDenuncia, ElencoCard, InformacoesDaObra, ObraBloqueada, OpiniaoCard, SecaoOndeAssistir, SeletorEmocoes, SeletorEstrelas
 │   ├── home/          # HomeScreen, CategoriaRow, CategoriaScreen, DestaqueCard, ResultadoCard, DialogoEditarApelido, DialogoRemoverDaLista
 │   ├── introducao/    # IntroducaoScreen (3 páginas de boas-vindas com animação radial)
-│   ├── login/         # EntradaScreen, LoginComGoogle, AvisoDeLoginNecessario, DialogoLoginObrigatorio
-│   ├── mylist/        # MinhaListaScreen (Lista filtrável por status)
+│   ├── login/         # EntradaScreen, LoginComGoogle, FolhaDeLoginPorEmail, AvisoDeLoginNecessario, DialogoLoginObrigatorio
+│   ├── mylist/        # MinhaListaScreen (filtros por status, busca e ordenação), BarraDeBuscaDaLista
 │   ├── pessoa/        # PessoaScreen (Biografia, dados e filmografia do artista)
 │   ├── search/        # SearchScreen (Pesquisa com suporte a histórico e cache)
 │   ├── theme/         # Color.kt, CoresEmocao.kt, Formas.kt (capaDeObra), Theme.kt, Type.kt (Design System Velvet Purple)
-│   └── usuario/       # UsuarioScreen, SeletorAvatar e SeletorDataNascimento
+│   └── usuario/       # UsuarioScreen, SeletorAvatar, SeletorDataNascimento, CartaoDeAparencia e CartaoDeEstatisticas
 │
 ├── MainActivity.kt    # Ponto de entrada do Android com setup de Edge-to-Edge
 └── SeriandoApp.kt     # Subclasse Application (Inicialização do Room e disparo automático de sincronização)
@@ -456,7 +487,7 @@ TMDB_API_KEY=sua_chave_aqui_sem_aspas
 3. Registre a impressão digital SHA-1 do seu ambiente de desenvolvimento (`./gradlew signingReport`).
 4. Baixe o arquivo `google-services.json` e coloque-o no diretório `app/` do projeto.
 5. No Firebase Console:
-   - Em **Authentication**, ative o método de login **Google**.
+   - Em **Authentication**, ative os métodos de login **Google** e **E-mail/senha** (sem o link por e-mail).
    - Em **Firestore Database**, instancie o banco de dados.
    - Em **Firestore Database > Regras**, cole o conteúdo do arquivo `firestore.rules` localizado na raiz do repositório e publique.
 6. Localize o **Web Client ID** no `google-services.json` (dentro de `client_type: 3`) e adicione no arquivo `app/src/main/res/values/strings.xml`:
@@ -488,7 +519,7 @@ O projeto conta com testes unitários das regras de negócio (JVM, sem emulador)
 ./gradlew testDebugUnitTest
 ```
 
-Os testes unitários (`app/src/test/java/com/seriando/app/model/`) cobrem as regras puras do app: `DataNascimentoTest` (validação da data e cálculo da idade, RN13), `ControleDeIdadeTest` (idade efetiva e filtro por classificação, RN14 a RN16 e RN31), `ClassificacaoIndicativaTest` (leitura da classificação do Brasil nas respostas da TMDB, RF49) e `StatusHelperTest` (status de séries e filmes, RF08). Repositórios, telas e regras do Firestore ainda não têm testes automatizados.
+Os testes unitários (`app/src/test/java/com/seriando/app/model/`) cobrem as regras puras do app: `DataNascimentoTest` (validação da data e cálculo da idade, RN13), `ControleDeIdadeTest` (idade efetiva e filtro por classificação, RN14 a RN16 e RN31), `ClassificacaoIndicativaTest` (leitura da classificação do Brasil nas respostas da TMDB, RF49) `StatusHelperTest` (status de séries e filmes, RF08), `OrganizadorDaListaTest` (busca e ordenação da Minha Lista, RF66), `ValidacaoDeContaTest` (e-mail, senha e apelido, RN34) e `ErrosDeAuthTest` (mensagens neutras de erro, RN35). Repositórios, telas e regras do Firestore ainda não têm testes automatizados.
 
 ### Executar Testes Instrumentados do Banco Room (Android)
 
@@ -548,7 +579,7 @@ Os testes do banco de dados local ([BancoLocalTest.kt](file:///C:/Users/Lucas/An
 - **V0.12**: Home organizada por categorias de gênero com botão "Ver mais", lista paginada em grade de 3 colunas, regras de segurança estritas no Firestore, opiniões privadas em coleções isoladas, exclusão permanente de conta (RF29 / LGPD), Design System Velvet Purple e documentação completa de requisitos.
 - **V0.13**: Onboarding de apresentação com carrossel de 3 páginas (`IntroducaoScreen`), persistência via DataStore (`PreferenciasApp`), Tela de Entrada (`EntradaScreen`) e Modo Visitante interceptado por `DialogoLoginObrigatorio`. Faixa de status de conectividade em tempo real (`ComFaixaDeConexao`), nova Aba Descobrir (`DescobrirScreen`) com botão "Sortear", persistência offline completa com Room Database (`SeriandoDatabase`), motor de sincronização em segundo plano com Firestore (`Sincronizador`) e testes instrumentados ([BancoLocalTest](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/androidTest/java/com/seriando/app/data/local/BancoLocalTest.kt)).
 - **V0.14**: Implementação completa do Controle de Idade e Classificação Indicativa do Brasil (Bloco K / RF49, RF50, RF51, RF59, RN13 a RN17), com o repositório centralizado [FiltroDeIdadeRepository](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/data/repository/FiltroDeIdadeRepository.kt), cálculo dinâmico de idade, selos visuais de classificação indicativa (L, 10, 12, 14, 16, 18), bloqueio de detalhes ([ObraBloqueada](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/details/ObraBloqueada.kt)), seletor de data de nascimento com DatePicker M3 ([SeletorDataNascimento](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/usuario/SeletorDataNascimento.kt)), trava de correção única no Firestore (`aniversarioAlterado`) e invalidação de cache em tempo de execução via `VersaoDaIdade`. Melhorias na tela de Detalhes: compartilhar (RF73), situação da obra (RF74), ano de lançamento (RF75) e temporadas em cartões com progresso (RF76).
-- **V1.0**: **(Versão Atual)** Política de Privacidade (LGPD) e Termos de Uso dentro do app (RF77), avatares em imagem (RF78), aba Conta reorganizada em cartões (RF79), modelo de ameaças STRIDE e checklist OWASP MASVS (`docs/stride-seriando.md`), backup automático do Android desativado (RNF16), BoM do Firebase unificado, testes unitários das regras de negócio (RNF17) e documentação completa em `docs/`.
+- **V1.0**: **(Versão Atual)** Login com e-mail e senha (RF32), foto de perfil própria no aparelho (RF30), busca e ordenação na Minha Lista (RF66), estatísticas na aba Conta (RF67), escolha do tema (RF80), status renovados, 15 avatares, opinião com novo visual e botão de sair em destaque, além de Política de Privacidade (LGPD) e Termos de Uso dentro do app (RF77), avatares em imagem (RF78), aba Conta reorganizada em cartões (RF79), modelo de ameaças STRIDE e checklist OWASP MASVS (`docs/stride-seriando.md`), backup automático do Android desativado (RNF16), BoM do Firebase unificado, testes unitários das regras de negócio (RNF17) e documentação completa em `docs/`.
 
 ---
 
@@ -564,6 +595,8 @@ Os testes do banco de dados local ([BancoLocalTest.kt](file:///C:/Users/Lucas/An
 - [x] **Controle de Idade e Classificação Indicativa (Bloco K)**: Filtro de conteúdo por idade e classificação indicativa no Brasil.
 - [x] **Testes unitários das regras de negócio**: data de nascimento, controle de idade, classificação indicativa e status.
 - [x] **Política de Privacidade, Termos de Uso e modelo de ameaças (STRIDE)**.
+- [x] **Login com e-mail e senha, foto de perfil local, busca e ordenação da Minha Lista, estatísticas e escolha de tema** (RF32, RF30, RF66, RF67, RF80).
+- [ ] **Login com a conta Microsoft**: avaliado e adiado (esforço maior que o benefício neste momento).
 - [ ] **Testes Automatizados (expansão)**: testes para repositórios/caches, regras do Firestore (emulador) e testes de UI com Compose Testing.
 - [ ] **Publicação na Google Play Store**.
 

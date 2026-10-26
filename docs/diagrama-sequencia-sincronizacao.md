@@ -138,6 +138,30 @@ sequenceDiagram
     end
 ```
 
+## 4.1 Entrar com e-mail e senha: por que o Sincronizador espera (RF32, RN33)
+
+Uma conta de e-mail e senha recém-criada ainda não tem o e-mail confirmado. Nesse intervalo o app a trata como visitante e o Sincronizador não roda, porque as regras do Firestore também negam leitura e gravação sem `email_verified`.
+
+```mermaid
+sequenceDiagram
+    actor U as Usuário
+    participant T as Folha de login por e-mail
+    participant A as AuthRepository
+    participant F as Firebase Auth
+    participant S as Sincronizador
+
+    U->>T: Cria a conta (apelido, e-mail, senha)
+    T->>A: criarContaComEmail
+    A->>F: createUser + sendEmailVerification
+    A-->>T: Aguardando confirmação (usuarioAtual() = nulo)
+    U->>T: Confirma pelo link do e-mail e toca em "Já confirmei"
+    T->>A: verificarConfirmacaoDoEmail
+    A->>F: reload + getIdToken(true)
+    F-->>A: email_verified = true
+    A->>S: disparar(uid): cria perfis e sincroniza
+    A-->>T: Usuário autenticado
+```
+
 ## 5. Regras de conflito e limitações conhecidas
 
 - **Gravação mais recente vence (RN23).** A comparação usa o campo `atualizadoEm`, que vem do relógio do

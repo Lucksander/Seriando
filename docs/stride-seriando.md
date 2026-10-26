@@ -1,6 +1,6 @@
 # Seriando — Modelo de Ameaças (STRIDE) e Checklist de Segurança (OWASP MASVS)
 
-Versão de 23/10/2026. Baseado em requisitos-seriando.md, arquitetura.md, modelagem-banco.md, diagrama-sequencia-sincronizacao.md e firestore.rules. Os itens que dependiam de conferência no código e nas configurações do projeto foram verificados em 24/10/2026 (AndroidManifest.xml, app/build.gradle.kts, regras de backup e busca no código-fonte); o resultado está marcado em cada item.
+Versão de 23/10/2026, atualizada em 26/10/2026 com o login por e-mail e senha (RF32) e a foto de perfil local (RF30). Baseado em requisitos-seriando.md, arquitetura.md, modelagem-banco.md, diagrama-sequencia-sincronizacao.md e firestore.rules. Os itens que dependiam de conferência no código e nas configurações do projeto foram verificados em 24/10/2026 (AndroidManifest.xml, app/build.gradle.kts, regras de backup e busca no código-fonte); o resultado está marcado em cada item.
 
 ## 1. Escopo e ativos
 
@@ -8,7 +8,9 @@ Componentes analisados: app Android (Compose), banco local Room, preferências l
 
 | Ativo | Onde fica | Sensibilidade |
 |---|---|---|
-| E-mail e UID da conta Google | Firebase Auth e `usuarios/{uid}` | Pessoal |
+| E-mail e UID da conta (Google ou e-mail e senha) | Firebase Auth e `usuarios/{uid}` | Pessoal |
+| Senha da conta de e-mail e senha | Somente no Firebase Authentication; o app não a lê nem a grava | Crítica; fora do alcance do app |
+| Foto de perfil própria | `foto_perfil.jpg` na pasta interna do app (RF30) | Pessoal, só no aparelho |
 | Data de nascimento (AAAA-MM-DD) | `usuarios/{uid}` e Room (`perfil`) | Pessoal; envolve controle de idade e possível dado de menor |
 | Apelido e avatar | `perfisPublicos/{uid}` e Room | Público para usuários logados |
 | Lista, status e progresso | `usuarios/{uid}/series` e Room | Pessoal (hábitos de consumo) |
@@ -34,7 +36,9 @@ Legenda de risco residual: Baixo, Médio, Alto. "Aceito" significa que o risco f
 | S2 | Forjar o apelido ou o avatar de outra pessoa dentro de uma opinião | `apelidoOk` e `avatarOk` comparam com `perfisPublicos` do próprio autor; `autorUid` precisa igualar o id do documento | Baixo |
 | S3 | Denunciar "em nome de" outra pessoa | `denuncianteUid == request.auth.uid` nas regras | Baixo |
 | S4 | Roubo de sessão por conta Google comprometida | Login delegado ao Google (Credential Manager); o app não guarda senha | Aceito (fora do controle do app) |
-| S5 | Excluir a conta sem ser o dono, com aparelho desbloqueado | Reautenticação antes da exclusão (RF29) | Baixo |
+| S5 | Excluir a conta sem ser o dono, com aparelho desbloqueado | Reautenticação antes da exclusão (RF29): pelo Google ou digitando a senha (RN36) | Baixo |
+| S7 | Criar conta com o e-mail de outra pessoa | Confirmação obrigatória do e-mail (RN33): até confirmar, o app trata a conta como visitante e as regras do Firestore negam acesso (`email_verified`) | Baixo |
+| S8 | Descobrir quais e-mails têm conta (enumeração) ou adivinhar senhas | Mensagens neutras (RN35), proteção contra enumeração ativada no Firebase, limite de tentativas do próprio Firebase e senha de 8 a 64 caracteres (RN34) | Baixo a médio, aceito. Recomendação: Firebase App Check |
 | S6 | Data de nascimento falsa para ver conteúdo acima da idade | Nenhuma verificação possível; a data é informada pelo próprio usuário | Alto, aceito (ver 4.1) |
 
 ### 2.2 Tampering (adulteração)
@@ -73,6 +77,7 @@ Legenda de risco residual: Baixo, Médio, Alto. "Aceito" significa que o risco f
 | I7 | `google-services.json` e chaves do Firebase expostos | Chaves do Firebase não são segredos; a proteção está nas regras | Baixo. Recomendação: ativar Firebase App Check |
 | I8 | Dados de streaming e catálogo interceptados na rede | HTTPS em todas as comunicações (RNF05) | Baixo. Verificado: o manifesto não ativa `usesCleartextTraffic` (com targetSdk 37 o padrão é bloquear HTTP) e não há URL `http://` no código |
 | I9 | Votos órfãos de terceiros ficam no banco após a exclusão da conta do autor da opinião | Documentado (RN19): não identificáveis por outra pessoa, mas o voto de uma pessoa permanece | Baixo, aceito; informar na Política |
+| I11 | Foto de perfil própria lida por outros apps ou enviada à nuvem | Fica na pasta interna do app (invisível para outros apps), nunca é enviada (RN37), é apagada no logout e na exclusão, e o backup do Android está desativado (RNF16) | Baixo; com root ou acesso físico ao aparelho desbloqueado, ela pode ser lida |
 | I10 | Logs com dados pessoais | Verificado: os `Log.d/e/w` do código registram apenas mensagens de erro, contagens e nomes de obras; não há e-mail, UID nem data de nascimento. Em contrapartida, o build release não está otimizado (R8 desativado) e os logs continuam nele | Baixo. Recomendação: manter assim e não registrar dados pessoais nos logs |
 
 ### 2.5 Denial of service (negação de serviço)
@@ -83,6 +88,7 @@ Legenda de risco residual: Baixo, Médio, Alto. "Aceito" significa que o risco f
 | D2 | Esgotar a cota de leituras do Firestore | Recebimento completo só roda ao abrir o app, no login e quando a internet volta (RN28) | Baixo |
 | D3 | Esgotar a cota da TMDB | Cache em memória e no Room (RNF13) e semáforo de 10 consultas paralelas | Baixo |
 | D4 | Usuário sem internet fica sem funcionalidades | Modo offline cobre lista, progresso e perfil; comunidade e catálogo exigem rede (RN24) | Aceito, com aviso em tela (RF62) |
+| D6 | Cadastros em massa ou pedidos repetidos de e-mail de confirmação e de redefinição de senha | Limites e bloqueios temporários do Firebase Authentication; o app não envia e-mail por conta própria | Médio, aceito. Sugestão: App Check |
 | D5 | Falha do Firestore ou da TMDB deixa telas vazias | Estados de erro e botão "Tentar de novo" (RNF06) | Baixo |
 
 ### 2.6 Elevation of privilege (elevação de privilégio)
@@ -141,9 +147,11 @@ Situação: Atende, Parcial, Não atende.
 | STORAGE | Exclusão dos dados locais ao sair | Atende | RN25 |
 | STORAGE | Backup do sistema não expõe dados sensíveis | Atende | `allowBackup="false"` desde 24/10/2026 (RNF16); antes estava ativo com regras vazias |
 | CRYPTO | Sem criptografia própria nem segredos hardcoded | Atende | Chave da TMDB fora do repositório; sem criptografia caseira |
-| AUTH | Autenticação delegada a provedor confiável | Atende | Google via Credential Manager |
+| AUTH | Autenticação delegada a provedor confiável | Atende | Google via Credential Manager; e-mail e senha via Firebase Authentication (a senha não passa pelo Firestore nem fica no app) |
+| AUTH | Conta só vale com identidade confirmada | Atende | E-mail confirmado obrigatório (RN33), imposto também nas regras do Firestore |
+| AUTH | Política de senha e proteção contra enumeração | Parcial | Mínimo de 8 e máximo de 64 caracteres, sem exigência de complexidade nem verificação de senhas vazadas; mensagens neutras (RN35) |
 | AUTH | Autorização imposta no servidor | Atende | Regras do Firestore por UID |
-| AUTH | Reautenticação em ação sensível | Atende | Exclusão de conta |
+| AUTH | Reautenticação em ação sensível | Atende | Exclusão de conta (Google ou senha) |
 | NETWORK | Tráfego só por TLS | Atende | RNF05; manifesto sem `usesCleartextTraffic` e sem URL `http://` |
 | NETWORK | Validação de certificado e pinning | Parcial | Validação padrão do Android; sem pinning (aceito) |
 | PLATFORM | Componentes exportados e permissões mínimas | Atende | Só `MainActivity` (launcher) é exportada; permissões: INTERNET e ACCESS_NETWORK_STATE |
@@ -160,7 +168,8 @@ Situação: Atende, Parcial, Não atende.
 ## 6. Recomendações priorizadas
 
 1. Feito em 24/10/2026: backup automático desativado (`allowBackup="false"`, RNF16) e BoM do Firebase duplicado removido.
-2. Opcional: ativar R8 no build release e alinhar `versionName` com a versão do app.
+2. Opcional: ativar R8 no build release. O `versionName` permanece 1.0, igual à versão do app.
+   Antes da publicação: remover o detalhe técnico que as mensagens de erro desconhecidas de login e cadastro exibem hoje (ajuda de depuração).
 3. Ativar Firebase App Check e alertas de orçamento no Firestore.
 4. Decidir se o texto da denúncia será copiado para o registro (R3).
 5. Decidir se a Minha Lista oculta obras acima da idade (E5).

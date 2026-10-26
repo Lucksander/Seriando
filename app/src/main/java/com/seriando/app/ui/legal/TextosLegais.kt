@@ -43,7 +43,7 @@ data class DocumentoLegal(
 
 val TERMOS_DE_USO = DocumentoLegal(
     titulo = "Termos de Uso",
-    atualizadoEm = "23 de outubro de 2026",
+    atualizadoEm = "26 de outubro de 2026",
     blocos = listOf(
         BlocoLegal.Paragrafo("Ao usar o Seriando, você concorda com estes termos. Leia também a Política de Privacidade."),
 
@@ -58,7 +58,7 @@ val TERMOS_DE_USO = DocumentoLegal(
         BlocoLegal.Lista(
             listOf(
                 "Você pode usar o app como visitante, sem conta, para pesquisar e consultar obras.",
-                "Para criar lista, marcar episódios, avaliar e opinar, é preciso entrar com uma conta Google.",
+                "Para criar lista, marcar episódios, avaliar e opinar, é preciso entrar com uma conta Google ou com e-mail e senha (com o e-mail confirmado).",
                 "Menores de 12 anos devem usar o app com ciência e acompanhamento de um responsável.",
                 "O app oculta obras acima da faixa etária calculada a partir da data de nascimento informada por você. " +
                     "Esse recurso é um auxílio e não substitui a supervisão dos responsáveis. " +
@@ -68,7 +68,9 @@ val TERMOS_DE_USO = DocumentoLegal(
 
         BlocoLegal.Secao("3. Sua conta"),
         BlocoLegal.Paragrafo(
-            "Você é responsável pelo uso da sua conta Google no aparelho. A data de nascimento pode ser informada " +
+            "Você é responsável pelo uso da sua conta (Google ou e-mail e senha) e por manter sua senha em sigilo. " +
+                "Para contas de e-mail e senha, é preciso confirmar o e-mail antes de usá-las, e a exclusão da conta pede " +
+                "a senha novamente. A data de nascimento pode ser informada " +
                 "e corrigida uma única vez. Você pode sair da conta ou excluí-la a qualquer momento na aba Conta; " +
                 "a exclusão apaga seus dados conforme a Política de Privacidade e não pode ser desfeita."
         ),
@@ -159,7 +161,7 @@ val TERMOS_DE_USO = DocumentoLegal(
 
 val POLITICA_DE_PRIVACIDADE = DocumentoLegal(
     titulo = "Política de Privacidade",
-    atualizadoEm = "23 de outubro de 2026",
+    atualizadoEm = "26 de outubro de 2026",
     blocos = listOf(
         BlocoLegal.Paragrafo(
             "Esta política explica quais dados pessoais o Seriando trata, para quê, com quem são compartilhados e " +
@@ -179,13 +181,13 @@ val POLITICA_DE_PRIVACIDADE = DocumentoLegal(
             linhas = listOf(
                 listOf(
                     "E-mail e identificador da conta (UID)",
-                    "Ao entrar com o Google",
+                    "Ao entrar com o Google ou ao criar a conta com e-mail e senha",
                     "Identificar sua conta e associar seus dados a ela",
                     "Não"
                 ),
                 listOf(
                     "Apelido",
-                    "Ao entrar (sugerido a partir do primeiro nome da conta Google) e quando você edita",
+                    "Ao entrar (sugerido a partir do primeiro nome da conta Google, ou digitado no cadastro com e-mail e senha) e quando você edita",
                     "Identificar você nas opiniões",
                     "Sim, para usuários logados"
                 ),
@@ -194,6 +196,12 @@ val POLITICA_DE_PRIVACIDADE = DocumentoLegal(
                     "Quando você escolhe a foto da conta Google ou um avatar do app",
                     "Identificar você nas opiniões",
                     "Sim, para usuários logados"
+                ),
+                listOf(
+                    "Foto de perfil própria (opcional)",
+                    "Quando você escolhe uma foto da galeria",
+                    "Mostrar a sua foto no seu aparelho",
+                    "Não; fica só no aparelho e nunca é enviada"
                 ),
                 listOf(
                     "Data de nascimento (opcional)",
@@ -234,7 +242,10 @@ val POLITICA_DE_PRIVACIDADE = DocumentoLegal(
             )
         ),
         BlocoLegal.Paragrafo(
-            "Não coletamos sua senha, sua localização, seus contatos nem dados de pagamento. A foto da conta Google, " +
+            "O Seriando não lê nem grava sua senha: ao criar conta com e-mail e senha, ela é tratada apenas pelo " +
+                "Firebase Authentication (Google). Contas de e-mail e senha só são ativadas depois que você confirma o " +
+                "endereço pelo link enviado ao seu e-mail. Não coletamos sua localização, seus contatos nem dados de " +
+                "pagamento. A foto da conta Google, " +
                 "quando usada como avatar, é carregada a partir da própria conta Google e não é copiada para os nossos " +
                 "bancos. A sua idade não é gravada: ela é calculada na hora do uso a partir da data de nascimento."
         ),
@@ -291,7 +302,7 @@ val POLITICA_DE_PRIVACIDADE = DocumentoLegal(
                 listOf(
                     "Google (Firebase Authentication e Cloud Firestore)",
                     "Dados da sua conta e os dados descritos na seção 2 que são gravados na nuvem",
-                    "Login e armazenamento na nuvem"
+                    "Login, envio dos e-mails de confirmação e de redefinição de senha, e armazenamento na nuvem"
                 ),
                 listOf(
                     "TMDB (The Movie Database)",
@@ -335,6 +346,8 @@ val POLITICA_DE_PRIVACIDADE = DocumentoLegal(
                 "Mantemos, como registro de moderação, as denúncias que você fez.",
                 "Votos de outras pessoas nas suas opiniões ficam sem identificação visível, porque só cada pessoa pode apagar o próprio voto.",
                 "Os dados guardados no aparelho (banco local) são apagados ao sair da conta e ao excluí-la.",
+                "A foto de perfil própria, se você escolher uma, fica só no aparelho e é apagada ao sair da conta, ao " +
+                    "excluí-la ou ao escolher outro avatar.",
                 "O histórico de busca fica só no aparelho, não é apagado ao sair da conta e pode ser limpo por você " +
                     "pelos botões \"Limpar\" da tela de busca. Ele some se você desinstalar o app."
             )
@@ -366,7 +379,8 @@ val POLITICA_DE_PRIVACIDADE = DocumentoLegal(
                 "compartilhamento; e a revogação do consentimento."
         ),
         BlocoLegal.Paragrafo(
-            "Dentro do app, você pode editar apelido e avatar, informar ou corrigir a data de nascimento (uma " +
+            "Dentro do app, você pode editar apelido e avatar, escolher ou remover a foto própria, redefinir a senha " +
+                "(conta de e-mail e senha), informar ou corrigir a data de nascimento (uma " +
                 "correção), apagar suas avaliações, opiniões e votos, e excluir a conta e todos os dados. Para os demais " +
                 "pedidos, escreva para $EMAIL_DE_CONTATO. Você também pode reclamar à ANPD (www.gov.br/anpd)."
         ),

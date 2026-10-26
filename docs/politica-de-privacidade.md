@@ -1,6 +1,6 @@
 # Política de Privacidade do Seriando
 
-Última atualização: 23 de outubro de 2026
+Última atualização: 26 de outubro de 2026
 
 Esta política explica quais dados pessoais o Seriando trata, para quê, com quem são compartilhados e como você exerce seus direitos, conforme a Lei Geral de Proteção de Dados (Lei nº 13.709/2018, LGPD).
 
@@ -14,9 +14,10 @@ Contato para assuntos de privacidade: lucasjsantos.dev@gmail.com
 
 | Dado | Quando é coletado | Para quê | Fica visível para outros? |
 |---|---|---|---|
-| E-mail e identificador da conta (UID) | Ao entrar com o Google | Identificar sua conta e associar seus dados a ela | Não |
-| Apelido | Ao entrar (sugerido a partir do primeiro nome da conta Google) e quando você edita | Identificar você nas opiniões | Sim, para usuários logados |
+| E-mail e identificador da conta (UID) | Ao entrar com o Google ou ao criar a conta com e-mail e senha | Identificar sua conta e associar seus dados a ela | Não |
+| Apelido | Ao entrar (sugerido a partir do primeiro nome da conta Google, ou digitado no cadastro com e-mail e senha) e quando você edita | Identificar você nas opiniões | Sim, para usuários logados |
 | Avatar | Quando você escolhe a foto da conta Google ou um avatar do app | Identificar você nas opiniões | Sim, para usuários logados |
+| Foto de perfil própria (opcional) | Quando você escolhe uma foto da galeria | Mostrar a sua foto no seu aparelho | Não; fica só no aparelho e nunca é enviada |
 | Data de nascimento (opcional) | Quando você a informa na aba Conta | Calcular sua idade para ocultar obras acima da sua faixa de classificação | Não |
 | Lista, status e progresso de episódios | Quando você usa o app | Entregar a função principal do app e sincronizar entre aparelhos | Não |
 | Avaliações, opiniões, emoções, marcação de spoiler e votos | Quando você participa da comunidade | Exibir a comunidade | Opiniões públicas e notas: sim, para usuários logados. Opiniões privadas: não |
@@ -24,7 +25,7 @@ Contato para assuntos de privacidade: lucasjsantos.dev@gmail.com
 | Histórico de busca e obras vistas recentemente | Ao pesquisar e abrir obras | Facilitar novas buscas | Não; fica só no aparelho |
 | Cópia local de lista, progresso, perfil e dados das obras | Ao usar o app | Permitir o uso sem internet | Não; fica só no aparelho |
 
-Não coletamos sua senha, sua localização, seus contatos nem dados de pagamento. A foto da conta Google, quando usada como avatar, é carregada a partir da própria conta Google e não é copiada para os nossos bancos. A sua idade não é gravada: ela é calculada na hora do uso a partir da data de nascimento.
+O Seriando não lê nem grava sua senha: ao criar conta com e-mail e senha, ela é tratada apenas pelo Firebase Authentication (Google). Contas de e-mail e senha só são ativadas depois que você confirma o endereço pelo link enviado ao seu e-mail. Não coletamos sua localização, seus contatos nem dados de pagamento. A foto da conta Google, quando usada como avatar, é carregada a partir da própria conta Google e não é copiada para os nossos bancos. A sua idade não é gravada: ela é calculada na hora do uso a partir da data de nascimento.
 
 Usar o app como visitante não grava nenhum dado seu em nossos servidores.
 
@@ -53,7 +54,7 @@ Informamos o seguinte, com transparência:
 
 | Terceiro | O que recebe | Função |
 |---|---|---|
-| Google (Firebase Authentication e Cloud Firestore) | Dados da sua conta e os dados descritos na seção 2 que são gravados na nuvem | Login e armazenamento na nuvem |
+| Google (Firebase Authentication e Cloud Firestore) | Dados da sua conta e os dados descritos na seção 2 que são gravados na nuvem | Login, envio dos e-mails de confirmação e de redefinição de senha, e armazenamento na nuvem |
 | TMDB (The Movie Database) | Consultas de catálogo feitas pelo app, como busca e identificador da obra, além do endereço IP do aparelho, como em qualquer acesso à internet | Dados de filmes, séries, elenco, classificação indicativa e streaming |
 | JustWatch (via TMDB) | Nenhum dado nosso; é a fonte dos dados de streaming | Disponibilidade em serviços de streaming no Brasil |
 | YouTube (Google) | Dados técnicos do acesso, ao reproduzir um trailer | Exibição de trailers |
@@ -73,6 +74,7 @@ Os serviços do Google e da TMDB podem armazenar e tratar dados em servidores fo
 - Mantemos, como registro de moderação, as denúncias que você fez.
 - Votos de outras pessoas nas suas opiniões ficam sem identificação visível, porque só cada pessoa pode apagar o próprio voto.
 - Os dados guardados no aparelho (banco local) são apagados ao sair da conta e ao excluí-la.
+- A foto de perfil própria, se você escolher uma, fica só no aparelho e é apagada ao sair da conta, ao excluí-la ou ao escolher outro avatar.
 - O histórico de busca fica só no aparelho, não é apagado ao sair da conta e pode ser limpo por você pelos botões "Limpar" da tela de busca. Ele some se você desinstalar o app.
 
 ## 8. Uso sem internet e sincronização
@@ -89,7 +91,7 @@ Em caso de incidente de segurança que possa causar dano relevante, comunicaremo
 
 Pela LGPD (art. 18), você pode pedir: confirmação de que tratamos seus dados; acesso; correção; anonimização, bloqueio ou eliminação de dados desnecessários; portabilidade; informação sobre compartilhamento; e a revogação do consentimento.
 
-Dentro do app, você pode editar apelido e avatar, informar ou corrigir a data de nascimento (uma correção), apagar suas avaliações, opiniões e votos, e excluir a conta e todos os dados. Para os demais pedidos, escreva para lucasjsantos.dev@gmail.com. Você também pode reclamar à ANPD (www.gov.br/anpd).
+Dentro do app, você pode editar apelido e avatar, escolher ou remover a foto própria, redefinir a senha (conta de e-mail e senha), informar ou corrigir a data de nascimento (uma correção), apagar suas avaliações, opiniões e votos, e excluir a conta e todos os dados. Para os demais pedidos, escreva para lucasjsantos.dev@gmail.com. Você também pode reclamar à ANPD (www.gov.br/anpd).
 
 ## 11. Alterações desta política
 

@@ -11,9 +11,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -22,9 +27,10 @@ import com.seriando.app.ui.comum.LogoSeriando
 import com.seriando.app.ui.legal.AvisoDeTermosEPolitica
 
 /**
- * Tela de entrada (RF53): logotipo, botão de login com Google e opção de entrar como visitante.
+ * Tela de entrada (RF53): logotipo, login com Google ou com e-mail e senha (RF32) e opção de
+ * entrar como visitante.
  *
- * @param aoEntrarComSucesso      chamada depois do login com Google dar certo.
+ * @param aoEntrarComSucesso      chamada depois do login dar certo (Google ou e-mail confirmado).
  * @param aoContinuarComoVisitante chamada ao tocar em "Continuar como visitante" (RF54).
  * @param aoAbrirTermos           chamada ao tocar em "Termos de Uso" no rodapé.
  * @param aoAbrirPrivacidade      chamada ao tocar em "Política de Privacidade" no rodapé.
@@ -39,6 +45,9 @@ fun EntradaScreen(
 ) {
     // Estado e ação do login, compartilhados com a folha inferior do RF54
     val login = rememberLoginComGoogle(aoLogarComSucesso = aoEntrarComSucesso)
+
+    // true enquanto a folha de login por e-mail está aberta (RF32)
+    var mostrarFolhaEmail by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -65,6 +74,18 @@ fun EntradaScreen(
             Text(if (login.entrando) "Entrando..." else "Entrar com o Google")
         }
 
+        // Login com e-mail e senha (RF32): abre a folha com entrar, criar conta e recuperar senha
+        OutlinedButton(
+            onClick = { mostrarFolhaEmail = true },
+            enabled = !login.entrando,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+                .height(52.dp)
+        ) {
+            Text("Entrar com e-mail")
+        }
+
         // Ação secundária: segue para a Home sem conta (modo visitante)
         TextButton(
             onClick = aoContinuarComoVisitante,
@@ -83,6 +104,16 @@ fun EntradaScreen(
             aoAbrirTermos = aoAbrirTermos,
             aoAbrirPrivacidade = aoAbrirPrivacidade,
             modifier = Modifier.padding(bottom = 16.dp)
+        )
+    }
+
+    if (mostrarFolhaEmail) {
+        FolhaDeLoginPorEmail(
+            aoFechar = { mostrarFolhaEmail = false },
+            aoLogarComSucesso = {
+                mostrarFolhaEmail = false
+                aoEntrarComSucesso()
+            }
         )
     }
 }

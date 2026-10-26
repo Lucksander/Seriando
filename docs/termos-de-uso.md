@@ -1,6 +1,6 @@
 # Termos de Uso do Seriando
 
-Última atualização: 23 de outubro de 2026
+Última atualização: 26 de outubro de 2026
 
 Ao usar o Seriando, você concorda com estes termos. Leia também a Política de Privacidade.
 
@@ -11,13 +11,13 @@ O Seriando é um aplicativo Android para organizar séries e filmes, acompanhar 
 ## 2. Quem pode usar
 
 - Você pode usar o app como visitante, sem conta, para pesquisar e consultar obras.
-- Para criar lista, marcar episódios, avaliar e opinar, é preciso entrar com uma conta Google.
+- Para criar lista, marcar episódios, avaliar e opinar, é preciso entrar com uma conta Google ou com e-mail e senha (com o e-mail confirmado).
 - Menores de 12 anos devem usar o app com ciência e acompanhamento de um responsável.
 - O app oculta obras acima da faixa etária calculada a partir da data de nascimento informada por você. Esse recurso é um auxílio e não substitui a supervisão dos responsáveis. Você se compromete a informar uma data verdadeira.
 
 ## 3. Sua conta
 
-Você é responsável pelo uso da sua conta Google no aparelho. A data de nascimento pode ser informada e corrigida uma única vez. Você pode sair da conta ou excluí-la a qualquer momento na aba Conta; a exclusão apaga seus dados conforme a Política de Privacidade e não pode ser desfeita.
+Você é responsável pelo uso da sua conta (Google ou e-mail e senha) e por manter sua senha em sigilo. Para contas de e-mail e senha, é preciso confirmar o e-mail antes de usá-las, e a exclusão da conta pede a senha novamente. A data de nascimento pode ser informada e corrigida uma única vez. Você pode sair da conta ou excluí-la a qualquer momento na aba Conta; a exclusão apaga seus dados conforme a Política de Privacidade e não pode ser desfeita.
 
 ## 4. Conteúdo que você publica
 
