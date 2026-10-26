@@ -224,7 +224,7 @@ val POLITICA_DE_PRIVACIDADE = DocumentoLegal(
                 listOf(
                     "Denúncias que você faz",
                     "Quando você denuncia uma opinião",
-                    "Moderação",
+                    "Moderação e ocultar, só para você, a opinião denunciada",
                     "Não"
                 ),
                 listOf(

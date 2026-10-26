@@ -4,6 +4,7 @@ import android.app.Application
 import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.seriando.app.data.local.Dependencias
+import com.seriando.app.data.remote.RetrofitInstance
 import com.seriando.app.data.sync.MonitorConexao
 import com.seriando.app.data.sync.Sincronizador
 import kotlinx.coroutines.CoroutineScope
@@ -22,6 +23,9 @@ class SeriandoApp : Application() {
 
         // Cria o banco local; os repositórios o acessam por Dependencias
         Dependencias.iniciar(this)
+
+        // Prepara o cache em disco da TMDB. Precisa vir antes de qualquer chamada à API
+        RetrofitInstance.iniciar(this)
 
         // Começa a acompanhar a internet. Precisa vir antes dos pedidos de sincronização:
         // sem conexão, o Sincronizador adia o pedido em vez de tentar à toa

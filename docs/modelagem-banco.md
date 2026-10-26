@@ -16,6 +16,7 @@ O Firestore é um banco NoSQL orientado a documentos: não existem tabelas, chav
 erDiagram
   USUARIOS ||--o{ SERIES_DA_LISTA : contem
   USUARIOS ||--o{ OPINIOES_PRIVADAS : contem
+  USUARIOS ||--o{ OPINIOES_OCULTAS : contem
   SERIES_DA_LISTA ||--o{ EPISODIOS_ASSISTIDOS : contem
   AVALIACOES ||--o{ OPINIOES : contem
   OPINIOES ||--o{ VOTOS : recebe
@@ -71,6 +72,12 @@ erDiagram
     array emocoes
     long data
   }
+  OPINIOES_OCULTAS {
+    string id PK "tipo_tmdbId_autorUid"
+    string obraKey "tipo_tmdbId"
+    string autorUid
+    long ocultadaEm
+  }
   VOTOS {
     string votanteUid PK
     int valor "1 ou -1"
@@ -98,7 +105,7 @@ erDiagram
 
 A data pode ser definida uma vez e corrigida uma única vez. Depois disso, as regras de segurança impedem qualquer mudança (ver seção 5).
 
-Subcoleções: `usuarios/{uid}/series/{serieId}` (3.3) e `usuarios/{uid}/opinioesPrivadas/{tipoMidia_tmdbId}` (3.6).
+Subcoleções: `usuarios/{uid}/series/{serieId}` (3.3) `usuarios/{uid}/opinioesPrivadas/{tipoMidia_tmdbId}` (3.6) e `usuarios/{uid}/opinioesOcultas/{tipoMidia_tmdbId_autorUid}` (3.7).
 
 ### 3.2 `perfisPublicos/{uid}` — dados públicos
 
@@ -163,7 +170,7 @@ Subcoleção: `avaliacoes/{tipoMidia_tmdbId}/opinioes/{autorUid}/votos/{votanteU
 | `motivo` | string | Um dos valores fixos de `MOTIVOS_DENUNCIA` |
 | `data` | long | Timestamp em milissegundos |
 
-Leitura restrita a um futuro painel de moderação — o app cliente nunca lê esta coleção, só grava (RNF03).
+Leitura restrita a um futuro painel de moderação — o app cliente nunca lê esta coleção, só grava (RNF03). Ao denunciar, a denúncia é gravada no mesmo lote da marca de ocultação descrita em 3.7 (RF68).
 
 ### 3.6 `usuarios/{uid}/opinioesPrivadas/{tipoMidia_tmdbId}` — opinião privada
 
@@ -178,6 +185,18 @@ Guarda a opinião marcada como privada (RF48, RN12), fora de `avaliacoes/`, para
 | `emocoes` | array\<string\> | Até 6 (RN10) |
 | `publica` | boolean | Sempre `false` neste documento |
 | `data` | long | Timestamp em milissegundos |
+
+### 3.7 `usuarios/{uid}/opinioesOcultas/{tipoMidia_tmdbId_autorUid}` — opiniões ocultadas por quem denunciou
+
+Guarda, na conta de quem denunciou, a marca de que a opinião de um autor, numa obra, deve ficar oculta para ele (RF68, RN26). O id do documento combina obra e autor, o que impede duplicar a marca: denunciar de novo apenas regrava o mesmo documento. Os demais usuários continuam vendo a opinião.
+
+| Campo | Tipo | Observações |
+|---|---|---|
+| `obraKey` | string | Obra onde a opinião está, no formato `tipo_tmdbId` (ex.: `tv_1399`); usada para buscar só as marcas da obra aberta |
+| `autorUid` | string | Autor da opinião ocultada; nunca o próprio dono do documento |
+| `ocultadaEm` | long | Timestamp em milissegundos |
+
+Só o dono lê e escreve (RNF03). É gravada no mesmo lote da denúncia (seção 3.5), é lida ao montar a lista de opiniões de uma obra e é apagada na exclusão de conta (RF29). Não existe cópia no Room: a comunidade só funciona com internet (RN24).
 
 ## 4. Exemplos de leitura e escrita (equivalente ao DML)
 
@@ -195,15 +214,40 @@ suspend fun adicionarSerie(uid: String, serie: SerieSalva) {
 }
 ```
 
-Leitura de uma coleção inteira (equivalente a um SELECT * com filtro):
+Leitura paginada (equivalente a um SELECT ... ORDER BY data DESC LIMIT 20 a partir de um ponto). Desde a etapa de economia de requisições (RNF19, RN40), o app não lê mais todas as opiniões da obra de uma vez; descarta, no aparelho, o que não deve aparecer (só nota, opiniões ocultadas, a do próprio usuário):
 
 ```kotlin
-// AvaliacaoRepository.kt
-suspend fun buscarOpinioes(tipoMidia: String, tmdbId: Int, uidAtual: String?): List<Avaliacao> {
-    return buscarTodasAvaliacoes(tipoMidia, tmdbId)
-        .filter { it.texto.isNotBlank() && (it.publica || it.autorUid == uidAtual) }
-        .sortedByDescending { it.data }
-}
+// AvaliacaoRepository.kt (trecho simplificado de buscarMaisOpinioes)
+var consulta = colecaoOpinioes(tipoMidia, tmdbId)
+    .orderBy("data", Query.Direction.DESCENDING)
+    .limit(20)                                  // 20 documentos por consulta
+if (cursor != null) consulta = consulta.startAfter(cursor)   // continua da data da última opinião lida
+val documentos = consulta.get().await().documents
+```
+
+Agregação calculada pelo servidor (equivalente a SELECT COUNT(*), AVG(nota) ... WHERE nota > 0), sem baixar os documentos (RN40):
+
+```kotlin
+// AvaliacaoRepository.kt (trecho de buscarMediaDaComunidade)
+val resultado = colecaoOpinioes(tipoMidia, tmdbId)
+    .whereGreaterThan("nota", 0)
+    .aggregate(AggregateField.count(), AggregateField.average("nota"))
+    .get(AggregateSource.SERVER)
+    .await()
+```
+
+Escrita em lote, tudo ou nada (equivalente a uma transação com dois INSERT), usada ao denunciar uma opinião (RF28 e RF68):
+
+```kotlin
+// DenunciaRepository.kt (trecho)
+val lote = db.batch()
+lote.set(db.collection("denuncias").document(), denuncia)   // registro para moderação
+lote.set(
+    db.collection("usuarios").document(denuncianteUid)
+        .collection("opinioesOcultas").document("${chaveObra}_$autorOpiniaoUid"),
+    mapOf("obraKey" to chaveObra, "autorUid" to autorOpiniaoUid, "ocultadaEm" to System.currentTimeMillis())
+)
+lote.commit().await()   // ou as duas gravações acontecem, ou nenhuma
 ```
 
 Atualização de um campo específico (equivalente a um UPDATE parcial):
@@ -250,6 +294,8 @@ suspend fun removerSerie(uid: String, serieId: Int) {
 As regras de segurança definitivas estão publicadas no Firebase e versionadas no arquivo `firestore.rules` do repositório: cada usuário só lê e escreve a própria subárvore, as notas e opiniões públicas são legíveis por qualquer usuário autenticado, as opiniões privadas só pelo dono, cada voto só pelo próprio votante (e nunca na própria opinião) e a coleção `denuncias` é somente-escrita para o app. Os campos de cada documento são validados (tipos, tamanhos e valores permitidos).
 
 Em `usuarios/{uid}`, as regras também validam a data de nascimento e a trava de correção (RN17): a data só pode ser corrigida uma vez, controlada pelo campo `aniversarioAlterado`; depois da correção, a data não muda mais. Confira o texto exato no arquivo `firestore.rules`. Essa trava protege o controle de idade contra troca repetida da data, mas não contra uma data falsa informada de início (a data não é verificada). O modelo de ameaças (STRIDE) detalha as limitações conhecidas.
+
+A subcoleção `opinioesOcultas` (RF68) só é legível e gravável pelo dono; as regras validam os três campos e exigem que o id do documento seja exatamente `obraKey_autorUid` e que o autor ocultado não seja o próprio dono.
 
 ## 6. Banco local (Room) — modo offline
 
@@ -306,9 +352,9 @@ erDiagram
 | `lista` | `usuarios/{uid}/series/{id}` | A chave é o id da TMDB, igual ao id do documento (limitação conhecida: um filme e uma série com o mesmo id da TMDB se sobrescreveriam) |
 | `episodiosAssistidos` | `usuarios/{uid}/series/{id}/episodiosAssistidos/{temporada_numero}` | |
 | `perfil` | `perfisPublicos/{uid}` (apelido, avatar, `atualizadoEm`) e `usuarios/{uid}` (data de nascimento, `aniversarioAlterado` e e-mail) | Uma linha por usuário. `aniversarioCorrigido` é o equivalente local de `aniversarioAlterado`. O e-mail não é guardado localmente (coleta mínima, RNF08): vem do login |
-| `obrasCache` | — (só existe no aparelho) | Cópia das respostas da TMDB das obras da lista, em JSON, para consultar sem internet (RNF13). Nunca vai ao Firestore |
+| `obrasCache` | — (só existe no aparelho) | Cópia das respostas da TMDB das obras da lista, em JSON, para consultar sem internet (RNF13) e como cache com validade: detalhes e temporadas 6 horas, "onde assistir" 24 horas (RN39). Nunca vai ao Firestore |
 
-Dados que ficam fora do Room e do Firestore, só no aparelho: a indicação de "introdução já vista" (DataStore, RN30) e o histórico de busca (SharedPreferences, RN29). A classificação indicativa das obras é consultada na TMDB e guardada apenas em memória durante o uso (controle de idade); não vai para nenhum dos dois bancos.
+Dados que ficam fora do Room e do Firestore, só no aparelho: a indicação de "introdução já vista" (DataStore, RN30) e o histórico de busca (SharedPreferences, RN29), as datas de conferência dos episódios (SharedPreferences `estado_sincronizacao`, RN41) e o cache HTTP das listas da TMDB (pasta de cache do app, 10 MB, RN39). A classificação indicativa das obras é consultada na TMDB e guardada apenas em memória durante o uso (controle de idade); não vai para nenhum dos dois bancos.
 
 ### 6.2 Campos de controle da sincronização
 
@@ -317,6 +363,7 @@ Dados que ficam fora do Room e do Firestore, só no aparelho: a indicação de "
 - `removido`: lápide. Remover sem conexão marca a linha como removida e pendente; ela some da tela, e só é apagada depois de a exclusão chegar à nuvem.
 - `aniversarioCorrigido`: `true` depois da correção única da data de nascimento (RN17).
 - Confirmar o envio só limpa a marca de pendente se o `atualizadoEm` ainda for o mesmo que foi enviado; assim, uma alteração feita durante o envio não se perde.
+- O recebimento dos episódios usa o `atualizadoEm` dos documentos da nuvem para ler só o que mudou desde a última conferência (com margem de 1 hora para diferenças de relógio) e confere o total da nuvem com o total local por uma consulta de agregação; se divergirem, lê todos os episódios da série. A data da última conferência fica em SharedPreferences, não no Room (RN41).
 
 ### 6.3 Exemplos de consulta (DAOs do Room)
 
@@ -340,4 +387,4 @@ suspend fun apagarForaDaLista()
 
 ### 6.4 Ciclo de vida do banco local (RN25)
 
-O banco guarda dados apenas do usuário logado: é apagado por completo no logout e na exclusão de conta. A foto de perfil própria (RF30) não está no Room nem no Firestore: é o arquivo `foto_perfil.jpg` na pasta interna do app, apagado junto com o banco (RN37). O app também registra de quem é o banco (preferência `dono_do_banco_local`) e o apaga no login se encontrar dados de outro usuário. Ao entrar, sair ou receber da nuvem uma data de nascimento diferente, a `VersaoDaIdade` é atualizada e as listas em memória são recarregadas (RN32).
+O banco guarda dados apenas do usuário logado: é apagado por completo no logout e na exclusão de conta, junto com as datas de conferência dos episódios (`estado_sincronizacao`). A foto de perfil própria (RF30) não está no Room nem no Firestore: é o arquivo `foto_perfil.jpg` na pasta interna do app, apagado junto com o banco (RN37). O app também registra de quem é o banco (preferência `dono_do_banco_local`) e o apaga no login se encontrar dados de outro usuário. Ao entrar, sair ou receber da nuvem uma data de nascimento diferente, a `VersaoDaIdade` é atualizada e as listas em memória são recarregadas (RN32).

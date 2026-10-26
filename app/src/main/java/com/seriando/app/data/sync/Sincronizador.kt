@@ -3,7 +3,10 @@ package com.seriando.app.data.sync
 import com.seriando.app.data.auth.AuthRepository
 import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.AggregateSource
+import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.DocumentReference
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Source
@@ -64,6 +67,12 @@ object Sincronizador {
 
     // O Firestore aceita até 30 valores numa consulta com whereIn
     private const val LIMITE_CONSULTA_IDS = 30
+
+    // Conferência de episódios por diferença: margem para diferenças entre os relógios dos
+    // aparelhos (o atualizadoEm é gravado com o relógio de quem alterou) e validade máxima
+    // de uma leitura completa, depois da qual ela é refeita por segurança
+    private const val MARGEM_RELOGIOS_MS = 60L * 60 * 1000                 // 1 hora
+    private const val VALIDADE_LEITURA_COMPLETA_MS = 7L * 24 * 60 * 60 * 1000 // 7 dias
 
     private val db: FirebaseFirestore get() = FirebaseFirestore.getInstance()
     private val escopo = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -333,32 +342,62 @@ object Sincronizador {
         if (!baixar) return
 
         // ---------- Fase 2: RECEBIMENTO dos episódios, série por série ----------
-        // Só das séries que estão ativas na lista local (a lista já foi sincronizada acima)
+        // Só das séries que estão ativas na lista local (a lista já foi sincronizada acima).
+        // Para poupar leituras do Firestore, cada série tenta primeiro a conferência por
+        // DIFERENÇA; só se ela não bastar é que todos os episódios da série são lidos.
         for (serie in Dependencias.listaDao.observarItens().first()) {
             if (!aindaLogado(uid)) return
 
             val colecao = series.document(serie.id.toString()).collection("episodiosAssistidos")
-            val documentos = comTempo { colecao.get(Source.SERVER).await() }.documents
-
-            // Interpreta os documentos (id "temporada_numero") antes de abrir a transação
-            val daNuvem = documentos.mapNotNull { d ->
-                val partes = d.id.split("_")
-                val temporada = partes.getOrNull(0)?.toIntOrNull()
-                val numero = partes.getOrNull(1)?.toIntOrNull()
-                if (temporada == null || numero == null) null
-                else Triple(temporada, numero, d.getLong("atualizadoEm") ?: 0L)
+            if (!receberEpisodiosPorDiferenca(uid, serie.id, colecao)) {
+                receberEpisodiosCompleto(uid, serie.id, colecao)
             }
-            val idsNaNuvem = daNuvem.map { idDoEpisodio(it.first, it.second) }.toSet()
+        }
+    }
 
-            // Uma transação curta por série: episódios novos entram, exceto os pendentes;
-            // os que sumiram da nuvem (e não estão pendentes) saem do banco local
+    /** Lê o id "temporada_numero" e o atualizadoEm de um episódio da nuvem; null se o id não for válido. */
+    private fun interpretarEpisodio(d: DocumentSnapshot): Triple<Int, Int, Long>? {
+        val partes = d.id.split("_")
+        val temporada = partes.getOrNull(0)?.toIntOrNull()
+        val numero = partes.getOrNull(1)?.toIntOrNull()
+        return if (temporada == null || numero == null) null
+        else Triple(temporada, numero, d.getLong("atualizadoEm") ?: 0L)
+    }
+
+    /**
+     * Conferência BARATA dos episódios de uma série. Devolve true se ela bastou (o banco local
+     * está de acordo com a nuvem) e false se é preciso a leitura completa.
+     *
+     *  1. Nunca houve leitura completa, ou a última tem mais de 7 dias: devolve false.
+     *  2. Lê só os episódios alterados na nuvem desde a última conferência (menos a margem de
+     *     segurança dos relógios) e os aplica, exceto os que têm alteração local pendente.
+     *  3. Compara o TOTAL de episódios na nuvem (consulta de agregação, cerca de 1 leitura) com
+     *     o total local. Se diferirem, algo mudou sem que a leitura por diferença enxergasse
+     *     (por exemplo, um episódio desmarcado em outro aparelho): devolve false.
+     */
+    private suspend fun receberEpisodiosPorDiferenca(uid: String, serieId: Int, colecao: CollectionReference): Boolean {
+        val episodioDao = Dependencias.episodioDao
+        val agora = System.currentTimeMillis()
+
+        val ultimaCompleta = EstadoDaSincronizacao.ultimaLeituraCompletaEpisodios(uid, serieId)
+        if (ultimaCompleta == 0L || agora - ultimaCompleta > VALIDADE_LEITURA_COMPLETA_MS) return false
+
+        // Passo 2: só o que mudou na nuvem desde a última conferência
+        val desde = EstadoDaSincronizacao.ultimaConferenciaEpisodios(uid, serieId) - MARGEM_RELOGIOS_MS
+        val alterados = comTempo {
+            colecao.whereGreaterThan("atualizadoEm", desde).get(Source.SERVER).await()
+        }.documents.mapNotNull { interpretarEpisodio(it) }
+
+        if (!aindaLogado(uid)) return true // saiu da conta no meio: nada a gravar, nem a ler de novo
+
+        if (alterados.isNotEmpty()) {
             Dependencias.emTransacao {
-                for ((temporada, numero, atualizadoEm) in daNuvem) {
-                    val local = episodioDao.obter(serie.id, temporada, numero)
+                for ((temporada, numero, atualizadoEm) in alterados) {
+                    val local = episodioDao.obter(serieId, temporada, numero)
                     if (local == null || !local.pendenteSincronizacao) {
                         episodioDao.salvar(
                             EpisodioAssistidoEntity(
-                                serieId = serie.id,
+                                serieId = serieId,
                                 temporada = temporada,
                                 numero = numero,
                                 atualizadoEm = atualizadoEm,
@@ -368,14 +407,65 @@ object Sincronizador {
                         )
                     }
                 }
-                for (local in episodioDao.listarDaSerie(serie.id)) {
-                    val id = idDoEpisodio(local.temporada, local.numero)
-                    if (id !in idsNaNuvem && !local.pendenteSincronizacao) {
-                        episodioDao.apagar(serie.id, local.temporada, local.numero)
-                    }
+            }
+        }
+
+        // Passo 3: o total na nuvem tem de bater com o total local (sem contar as lápides)
+        val totalNaNuvem = comTempo { colecao.count().get(AggregateSource.SERVER).await() }.count
+        val totalLocal = episodioDao.listarDaSerie(serieId).size
+        if (totalNaNuvem != totalLocal.toLong()) {
+            Log.d(TAG, "Episódios da série $serieId: nuvem $totalNaNuvem x local $totalLocal, lendo tudo")
+            return false
+        }
+
+        EstadoDaSincronizacao.gravarConferenciaEpisodios(uid, serieId, agora)
+        Log.d(TAG, "Episódios da série $serieId: conferidos por diferença (${alterados.size} alterado(s))")
+        return true
+    }
+
+    /**
+     * Leitura COMPLETA dos episódios de uma série: baixa todos os documentos da nuvem e deixa o
+     * banco local igual a ela (exceto o que está pendente). Cara em leituras: só roda quando a
+     * conferência por diferença não basta.
+     */
+    private suspend fun receberEpisodiosCompleto(uid: String, serieId: Int, colecao: CollectionReference) {
+        val episodioDao = Dependencias.episodioDao
+        val inicio = System.currentTimeMillis() // marcado ANTES de ler: o que mudar durante a leitura não se perde
+
+        val daNuvem = comTempo { colecao.get(Source.SERVER).await() }
+            .documents.mapNotNull { interpretarEpisodio(it) }
+        val idsNaNuvem = daNuvem.map { idDoEpisodio(it.first, it.second) }.toSet()
+
+        if (!aindaLogado(uid)) return
+
+        // Uma transação curta por série: episódios novos entram, exceto os pendentes;
+        // os que sumiram da nuvem (e não estão pendentes) saem do banco local
+        Dependencias.emTransacao {
+            for ((temporada, numero, atualizadoEm) in daNuvem) {
+                val local = episodioDao.obter(serieId, temporada, numero)
+                if (local == null || !local.pendenteSincronizacao) {
+                    episodioDao.salvar(
+                        EpisodioAssistidoEntity(
+                            serieId = serieId,
+                            temporada = temporada,
+                            numero = numero,
+                            atualizadoEm = atualizadoEm,
+                            pendenteSincronizacao = false,
+                            removido = false
+                        )
+                    )
+                }
+            }
+            for (local in episodioDao.listarDaSerie(serieId)) {
+                val id = idDoEpisodio(local.temporada, local.numero)
+                if (id !in idsNaNuvem && !local.pendenteSincronizacao) {
+                    episodioDao.apagar(serieId, local.temporada, local.numero)
                 }
             }
         }
+
+        EstadoDaSincronizacao.gravarLeituraCompletaEpisodios(uid, serieId, inicio)
+        Log.d(TAG, "Episódios da série $serieId: leitura completa (${daNuvem.size} na nuvem)")
     }
 
 

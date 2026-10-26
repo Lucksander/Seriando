@@ -58,6 +58,8 @@ sequenceDiagram
     end
 ```
 
+Nota sobre o recebimento (RN41, RNF19): para cada série da lista, o Sincronizador lê só os episódios cujo `atualizadoEm` é maior que a última conferência guardada (menos 1 hora de margem de relógio), compara o total da nuvem (consulta de agregação) com o total local e, se divergirem, lê todos os episódios da série. Uma leitura completa também ocorre no máximo uma vez por semana. Detalhes e números em estrategia-de-requisicoes.md.
+
 ## 3. Volta da conexão
 
 O monitor percebe a mudança de estado e pede uma sincronização completa: primeiro o envio de tudo

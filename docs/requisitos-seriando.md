@@ -86,7 +86,8 @@ Aplicativo Android para acompanhar séries e filmes, com lista pessoal, progress
 | RF67 | Exibir estatísticas na aba Conta (cartão "Minha atividade"): filmes concluídos, séries maratonadas e episódios assistidos, contados na hora a partir do banco local | Concluído |
 | RF80 | Escolher o tema do app na aba Conta (seção Aparência): do aparelho, claro ou escuro; a escolha fica só no aparelho (DataStore) e vale também para o visitante. O tema claro usa uma paleta lilás mais viva | Concluído |
 | RF81 | Fileira "Recomendados para você" no topo da Home, para quem está logado: obras parecidas com as últimas que o usuário terminou (séries com status Maratonei e filmes Concluído), vindas do endpoint de recomendações da TMDB, sem repetir o que já está na lista e respeitando o controle de idade (RF50). Não aparece para o visitante nem para quem ainda não terminou nenhuma obra (versão simples; ver sugestão de evolução em 1.4) | Concluído |
-| RF82 | Puxar para atualizar na Home: arrastar a tela para baixo descarta o cache do catálogo e busca de novo as categorias e as recomendações, com o indicador de progresso do Material 3 | Concluído |
+| RF82 | Puxar para atualizar na Home: arrastar a tela para baixo descarta o cache do catálogo (em memória e em disco, RN39) e busca de novo as categorias e as recomendações, com o indicador de progresso do Material 3 | Concluído |
+| RF68 | Ocultar, para quem denunciou, a opinião denunciada: ao confirmar a denúncia (RF28) ela some da tela na hora, com o aviso "Denúncia enviada. A opinião foi ocultada para você.", e continua oculta nas próximas vezes e em outros aparelhos, porque a marca fica na conta do usuário (RN26). Os demais usuários continuam vendo a opinião | Concluído |
 
 ### 1.2 A implementar (escopo atual)
 
@@ -99,16 +100,20 @@ Todos os blocos do escopo atual foram concluídos.
 | RF31 | Avaliar e opinar por episódio | Opcional |
 | RF60 | Versão iOS do aplicativo em Compose Multiplatform, reaproveitando o código compartilhado (ui, ViewModels, Repository e model) | Opcional |
 | RF61 | Publicação na Apple App Store: distribuição de testes pelo TestFlight e envio para revisão | Opcional |
-| RF68 | Ocultar imediatamente, para quem denunciou, a opinião denunciada, com o aviso "Opinião denunciada e oculta" (RN26) | Opcional |
 
 RF60 e RF61 dependem dos pré-requisitos descritos na seção 1.5. O RF32 (login com e-mail e senha), que seria o login equivalente exigido pela Apple quando não houver Sign in with Apple, já está concluído.
 
-Os RF63 a RF68 vieram do documento propostas_e_melhorias_seriando.md. Os RF63, RF64 e RF65 foram implementados com um desenho ajustado (seção 1.1): sem filtro por década nem nota mínima, e com o streaming escolhido no menu Catálogo. Os RF66 e RF67 também foram implementados. Segue opcional, entre eles, apenas o RF68.
+Os RF63 a RF68 vieram do documento propostas_e_melhorias_seriando.md. Os RF63, RF64 e RF65 foram implementados com um desenho ajustado (seção 1.1): sem filtro por década nem nota mínima, e com o streaming escolhido no menu Catálogo. Os RF66, RF67 e RF68 também foram implementados, e não resta nenhum deles como opcional.
 
 ### 1.4 Sugestões para versões futuras (fora do escopo atual)
 
 | Sugestão | Origem |
 |----------|--------|
+| Contadores de curtidas e descurtidas gravados no documento da opinião, mantidos por Cloud Function (ou transação com regras estritas) | Etapa de economia de requisições (RNF19); reduz a leitura de votos a 1 por opinião exibida. Ver estrategia-de-requisicoes.md, seções 6 e 8 |
+| Firebase App Check (Play Integrity) e restrição da chave do Firebase ao pacote e à impressão digital do app | Adiado: o provedor gratuito depende de o app ser reconhecido pela Play Store; fazer junto com a publicação |
+| Servidor intermediário para a TMDB (cache central e chave fora do APK) e licença comercial da TMDB | Necessário se o app tiver anúncios ou venda, pelos termos da TMDB. Ver estrategia-de-requisicoes.md, seção 8 |
+| Exclusão de conta sem varrer todas as opiniões (gravar o uid do votante nos votos e criar índice, ou usar Cloud Function) | Hoje a rotina percorre todas as opiniões do app (RF29); aceitável na escala atual |
+| Mostrar a Home com dados guardados, mesmo vencidos, quando estiver sem internet | Mudaria o comportamento aprovado do modo offline (RN24) |
 | Evoluir as recomendações (RF81) usando também as notas dadas pelo usuário e os gêneros que ele mais assiste, com uma tela "Ver mais" | A versão simples (RF81) foi implementada; esta evolução vinha da pergunta aberta da pesquisa de viabilidade (ver estudo-viabilidade.md) |
 | Descobrir obras pelas emoções registradas pela comunidade | Proposta do documento de propostas; exige contadores calculados no servidor (Cloud Function, plano pago do Firebase) e só teria resultados para obras avaliadas por usuários |
 | Notificação de novos episódios e temporadas das séries marcadas como "Assistindo" | Proposta do documento de propostas; exige tarefa em segundo plano (WorkManager) e permissão de notificação |
@@ -160,12 +165,13 @@ Apesar do foco inicial, o projeto foi estruturado com os princípios de desacopl
 | RNF10 | Capas das obras com bordas arredondadas, de forma consistente em todas as telas | Usabilidade (identidade visual) |
 | RNF11 | Código preparado para multiplataforma: sem Context do Android em ViewModels e Repositories; acesso ao Firebase, à TMDB e ao armazenamento local sempre por trás de interfaces na camada de dados (Repository); código específico de Android (Credential Manager, DataStore, Room) isolado em poucos arquivos | Portabilidade / Manutenibilidade |
 | RNF12 | Esteira de publicação documentada para as duas lojas: Google Play (obrigatória) e Apple App Store (preparação documentada, execução opcional, RF61) | Distribuição |
-| RNF13 | Estratégia de cache das chamadas à TMDB definida: cache em memória com tempo de validade na camada Repository e dados das obras da lista guardados no Room (obrasCache), para reduzir chamadas redundantes e consumo de dados | Desempenho |
+| RNF13 | Estratégia de cache das chamadas à TMDB definida em três camadas: cache em memória na sessão (Home, busca e Descobrir), cópia das obras no Room (obrasCache) com tempo de validade (RN39) e cache HTTP em disco para as listas de catálogo, para reduzir chamadas redundantes e consumo de dados (ver RNF19) | Desempenho |
 | RNF14 | Conteúdo das telas começa abaixo da barra de status e não rola por baixo dos ícones dela, mantendo a barra transparente (tela de ponta a ponta) | Usabilidade |
 | RNF15 | Ícones da interface no estilo Outlined do Material Icons, de forma consistente (preenchidos só onde o preenchimento tem significado, como a estrela da avaliação) | Usabilidade (identidade visual) |
 | RNF16 | Backup automático do Android desativado (`allowBackup="false"`), para que o banco local com dados pessoais não seja copiado para a nuvem do Google (STRIDE I4) | Segurança / Privacidade |
 | RNF17 | Testes automatizados das regras de negócio puras (data de nascimento e idade, controle de idade, leitura da classificação indicativa, status, busca e ordenação da Minha Lista, escolha e combinação das recomendações, validação de e-mail, senha e apelido, e mensagens de erro do login), executados na JVM sem emulador, e do banco local (Room, incluindo as estatísticas), executados no Android com banco em memória | Qualidade / Manutenibilidade |
 | RNF18 | Contas de e-mail e senha: a senha nunca é guardada pelo app (fica só no Firebase Authentication), tem de 8 a 64 caracteres, e as mensagens de erro de entrada e cadastro são neutras para não revelar quais e-mails têm conta (proteção contra enumeração de e-mails, RN35) | Segurança / Privacidade |
+| RNF19 | Uso eficiente das cotas e dos limites dos serviços externos (TMDB e Firestore), para que o custo por usuário não cresça com o volume de dados e o app possa crescer sem estourar o plano gratuito: chamadas reunidas (append_to_response), cache com validade, consultas de agregação, paginação, sincronização por diferença e nova tentativa em caso de erro 429 (cabeçalho Retry-After, no máximo 2 tentativas). Justificativa, números de antes e depois, cenários de crescimento e plano de evolução em estrategia-de-requisicoes.md | Desempenho / Escalabilidade |
 
 ---
 
@@ -198,7 +204,7 @@ Apesar do foco inicial, o projeto foi estruturado com os princípios de desacopl
 | RN23 | Em conflito entre o dado local e o da nuvem, vale a gravação mais recente; limitação conhecida: a data da gravação vem do relógio do celular |
 | RN24 | A comunidade (opiniões, avaliações, votos e médias) e o login exigem conexão, e RN08 continua valendo; sem conexão, o app avisa e mantém disponível o que está salvo no aparelho |
 | RN25 | O banco local guarda dados apenas do usuário logado e é apagado por completo no logout (RF27) e na exclusão de conta (RF29) |
-| RN26 | Uma opinião denunciada pelo usuário fica oculta para ele, guardada apenas no aparelho; a denúncia continua sendo gravada em denuncias, de acesso restrito (RF28) |
+| RN26 | Uma opinião denunciada pelo usuário fica oculta só para ele, nas telas de qualquer aparelho em que entrar: a marca é gravada na conta dele, em `usuarios/{uid}/opinioesOcultas`, no mesmo lote da denúncia (ou as duas são gravadas, ou nenhuma), e é apagada na exclusão de conta (RF29). A marca vale para aquele autor naquela obra, e os demais usuários continuam vendo a opinião. A denúncia continua sendo gravada em denuncias, de acesso restrito (RF28) |
 | RN27 | Ao sair da conta com alterações ainda não sincronizadas, o app tenta enviá-las e, se não conseguir, avisa quantas serão perdidas e pede confirmação, porque o banco local é apagado no logout (RN25); sem pendências, pede uma confirmação simples |
 | RN28 | Sem conexão, as alterações ficam pendentes e o app não tenta enviá-las; a sincronização completa roda ao abrir o app, no login e quando a internet volta |
 | RN29 | O histórico de busca (pesquisas e obras vistas recentemente) fica só no aparelho (SharedPreferences), nunca é enviado ao Firestore e vale também para o visitante; não é apagado no logout nem na exclusão de conta, e o usuário o apaga pelos botões "Limpar" da tela de busca |
@@ -211,6 +217,9 @@ Apesar do foco inicial, o projeto foi estruturado com os princípios de desacopl
 | RN36 | Ao excluir a conta (RF29), quem entrou com e-mail e senha digita a senha de novo (reautenticação); quem entrou com Google continua reautenticando pelo Google |
 | RN38 | As recomendações da Home (RF81) partem das até 5 obras terminadas mais recentes da lista (séries Maratonei, filmes Concluído); obras que já estão na lista nunca são recomendadas, a obra recomendada por mais de uma base sobe na fileira, a fileira tem no máximo 20 obras, passa pelo filtro por idade (RN15) e nada é gravado no Firestore |
 | RN37 | A foto de perfil própria (RF30) existe em um único arquivo no armazenamento interno do app, nunca é enviada à nuvem e é apagada no logout, na exclusão da conta, na troca de usuário no aparelho e ao escolher outro avatar |
+| RN39 | As respostas da TMDB têm validade antes de serem pedidas de novo. No Room: detalhes e temporadas 6 horas e "onde assistir" 24 horas; a cópia vencida só é usada quando a rede falha (modo offline). Em disco (cache HTTP de 10 MB): Em alta e Descobrir (inclui as categorias da Home) 3 horas, recomendações 6 horas, e gêneros, streamings, pessoas e classificações 24 horas; busca, detalhes e temporadas não entram nesse cache. O "puxar para atualizar" da Home (RF82) esvazia o cache em disco |
+| RN40 | A comunidade de uma obra é lida de forma econômica: a média e o total das notas são calculados pelo servidor (consulta de agregação), as opiniões vêm em páginas (a do próprio usuário sempre no topo, depois lotes de 20 documentos por data, com o botão "Carregar mais opiniões") e os votos só são lidos das opiniões que estão na tela |
+| RN41 | Os episódios assistidos são recebidos da nuvem por diferença: lê-se só o que mudou desde a última conferência (com margem de 1 hora para diferenças de relógio) e compara-se o total da nuvem com o local; todos os episódios da série só são lidos se os totais divergirem, se nunca houve leitura completa ou se a última tem mais de 7 dias. As datas de conferência ficam só no aparelho e são apagadas no logout e na exclusão de conta (RN25) |
 
 ---
 
@@ -223,16 +232,18 @@ usuarios/{uid}/series/{serieId}                 -> lista pessoal e status
 usuarios/{uid}/series/{serieId}/episodiosAssistidos
 avaliacoes/{tipo_tmdbId}/opinioes/{autorUid}    -> nota e opinião pública: autorUid, apelidoAutor, avatarAutor, nota, texto, spoiler, emocoes[], publica, data
 usuarios/{uid}/opinioesPrivadas/{tipo_tmdbId}   -> opinião privada (só o dono lê): mesmos campos de texto
+usuarios/{uid}/opinioesOcultas/{tipo_tmdbId_autorUid} -> opinião ocultada por quem denunciou (só o dono lê): obraKey, autorUid, ocultadaEm
 avaliacoes/{tipo_tmdbId}/opinioes/{autorUid}/votos/{votanteUid}  -> valor (1 ou -1)
 denuncias/{id}                                  -> leitura restrita ao administrador
 ```
 
-Observações sobre os blocos K e L e sobre o RF29:
+Observações sobre os blocos K e L, sobre o RF29 e sobre o RF68:
 
 - Nenhuma coleção nova no Firestore. A classificação indicativa vem da TMDB a cada consulta (com cache em memória) e a idade é calculada a partir da data de nascimento guardada em `usuarios/{uid}` (campo `aniversario`, que passa de texto livre, como "15/03", para data completa; RF59).
 - A indicação de "introdução já vista" (RF52) é guardada apenas no aparelho (DataStore), não no Firestore.
 - Para RN17, o campo de aniversário em `usuarios/{uid}` passa a ter regra de atualização restrita. O campo `aniversarioAlterado` (booleano) marca que a única correção já foi usada: as regras do Firestore só permitem mudar a data uma vez, quando essa marca passa de falsa para verdadeira.
-- A exclusão de conta (RF29) não cria coleções: apaga os documentos descritos acima. Depende de uma regra de leitura em `/{path=**}/opinioes/{opiniaoId}` (consulta em todas as obras, só para usuário logado), usada para achar as avaliações e os votos do usuário.
+- A exclusão de conta (RF29) não cria coleções: apaga os documentos descritos acima, inclusive as marcas de `opinioesOcultas`. Depende de uma regra de leitura em `/{path=**}/opinioes/{opiniaoId}` (consulta em todas as obras, só para usuário logado), usada para achar as avaliações e os votos do usuário.
+- O RF68 cria a subcoleção `usuarios/{uid}/opinioesOcultas`: um documento por opinião ocultada, com id `tipoMidia_tmdbId_autorUid` (o que impede duplicar a marca), e os campos `obraKey`, `autorUid` e `ocultadaEm`. Só o dono lê e escreve (regra no `firestore.rules`), e a marca é gravada no mesmo lote da denúncia (RN26).
 - A aba Descobrir (RF63 a RF65) e o histórico de busca (RF72) não criam coleções no Firestore: a Descobrir só consulta a TMDB, e o histórico fica no aparelho, em SharedPreferences (RN29).
 
 ### 4.1 Banco local (Room) — Bloco N
@@ -253,9 +264,9 @@ Observações sobre o Bloco N:
 - Os campos `pendenteSincronizacao` e `atualizadoEm` sustentam a fila de envio (RN22), a resolução de conflitos (RN23) e o aviso de alterações não sincronizadas (RF62).
 - O banco local é apagado no logout e na exclusão de conta (RN25).
 - O campo `removido` é uma "lápide": um item removido sem conexão não some do banco na hora, fica marcado e pendente até a exclusão ser enviada à nuvem, e a tela não o mostra.
-- A sincronização tem duas fases: o envio das pendências (conferindo a nuvem para fazer valer a alteração mais recente) e o recebimento dos dados da nuvem. O recebimento lê muitos documentos, então roda ao abrir o app, no login e quando a internet volta; as alterações feitas na tela só disparam o envio (RN28).
+- A sincronização tem duas fases: o envio das pendências (conferindo a nuvem para fazer valer a alteração mais recente) e o recebimento dos dados da nuvem. O recebimento lê documentos da nuvem, então roda ao abrir o app, no login e quando a internet volta; as alterações feitas na tela só disparam o envio (RN28). Os episódios são recebidos por diferença (RN41), para não ler de novo todos os documentos a cada abertura; as datas de conferência ficam em SharedPreferences (`estado_sincronizacao`), e não no Room, para não exigir migração.
 - O e-mail não é guardado no banco local, porque o login do Google já o mantém no aparelho (RNF08).
-- O cache das obras guarda as respostas da TMDB como texto JSON e só mantém as obras da lista: as demais são apagadas a cada sincronização completa.
+- O cache das obras guarda as respostas da TMDB como texto JSON e só mantém as obras da lista: as demais são apagadas a cada sincronização completa. Cada cópia tem validade (RN39): enquanto vale, a TMDB não é consultada de novo.
 - Este bloco foi promovido de opcional para obrigatório (antes RF33 opcional), por orientação do professor: a persistência local é uma das competências centrais da disciplina.
 
 ---
@@ -270,6 +281,7 @@ Observações sobre o Bloco N:
 - Nota LGPD: registrar o tratamento de dados de crianças e adolescentes decorrente do controle de idade, a exclusão de conta (RF29), com o que é mantido: denúncias feitas pelo usuário (registro de moderação) e votos de terceiros nas opiniões dele, e os dados pessoais guardados no aparelho, apagados no logout e na exclusão de conta (RN25)
 - Política de Privacidade e Termos de Uso (RF77): produzidos em `politica-de-privacidade.md` e `termos-de-uso.md`, com o mesmo texto exibido no app
 - Justificativa de por que a versão iOS não está no escopo atual (seção 1.5)
+- Estratégia de requisições e uso de cotas (RNF13 e RNF19): produzida em `estrategia-de-requisicoes.md`, com os limites da TMDB e do Firestore, números de antes e depois, cenários de crescimento, decisões adiadas e plano de evolução
 - Esteira de publicação (RNF12), descrita abaixo
 
 ### 5.1 Esteira de publicação

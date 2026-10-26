@@ -2,6 +2,7 @@ package com.seriando.app.data.repository
 
 import android.util.Log
 import com.google.gson.Gson
+import com.google.gson.JsonParseException
 import com.seriando.app.BuildConfig
 import com.seriando.app.data.local.Dependencias
 import com.seriando.app.data.local.ListaDao
@@ -24,8 +25,10 @@ import java.util.concurrent.atomic.AtomicBoolean
 /**
  * Dados da TMDB das obras, com cópia no aparelho para funcionar sem internet (RF33, RNF13).
  *
- * Cada busca tenta a rede primeiro e, se der certo, atualiza a cópia no banco local (tabela
- * obrasCache). Se a rede falhar, devolve a última cópia guardada; sem cópia, repassa o erro.
+ * Cada busca olha primeiro a cópia no banco local (tabela obrasCache): se ela ainda está
+ * dentro da validade (VALIDADE_*), é usada direto, SEM chamar a TMDB. Se venceu ou não existe,
+ * tenta a rede e, se der certo, atualiza a cópia. Se a rede falhar, devolve a última cópia
+ * guardada, mesmo vencida; sem cópia, repassa o erro.
  * A cópia é o texto JSON da resposta, feito com o mesmo conversor (Gson) que o Retrofit usa.
  *
  * Toda obra aberta é guardada, mas o Sincronizador apaga, ao abrir o app, as que não estão na
@@ -46,8 +49,9 @@ class ObraCacheRepository(
 
     /** Detalhes de uma série (sinopse, elenco, vídeos e lista de temporadas). */
     suspend fun buscarDetalheSerie(id: Int): SerieDetalhe {
-        val detalhe = comCache(SERIE, id, PARTE_DETALHE, SerieDetalhe::class.java) {
+        val detalhe = comCache(SERIE, id, PARTE_DETALHE, SerieDetalhe::class.java, VALIDADE_DETALHE) {
             RetrofitInstance.api.buscarDetalhesSerie(id, BuildConfig.TMDB_API_KEY)
+                .also { guardarProvedoresDosDetalhes(SERIE, id, it.provedores) }
         }
         prebaixarTemporadasSeEstiverNaLista(id, detalhe)
         return detalhe
@@ -55,19 +59,40 @@ class ObraCacheRepository(
 
     /** Detalhes de um filme. */
     suspend fun buscarDetalheFilme(id: Int): MovieDetalhe =
-        comCache(FILME, id, PARTE_DETALHE, MovieDetalhe::class.java) {
+        comCache(FILME, id, PARTE_DETALHE, MovieDetalhe::class.java, VALIDADE_DETALHE) {
             RetrofitInstance.api.buscarDetalhesFilme(id, BuildConfig.TMDB_API_KEY)
+                .also { guardarProvedoresDosDetalhes(FILME, id, it.provedores) }
         }
 
     /** Episódios de uma temporada de uma série. */
     suspend fun buscarEpisodios(serieId: Int, numeroTemporada: Int): List<EpisodioResumo> =
-        comCache(SERIE, serieId, numeroTemporada, TemporadaDetalhe::class.java) {
+        comCache(SERIE, serieId, numeroTemporada, TemporadaDetalhe::class.java, VALIDADE_TEMPORADA) {
             RetrofitInstance.api.buscarTemporada(serieId, numeroTemporada, BuildConfig.TMDB_API_KEY)
         }.episodios
 
+    /**
+     * O "onde assistir" agora vem dentro dos detalhes (append_to_response). Esta função o guarda
+     * também como a parte própria de provedores, para o modo offline e o download em segundo
+     * plano continuarem funcionando como antes, sem uma chamada extra. É chamada só quando os
+     * detalhes acabaram de vir da REDE (dentro do lambda de comCache), então a data da cópia
+     * nunca é renovada com dados antigos.
+     */
+    private suspend fun guardarProvedoresDosDetalhes(tipoMidia: String, id: Int, provedores: WatchProvidersResponse?) {
+        if (provedores == null) return
+        cache.salvar(
+            ObraCacheEntity(
+                tipoMidia = tipoMidia,
+                tmdbId = id,
+                parte = PARTE_PROVEDORES,
+                json = gson.toJson(provedores),
+                atualizadoEm = System.currentTimeMillis()
+            )
+        )
+    }
+
     /** Onde assistir (streaming), de um filme ou de uma série. */
     suspend fun buscarProvedores(tipoMidia: String, id: Int): WatchProvidersResponse =
-        comCache(tipoMidia, id, PARTE_PROVEDORES, WatchProvidersResponse::class.java) {
+        comCache(tipoMidia, id, PARTE_PROVEDORES, WatchProvidersResponse::class.java, VALIDADE_PROVEDORES) {
             if (tipoMidia == FILME) {
                 RetrofitInstance.api.buscarProvedoresFilme(id, BuildConfig.TMDB_API_KEY)
             } else {
@@ -128,16 +153,36 @@ class ObraCacheRepository(
     }
 
     /**
-     * Busca na rede e guarda a cópia; se a rede falhar, devolve a cópia guardada (se existir).
+     * 1) Se há cópia DENTRO da validade, devolve ela e não chama a rede (poupa requisições).
+     * 2) Senão, busca na rede e guarda a cópia nova.
+     * 3) Se a rede falhar, devolve a cópia guardada (mesmo vencida), se existir.
      * O cancelamento da corrotina (a tela saiu) é repassado, nunca confundido com falha de rede.
+     *
+     * @param validadeMs por quanto tempo, em milissegundos, a cópia vale sem consultar a TMDB.
      */
     private suspend fun <T> comCache(
         tipoMidia: String,
         id: Int,
         parte: Int,
         classe: Class<T>,
+        validadeMs: Long,
         buscarNaRede: suspend () -> T
     ): T {
+        // Passo 1: cópia fresca? A idade precisa estar entre 0 e a validade; uma data no
+        // futuro (relógio do aparelho mexido) não conta como fresca.
+        val copia = cache.obter(tipoMidia, id, parte)
+        if (copia != null) {
+            val idade = System.currentTimeMillis() - copia.atualizadoEm
+            if (idade in 0 until validadeMs) {
+                try {
+                    return gson.fromJson(copia.json, classe)
+                } catch (e: JsonParseException) {
+                    // Cópia ilegível: ignora e segue para a rede
+                    Log.d(TAG, "Cópia ilegível de $tipoMidia $id (parte $parte), buscando de novo")
+                }
+            }
+        }
+
         try {
             val resposta = buscarNaRede()
             cache.salvar(
@@ -164,6 +209,13 @@ class ObraCacheRepository(
         const val TAG = "ObraCache"
         const val SERIE = "tv"
         const val FILME = "movie"
+
+        // Validade das cópias (por quanto tempo valem sem consultar a TMDB). Ajuste aqui se quiser
+        // mais ou menos frescor: detalhes e temporadas mudam com novos episódios; o "onde
+        // assistir" muda pouco.
+        const val VALIDADE_DETALHE = 6L * 60 * 60 * 1000       // 6 horas
+        const val VALIDADE_TEMPORADA = 6L * 60 * 60 * 1000     // 6 horas
+        const val VALIDADE_PROVEDORES = 24L * 60 * 60 * 1000   // 24 horas
 
         // Partes guardadas de cada obra. Temporadas usam o próprio número (0 = especiais).
         const val PARTE_DETALHE = -1

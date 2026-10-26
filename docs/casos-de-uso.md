@@ -52,7 +52,7 @@ graph LR
   Usuario --- UC20([Editar/remover a própria opinião])
   Usuario --- UC21([Curtir/descurtir opinião de outro usuário])
   Usuario --- UC22([Remover o próprio voto])
-  Usuario --- UC23([Denunciar opinião])
+  Usuario --- UC23([Denunciar e ocultar opinião])
   Usuario --- UC24([Sair da conta])
   Usuario --- UC36([Excluir a conta])
   Usuario --- UC37([Usar o app offline e sincronizar])
@@ -72,7 +72,7 @@ graph LR
 | UC04 | Ver elenco e trailer | Visitante | TMDB possui esses dados para a obra | RF05 |
 | UC05 | Ver onde assistir | Visitante | — | RF34, RN09, RNF09 |
 | UC06 | Ver média de avaliações | Visitante com conta (a comunidade exige login, RN08) | Existe ao menos uma avaliação | RF18 |
-| UC07 | Ver opiniões públicas | Visitante com conta (idem) | Existe ao menos uma opinião pública | RF21 |
+| UC07 | Ver opiniões públicas (a do próprio usuário no topo, em páginas, com "Carregar mais opiniões") | Visitante com conta (idem) | Existe ao menos uma opinião pública | RF21, RN40 |
 | UC08 | Autenticar com Google | Visitante | Conta Google disponível no dispositivo | RF01, RF53 |
 | UC09 | Adicionar/remover da lista pessoal | Usuário autenticado | Logado | RF02, RF07, RN20 |
 | UC10 | Definir status de acompanhamento | Usuário autenticado | Item já está na lista | RF08 |
@@ -88,7 +88,7 @@ graph LR
 | UC20 | Editar/remover a própria opinião | Usuário autenticado | Já escreveu uma opinião | RF22 |
 | UC21 | Curtir/descurtir opinião de outro | Usuário autenticado | Opinião não é do próprio usuário | RF23, RF24, RF26 |
 | UC22 | Remover o próprio voto | Usuário autenticado | Já votou na opinião | RF25 |
-| UC23 | Denunciar opinião | Usuário autenticado | Opinião não é do próprio usuário | RF28 |
+| UC23 | Denunciar opinião e ocultá-la para si (a opinião some da tela na hora e continua oculta nos outros aparelhos do usuário; os demais usuários continuam vendo) | Usuário autenticado | Opinião não é do próprio usuário | RF28, RF68, RN26 |
 | UC24 | Sair da conta (botão em destaque, sempre com confirmação) | Usuário autenticado | Logado | RF27, RN25, RN27 |
 | UC25 | Ver a introdução do app (três páginas, com opção de pular) | Visitante | Primeira abertura do app | RF52, RN30 |
 | UC26 | Continuar como visitante | Visitante | Nenhum usuário logado | RF53, RF54, RN18, RN30 |
@@ -102,7 +102,7 @@ graph LR
 | UC34 | Ter obras ocultas ou bloqueadas por idade (Home, busca, categorias, filmografia, Descobrir, histórico e acesso direto aos detalhes) | Visitante / Usuário | — (acontece automaticamente) | RF50, RF51, RN13 a RN16, RN31, RN32 |
 | UC35 | Corrigir a data de nascimento uma única vez | Usuário autenticado | Data já informada e ainda não corrigida | RF59, RN17 |
 | UC36 | Excluir a conta e todos os dados | Usuário autenticado | Logado | RF29, RN19, RN25 |
-| UC37 | Usar o app offline (lista, progresso, perfil) e sincronizar quando a internet voltar | Usuário autenticado | Já sincronizou ao menos uma vez | RF33, RF62, RN21 a RN24, RN28 |
+| UC37 | Usar o app offline (lista, progresso, perfil) e sincronizar quando a internet voltar | Usuário autenticado | Já sincronizou ao menos uma vez | RF33, RF62, RN21 a RN24, RN28, RN41 |
 | UC39 | Entrar ou criar conta com e-mail e senha (cadastro com apelido, confirmação do e-mail pelo link recebido, entrada e reenvio da confirmação) | Visitante | E-mail com acesso à caixa de entrada | RF32, RN33, RN34, RN35, RNF18 |
 | UC40 | Recuperar a senha (link de redefinição enviado ao e-mail) | Visitante | Conta de e-mail e senha já criada | RF32, RN35 |
 | UC41 | Escolher uma foto da galeria como foto de perfil, vista só neste aparelho, ou removê-la | Usuário autenticado | Logado | RF30, RN37 |
@@ -114,4 +114,4 @@ graph LR
 
 ## 4. Fora do escopo atual
 
-Todos os blocos do escopo atual foram implementados e estão representados no diagrama. Permanecem apenas os requisitos **opcionais**, que só entram se sobrar tempo: avaliar e opinar por episódio (RF31), versão e publicação para iOS (RF60, RF61) e ocultar a opinião denunciada para quem denunciou (RF68). O login com a conta Microsoft foi avaliado e adiado (ver sugestões futuras em requisitos-seriando.md). Quando algum deles for concluído, este documento deve ser atualizado.
+Todos os blocos do escopo atual foram implementados e estão representados no diagrama. Permanecem apenas os requisitos **opcionais**, que só entram se sobrar tempo: avaliar e opinar por episódio (RF31) e versão e publicação para iOS (RF60, RF61). O login com a conta Microsoft foi avaliado e adiado (ver sugestões futuras em requisitos-seriando.md). Quando algum deles for concluído, este documento deve ser atualizado.

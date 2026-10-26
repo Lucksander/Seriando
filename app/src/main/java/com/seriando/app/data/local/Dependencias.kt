@@ -3,6 +3,7 @@ package com.seriando.app.data.local
 import android.content.Context
 import androidx.room.Room
 import androidx.room.withTransaction
+import com.seriando.app.data.sync.EstadoDaSincronizacao
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -21,6 +22,7 @@ object Dependencias {
     /** Cria o banco. Chamado uma única vez, em SeriandoApp.onCreate. */
     fun iniciar(contexto: Context) {
         contextoDoApp = contexto.applicationContext
+        EstadoDaSincronizacao.iniciar(contexto)
         banco = Room.databaseBuilder(
             contexto.applicationContext,
             SeriandoDatabase::class.java,
@@ -48,6 +50,7 @@ object Dependencias {
     suspend fun limparBancoLocal() {
         withContext(Dispatchers.IO) {
             banco.clearAllTables()
+            EstadoDaSincronizacao.limpar() // as datas de conferência também são dados do usuário
             FotoDePerfilLocal.remover(contextoDoApp)
         }
     }

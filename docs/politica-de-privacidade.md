@@ -21,7 +21,7 @@ Contato para assuntos de privacidade: lucasjsantos.dev@gmail.com
 | Data de nascimento (opcional) | Quando você a informa na aba Conta | Calcular sua idade para ocultar obras acima da sua faixa de classificação | Não |
 | Lista, status e progresso de episódios | Quando você usa o app | Entregar a função principal do app e sincronizar entre aparelhos | Não |
 | Avaliações, opiniões, emoções, marcação de spoiler e votos | Quando você participa da comunidade | Exibir a comunidade | Opiniões públicas e notas: sim, para usuários logados. Opiniões privadas: não |
-| Denúncias que você faz | Quando você denuncia uma opinião | Moderação | Não |
+| Denúncias que você faz | Quando você denuncia uma opinião | Moderação e ocultar, só para você, a opinião denunciada | Não |
 | Histórico de busca e obras vistas recentemente | Ao pesquisar e abrir obras | Facilitar novas buscas | Não; fica só no aparelho |
 | Cópia local de lista, progresso, perfil e dados das obras | Ao usar o app | Permitir o uso sem internet | Não; fica só no aparelho |
 

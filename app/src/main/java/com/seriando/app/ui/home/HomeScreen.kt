@@ -49,6 +49,7 @@ import com.seriando.app.ui.login.DialogoLoginObrigatorio
 import com.seriando.app.R
 import com.seriando.app.data.auth.AuthRepository
 import com.seriando.app.data.cache.CatalogoCache
+import com.seriando.app.data.remote.RetrofitInstance
 import com.seriando.app.data.repository.CatalogoRepository
 import com.seriando.app.data.repository.MinhaListaRepository
 import com.seriando.app.model.Recomendacoes
@@ -219,6 +220,9 @@ fun HomeScreen(
         onRefresh = {
             atualizando = true
             CatalogoCache.limpar()
+            // Esvazia também o cache em disco da TMDB; sem isto, a nova busca receberia
+            // de volta as respostas guardadas e o gesto não traria nada novo
+            RetrofitInstance.limparCache()
             itensPorCategoria.clear()
             tentativa++
         },

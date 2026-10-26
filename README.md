@@ -283,6 +283,7 @@ O Cloud Firestore utiliza a seguinte estrutura relacional de coleções e subcol
 | `perfisPublicos/{uid}` | Usuários autenticados | Dono | Informações públicas de perfil (`apelido`, `avatarId`, `atualizadoEm`). |
 | `avaliacoes/{obraId}/opinioes/{autorUid}` | Usuários autenticados | Dono | Resenhas públicas e notas de 1 a 5 estrelas (`nota`, `texto`, `spoiler`, `emocoes`, `apelidoAutor`, `avatarAutor`, `data`). |
 | `avaliacoes/{obraId}/opinioes/{autorUid}/votos/{votanteUid}` | Usuários autenticados | Dono do voto (`votanteUid != autorUid`) | Controle de curtidas (+1) e descurtidas (-1) em opiniões da comunidade. |
+| `usuarios/{uid}/opinioesOcultas/{obraKey_autorUid}` | Dono | Dono | Opiniões ocultadas por quem denunciou (`obraKey`, `autorUid`, `ocultadaEm`; RF68, RN26). |
 | `denuncias/{id}` | Nenhuma (somente Admin Console) | Usuários autenticados | Registro de denúncias de conteúdos (`autorOpiniaoUid`, `tipoMidia`, `tmdbId`, `denuncianteUid`, `motivo`, `data`). |
 
 ---
@@ -372,15 +373,16 @@ A comunicação remota com a API da TMDB é intermediada pela interface [TmdbApi
 A especificação técnica detalhada do projeto encontra-se disponível no diretório `docs/`:
 
 - 📋 [**Levantamento Completo de Requisitos (`requisitos-seriando.md`)**](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/docs/requisitos-seriando.md):
-  - **Requisitos Funcionais (RF01 a RF79)**: Detalhamento dos blocos implementados e em desenvolvimento.
-  - **Requisitos Não Funcionais (RNF01 a RNF15)**: Segurança, LGPD, portabilidade para Compose Multiplatform e regras de banco.
-  - **Regras de Negócio (RN01 a RN32)**: Comportamento das avaliações, pontuação, privacidade, concorrência e sincronização offline.
+  - **Requisitos Funcionais (RF01 a RF82)**: Detalhamento dos blocos implementados e em desenvolvimento.
+  - **Requisitos Não Funcionais (RNF01 a RNF19)**: Segurança, LGPD, portabilidade para Compose Multiplatform e regras de banco.
+  - **Regras de Negócio (RN01 a RN41)**: Comportamento das avaliações, pontuação, privacidade, concorrência e sincronização offline.
   - **Análise de Risco & Segurança**: Modelo de ameaças STRIDE e checklist OWASP MASVS.
   - **Esteira de Publicação**: Procedimento de envio para Google Play Store e preparação para Apple App Store.
 - 🏗️ **Arquitetura (`arquitetura.md`)**: camadas ui, data, model e navigation, modo offline e controle de idade.
 - 🗄️ **Modelagem do Banco (`modelagem-banco.md`)**: coleções do Firestore, tabelas do Room e exemplos de leitura e escrita.
 - 🔄 **Diagrama de Sequência (`diagrama-sequencia-sincronizacao.md`)**: alterações offline, volta da conexão e logout.
 - 👥 **Casos de Uso (`casos-de-uso.md`)**: atores, diagrama e descrição de cada caso de uso.
+- ⚙️ **Estratégia de Requisições (`estrategia-de-requisicoes.md`)**: limites da TMDB e do Firestore, por que o app guarda, reduz, junta e respeita requisições, números de antes e depois, cenários de crescimento e plano de evolução (RNF19, RN39 a RN41).
 - 📊 **Estudo de Viabilidade (`estudo-viabilidade.md`)**: pesquisa com 53 respostas que originou os requisitos.
 - 🛡️ **Modelo de Ameaças (`stride-seriando.md`)**: análise STRIDE, checklist OWASP MASVS e recomendações priorizadas.
 - 🔏 **Política de Privacidade (`politica-de-privacidade.md`) e Termos de Uso (`termos-de-uso.md`)**: os mesmos textos exibidos no app (LGPD).
@@ -416,6 +418,7 @@ com.seriando.app
 │   ├── diagrama-sequencia-sincronizacao.md
 │   ├── casos-de-uso.md
 │   ├── estudo-viabilidade.md
+│   ├── estrategia-de-requisicoes.md
 │   ├── stride-seriando.md
 │   ├── politica-de-privacidade.md
 │   └── termos-de-uso.md

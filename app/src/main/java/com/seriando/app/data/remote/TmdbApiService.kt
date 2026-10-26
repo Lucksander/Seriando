@@ -43,14 +43,15 @@ interface TmdbApiService {
         @Query("language") idioma: String = "pt-BR"
     ): BuscaMultiResponse
 
-    // append_to_response junta elenco (credits) e vídeos (videos) na mesma
-    // resposta, evitando precisar de 3 chamadas separadas à API.
+    // append_to_response junta elenco (credits), vídeos (videos), classificação e
+    // "onde assistir" (watch/providers) na mesma resposta, evitando chamadas separadas
+    // à API. O "onde assistir" veio para cá para a tela de Detalhes fazer 1 chamada, não 2.
     @GET("tv/{id}")
     suspend fun buscarDetalhesSerie(
         @Path("id") serieId: Int,
         @Query("api_key") apiKey: String,
         @Query("language") idioma: String = "pt-BR",
-        @Query("append_to_response") extras: String = "credits,videos,content_ratings"
+        @Query("append_to_response") extras: String = "credits,videos,content_ratings,watch/providers"
     ): SerieDetalhe
 
     @GET("movie/{id}")
@@ -58,7 +59,7 @@ interface TmdbApiService {
         @Path("id") filmeId: Int,
         @Query("api_key") apiKey: String,
         @Query("language") idioma: String = "pt-BR",
-        @Query("append_to_response") extras: String = "credits,videos,release_dates"
+        @Query("append_to_response") extras: String = "credits,videos,release_dates,watch/providers"
     ): MovieDetalhe
 
     // Episódios de uma temporada (RF06).

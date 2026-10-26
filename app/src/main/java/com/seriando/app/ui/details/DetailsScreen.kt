@@ -163,6 +163,11 @@ fun DetailsScreen(
     var minhaOpiniaoExistente by remember { mutableStateOf<Avaliacao?>(null) }
     var editandoOpiniao by remember { mutableStateOf(false) }
     var votosPorOpiniao by remember { mutableStateOf<Map<String, VotoResumo>>(emptyMap()) }
+    // Paginação das opiniões: data a partir da qual a próxima página começa, se ainda há mais
+    // para carregar e se um "Carregar mais" está em andamento (desativa o botão)
+    var proximaDataOpinioes by remember { mutableStateOf<Long?>(null) }
+    var temMaisOpinioes by remember { mutableStateOf(false) }
+    var carregandoMaisOpinioes by remember { mutableStateOf(false) }
     val denunciaRepository = remember { com.seriando.app.data.repository.DenunciaRepository() }
     var mostrarDialogoDenuncia by remember { mutableStateOf<String?>(null) } // guarda o uid do autor sendo denunciado
     var provedoresBrasil by remember { mutableStateOf<com.seriando.app.model.ProvedoresPais?>(null) }
@@ -203,9 +208,33 @@ fun DetailsScreen(
      * Pode lançar exceção: quem chama deve estar dentro de um try/catch.
      */
     suspend fun atualizarMedia() {
-        val todas = avaliacaoRepository.buscarTodasAvaliacoes(tipoMidia, serieId).filter { it.nota > 0 }
-        totalAvaliacoes = todas.size
-        mediaComunidade = if (todas.isEmpty()) 0.0 else todas.map { it.nota }.average()
+        // O servidor calcula a média e o total (agregação), sem baixar as avaliações (RF18)
+        val resumo = avaliacaoRepository.buscarMediaDaComunidade(tipoMidia, serieId)
+        totalAvaliacoes = resumo.total
+        mediaComunidade = resumo.media
+    }
+
+    /**
+     * Recarrega a lista de opiniões do zero: a minha (se houver) no topo e a primeira página
+     * das públicas dos outros, e guarda onde a próxima página começa.
+     * Pode lançar exceção: quem chama deve estar dentro de um try/catch.
+     */
+    suspend fun recarregarOpinioes(uid: String) {
+        val pagina = avaliacaoRepository.buscarPrimeiraPaginaDeOpinioes(tipoMidia, serieId, uid)
+        opinioes = pagina.opinioes
+        proximaDataOpinioes = pagina.proximaData
+        temMaisOpinioes = pagina.temMais
+    }
+
+    /**
+     * Busca o resumo de votos (RF26) só das opiniões exibidas que ainda não o têm,
+     * em vez de ler os votos de todas as opiniões da obra.
+     */
+    suspend fun carregarVotosFaltantes(uid: String) {
+        opinioes.filter { it.autorUid !in votosPorOpiniao }.forEach { opiniao ->
+            val resumo = avaliacaoRepository.buscarResumoVotos(opiniao.autorUid, tipoMidia, serieId, uid)
+            votosPorOpiniao = votosPorOpiniao + (opiniao.autorUid to resumo)
+        }
     }
 
     // Busca os detalhes (série ou filme, conforme o tipo).
@@ -324,7 +353,7 @@ fun DetailsScreen(
             return@LaunchedEffect
         }
         try {
-            opinioes = avaliacaoRepository.buscarOpinioes(tipoMidia, serieId, uid)
+            recarregarOpinioes(uid)
             minhaOpiniaoExistente = opinioes.find { it.autorUid == uid }
             minhaOpiniaoExistente?.let {
                 textoOpiniao = it.texto
@@ -341,10 +370,16 @@ fun DetailsScreen(
         }
     }
 
-    // Busca a disponibilidade de streaming para o Brasil (RF34, RN09).
-    LaunchedEffect(serieId, tipoMidia) {
+    // Disponibilidade de streaming para o Brasil (RF34, RN09).
+    // Agora ela vem junto dos detalhes (append_to_response), então este efeito espera os
+    // detalhes chegarem. Só se eles não trouxerem o campo (cópia antiga do aparelho, de antes
+    // desta mudança) é que sobra a chamada separada, que também serve de reserva offline.
+    LaunchedEffect(serieId, tipoMidia, detalheSerie, detalheFilme) {
+        // Detalhes ainda não chegaram: o efeito roda de novo quando chegarem
+        if (detalheSerie == null && detalheFilme == null) return@LaunchedEffect
         try {
-            val resposta = obraCacheRepository.buscarProvedores(tipoMidia, serieId)
+            val juntoComDetalhes = detalheSerie?.provedores ?: detalheFilme?.provedores
+            val resposta = juntoComDetalhes ?: obraCacheRepository.buscarProvedores(tipoMidia, serieId)
             provedoresBrasil = resposta.results["BR"]
         } catch (e: Exception) {
             Log.e("Seriando", "Erro ao buscar provedores de streaming", e)
@@ -814,7 +849,7 @@ fun DetailsScreen(
                                                 apelidoAutor = perfil?.apelido ?: "Usuário",
                                                 avatarAutor = perfil?.avatarId ?: "google"
                                             )
-                                            opinioes = avaliacaoRepository.buscarOpinioes(tipoMidia, serieId, uid)
+                                            recarregarOpinioes(uid)
                                             minhaOpiniaoExistente = opinioes.find { it.autorUid == uid }
                                             editandoOpiniao = false
                                         } catch (e: Exception) {
@@ -848,7 +883,7 @@ fun DetailsScreen(
                                     scope.launch {
                                         try {
                                             avaliacaoRepository.removerOpiniao(uid, tipoMidia, serieId)
-                                            opinioes = avaliacaoRepository.buscarOpinioes(tipoMidia, serieId, uid)
+                                            recarregarOpinioes(uid)
                                             minhaOpiniaoExistente = null
                                             textoOpiniao = ""
                                             spoilerMarcado = false
@@ -899,6 +934,38 @@ fun DetailsScreen(
                                     }
                                 }
                             )
+                        }
+
+                        // Ainda há opiniões mais antigas: carrega a próxima página (só as que
+                        // faltam; evita repetir uma opinião que já está na tela)
+                        if (temMaisOpinioes) {
+                            TextButton(
+                                enabled = !carregandoMaisOpinioes,
+                                onClick = {
+                                    val uid = authRepository.usuarioAtual()?.uid ?: return@TextButton
+                                    scope.launch {
+                                        carregandoMaisOpinioes = true
+                                        try {
+                                            val pagina = avaliacaoRepository.buscarMaisOpinioes(
+                                                tipoMidia, serieId, uid, proximaDataOpinioes
+                                            )
+                                            val novas = pagina.opinioes.filter { nova ->
+                                                opinioes.none { it.autorUid == nova.autorUid }
+                                            }
+                                            opinioes = opinioes + novas
+                                            proximaDataOpinioes = pagina.proximaData
+                                            temMaisOpinioes = pagina.temMais
+                                            carregarVotosFaltantes(uid)
+                                        } catch (e: Exception) {
+                                            avisarErro("Não foi possível carregar mais opiniões.", e)
+                                        } finally {
+                                            carregandoMaisOpinioes = false
+                                        }
+                                    }
+                                }
+                            ) {
+                                Text(if (carregandoMaisOpinioes) "Carregando..." else "Carregar mais opiniões")
+                            }
                         }
                     }
                 }

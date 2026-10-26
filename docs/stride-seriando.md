@@ -17,6 +17,7 @@ Componentes analisados: app Android (Compose), banco local Room, preferências l
 | Opinião privada | `usuarios/{uid}/opinioesPrivadas` | Pessoal, só o dono lê |
 | Notas, opiniões públicas e votos | `avaliacoes/...` | Público para usuários logados |
 | Denúncias | `denuncias/{id}` | Restrito ao administrador |
+| Opiniões ocultadas por quem denunciou | `usuarios/{uid}/opinioesOcultas` | Pessoal, só o dono lê e grava |
 | Histórico de busca | SharedPreferences | Pessoal, só no aparelho |
 | Chave da API da TMDB | `BuildConfig` no APK | Baixa; cota de uso |
 
@@ -85,8 +86,8 @@ Legenda de risco residual: Baixo, Médio, Alto. "Aceito" significa que o risco f
 | ID | Ameaça | Mitigação existente | Risco residual |
 |---|---|---|---|
 | D1 | Spam de denúncias, votos ou opiniões inflando leituras e escritas | Limites de tamanho e de campos; sem limite de taxa | Médio, aceito. Sugestão: App Check e alertas de orçamento no Firebase |
-| D2 | Esgotar a cota de leituras do Firestore | Recebimento completo só roda ao abrir o app, no login e quando a internet volta (RN28) | Baixo |
-| D3 | Esgotar a cota da TMDB | Cache em memória e no Room (RNF13) e semáforo de 10 consultas paralelas | Baixo |
+| D2 | Esgotar a cota de leituras do Firestore (a cota diária é compartilhada por todos os usuários, então o esgotamento afeta todos) | Recebimento só ao abrir o app, no login e quando a internet volta (RN28); episódios por diferença com conferência de total (RN41); opiniões em páginas de 20 e média por agregação (RN40) | Baixo hoje; médio se o número de usuários crescer muito. Ver estrategia-de-requisicoes.md (cenários e gatilhos de evolução) |
+| D3 | Esgotar a cota da TMDB | Cache em memória, no Room e HTTP em disco, todos com validade (RN39); detalhes e "onde assistir" numa só chamada; semáforo de 10 consultas paralelas; nova tentativa limitada em erro 429 com Retry-After (RNF19) | Baixo |
 | D4 | Usuário sem internet fica sem funcionalidades | Modo offline cobre lista, progresso e perfil; comunidade e catálogo exigem rede (RN24) | Aceito, com aviso em tela (RF62) |
 | D6 | Cadastros em massa ou pedidos repetidos de e-mail de confirmação e de redefinição de senha | Limites e bloqueios temporários do Firebase Authentication; o app não envia e-mail por conta própria | Médio, aceito. Sugestão: App Check |
 | D5 | Falha do Firestore ou da TMDB deixa telas vazias | Estados de erro e botão "Tentar de novo" (RNF06) | Baixo |

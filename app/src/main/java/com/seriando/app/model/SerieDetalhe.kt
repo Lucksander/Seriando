@@ -24,7 +24,10 @@ data class SerieDetalhe(
     // Data do último episódio exibido; usada para o ano final do intervalo ("2019 – 2024")
     @SerializedName("last_air_date") val dataUltimoEpisodio: String? = null,
     // Classificações por país (append_to_response=content_ratings); usada para a do Brasil (RF49)
-    @SerializedName("content_ratings") val classificacoes: ContentRatingsResponse? = null
+    @SerializedName("content_ratings") val classificacoes: ContentRatingsResponse? = null,
+    // "Onde assistir" por país (append_to_response=watch/providers). Opcional: cópias antigas
+    // do Room não o têm, e então a tela usa a chamada separada como reserva.
+    @SerializedName("watch/providers") val provedores: WatchProvidersResponse? = null
 
 )
 
