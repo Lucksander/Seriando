@@ -79,6 +79,25 @@ interface TmdbApiService {
         @Query("page") pagina: Int = 1
     ): BuscaMultiResponse
 
+    // Recomendações de um filme (RF81): obras que a TMDB considera parecidas.
+    // A chave e o idioma seguem o padrão dos outros endpoints; só a 1ª página é usada.
+    @GET("movie/{id}/recommendations")
+    suspend fun recomendacoesFilme(
+        @Path("id") filmeId: Int,
+        @Query("api_key") apiKey: String,
+        @Query("language") idioma: String = "pt-BR",
+        @Query("page") pagina: Int = 1
+    ): BuscaMultiResponse
+
+    // Recomendações de uma série (RF81).
+    @GET("tv/{id}/recommendations")
+    suspend fun recomendacoesSerie(
+        @Path("id") serieId: Int,
+        @Query("api_key") apiKey: String,
+        @Query("language") idioma: String = "pt-BR",
+        @Query("page") pagina: Int = 1
+    ): BuscaMultiResponse
+
     // Filmes de um gênero (RF44), ordenados por popularidade.
     // with_genres recebe o id do gênero de FILMES da TMDB (ex.: 28 = Ação).
     // ATENÇÃO: discover/movie NÃO devolve o campo media_type; o repositório

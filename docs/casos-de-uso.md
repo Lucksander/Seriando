@@ -59,6 +59,7 @@ graph LR
   Usuario --- UC41([Escolher foto de perfil própria])
   Usuario --- UC42([Buscar e ordenar a Minha Lista])
   Usuario --- UC43([Ver estatísticas da atividade])
+  Usuario --- UC45([Ver recomendações parecidas com o que assistiu])
 ```
 
 ## 3. Descrição textual por caso de uso
@@ -107,6 +108,7 @@ graph LR
 | UC41 | Escolher uma foto da galeria como foto de perfil, vista só neste aparelho, ou removê-la | Usuário autenticado | Logado | RF30, RN37 |
 | UC42 | Buscar por nome e ordenar a Minha Lista (data, nome ou status), com filtros fixos por status | Usuário autenticado | Logado | RF66, RF08 |
 | UC43 | Ver as estatísticas (filmes concluídos, séries maratonadas, episódios assistidos) | Usuário autenticado | Logado | RF67 |
+| UC45 | Ver a fileira "Recomendados para você" na Home (obras parecidas com as últimas terminadas) | Usuário autenticado | Ter ao menos uma obra Maratonei ou Concluído na lista | RF81, RN38, RN15 |
 | UC44 | Escolher o tema do app (do aparelho, claro ou escuro) | Visitante | — | RF80 |
 | UC38 | Ler a Política de Privacidade e os Termos de Uso (textos guardados no app, a partir da introdução, da tela de entrada e da seção Sobre da aba Conta) | Visitante | — (funciona sem internet) | RF77, RF79, RNF08 |
 

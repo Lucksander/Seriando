@@ -1,5 +1,6 @@
 package com.seriando.app.data.repository
 
+import android.util.Log
 import com.seriando.app.BuildConfig
 import com.seriando.app.data.cache.CatalogoCache
 import com.seriando.app.data.remote.RetrofitInstance
@@ -7,9 +8,13 @@ import com.seriando.app.model.Categoria
 import com.seriando.app.model.CatalogoDescoberta
 import com.seriando.app.model.Genero
 import com.seriando.app.model.ProvedorStreaming
+import com.seriando.app.model.Recomendacoes
 import com.seriando.app.model.ResultadoBusca
+import com.seriando.app.model.SerieSalva
 import com.seriando.app.model.TipoDescoberta
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -52,6 +57,67 @@ class CatalogoRepository {
         val itens = buscarPagina(categoria, pagina = 1).itens
         CatalogoCache.guardar(categoria.id, itens)
         return itens
+    }
+
+    /**
+     * Recomendações da Home (RF81): pede à TMDB as obras parecidas com as últimas que o usuário
+     * terminou (ver [Recomendacoes.escolherBases]), junta tudo em uma fileira só e aplica o
+     * filtro por idade (RF50). Uma obra recomendada por mais de uma base sobe na fileira.
+     *
+     * Cada base é buscada em paralelo e tem o próprio try/catch: se uma falhar, as outras
+     * continuam. Sem nenhuma base, ou com todas falhando, devolve lista vazia (a fileira some).
+     *
+     * @param lista lista pessoal inteira do usuário (as bases saem dela).
+     */
+    suspend fun buscarRecomendacoes(lista: List<SerieSalva>): List<ResultadoBusca> {
+        val bases = Recomendacoes.escolherBases(lista)
+        if (bases.isEmpty()) return emptyList()
+
+        // O que já está na lista nunca é recomendado
+        val jaNaLista = lista.map { it.tipoMidia to it.id }.toSet()
+
+        // Cache em memória (RNF13), chaveado pelas bases: voltar de Detalhes não refaz as chamadas.
+        // Ao ler do cache, tira de novo o que o usuário adicionou à lista desde então.
+        val chave = "recomendados:" + bases.joinToString(",") { "${it.tipoMidia}${it.id}" }
+        CatalogoCache.obter(chave)?.let { emCache ->
+            return emCache.filter { ((it.tipoMidia ?: "") to it.id) !in jaNaLista }
+        }
+
+        // coroutineScope: as chamadas rodam juntas e terminam antes de seguir
+        val porBase = coroutineScope {
+            bases.map { base ->
+                async {
+                    try {
+                        val resposta = if (base.tipoMidia == "movie") {
+                            RetrofitInstance.api.recomendacoesFilme(base.id, BuildConfig.TMDB_API_KEY)
+                        } else {
+                            RetrofitInstance.api.recomendacoesSerie(base.id, BuildConfig.TMDB_API_KEY)
+                        }
+                        // Garante o tipo certo em cada item e descarta os sem capa
+                        resposta.results
+                            .map { it.copy(tipoMidia = base.tipoMidia) }
+                            .filter { it.caminhoCapa != null }
+                    } catch (e: CancellationException) {
+                        throw e // tela saiu ou conexão mudou: não é falha desta base
+                    } catch (e: Exception) {
+                        Log.w("CatalogoRepository", "Falha nas recomendações de ${base.tipoMidia} ${base.id}", e)
+                        emptyList()
+                    }
+                }
+            }.awaitAll()
+        }
+
+        // Combina com folga e só depois filtra por idade (menos consultas de classificação)
+        val combinadas = Recomendacoes.combinar(porBase, jaNaLista, limite = Recomendacoes.LIMITE_DA_FILEIRA + 10)
+        val permitidas = filtroDeIdade.filtrar(
+            combinadas,
+            tipoDe = { it.tipoMidia },
+            idDe = { it.id }
+        ).take(Recomendacoes.LIMITE_DA_FILEIRA)
+
+        // Só guarda no cache se alguma base respondeu (falha total não vira "vazio para sempre")
+        if (porBase.any { it.isNotEmpty() }) CatalogoCache.guardar(chave, permitidas)
+        return permitidas
     }
 
     /**

@@ -50,6 +50,8 @@ import com.seriando.app.R
 import com.seriando.app.data.auth.AuthRepository
 import com.seriando.app.data.cache.CatalogoCache
 import com.seriando.app.data.repository.CatalogoRepository
+import com.seriando.app.data.repository.MinhaListaRepository
+import com.seriando.app.model.Recomendacoes
 import com.seriando.app.data.repository.PerfilRepository
 import com.seriando.app.data.sync.MonitorConexao
 import com.seriando.app.model.Categorias
@@ -62,6 +64,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import com.seriando.app.data.cache.VersaoDaIdade
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 
 /**
  * Tela inicial (RF11, RF44, RF45, RF46, RF62).
@@ -74,7 +78,11 @@ import com.seriando.app.data.cache.VersaoDaIdade
  * @param aoClicarEmItem      abre os Detalhes (id e tipo "movie"/"tv").
  * @param aoClicarEmVerMais   abre a lista completa de uma categoria (recebe o id dela).
  * @param aoClicarEmPerfil    abre a aba Conta; chamado ao tocar no avatar do cabeçalho.
+ *
+ * Arrastar a tela para baixo atualiza tudo (puxar para atualizar): as categorias e as
+ * recomendações são buscadas de novo na TMDB, ignorando o cache.
  */
+@OptIn(ExperimentalMaterial3Api::class) // PullToRefreshBox ainda pode estar marcado como experimental
 @Composable
 fun HomeScreen(
     aoClicarEmPesquisar: () -> Unit,
@@ -97,6 +105,9 @@ fun HomeScreen(
 
     // true se há internet agora; quando muda, as categorias que falharam são tentadas de novo
     val online by MonitorConexao.online.collectAsState()
+
+    // true enquanto o puxar para atualizar está recarregando (mostra o indicador de progresso)
+    var atualizando by remember { mutableStateOf(false) }
 
     // Sobe a cada toque em "Tentar de novo" e refaz a busca das categorias que falharam
     var tentativa by remember { mutableIntStateOf(0) }
@@ -158,6 +169,8 @@ fun HomeScreen(
         if (falhas > 0 && online) {
             Toast.makeText(context, "Algumas categorias não carregaram.", Toast.LENGTH_SHORT).show()
         }
+        // Terminou (com sucesso ou não): esconde o indicador do puxar para atualizar
+        atualizando = false
     }
 
     // Observa o perfil no banco local: o nome e a foto aparecem sozinhos quando o perfil chega
@@ -170,123 +183,172 @@ fun HomeScreen(
         }
     }
 
+    // ---------- Recomendados para você (RF81) ----------
+    // A lista pessoal vem do banco local (vazia para o visitante). As "bases" são as obras que o
+    // usuário já terminou; só quando elas mudam a fileira é buscada de novo.
+    val minhaLista by remember { MinhaListaRepository().observarSeries() }
+        .collectAsState(initial = emptyList())
+    val basesDeRecomendacao = Recomendacoes.escolherBases(minhaLista).map { it.tipoMidia to it.id }
+    var recomendacoes by remember { mutableStateOf<List<ResultadoBusca>>(emptyList()) }
+
+    LaunchedEffect(basesDeRecomendacao, usuario?.uid, online, versaoDaIdade, tentativa) {
+        if (usuario == null || basesDeRecomendacao.isEmpty()) {
+            // Visitante ou sem obras terminadas: a fileira não aparece
+            recomendacoes = emptyList()
+        } else {
+            // O repositório já trata falhas de cada base; aqui só protege contra algo inesperado
+            recomendacoes = try {
+                catalogoRepository.buscarRecomendacoes(minhaLista)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("HomeScreen", "Falha ao carregar recomendações", e)
+                emptyList()
+            }
+        }
+    }
+
     // Nenhuma categoria carregou: em vez de várias fileiras de erro, uma mensagem só
     val todasFalharam = Categorias.todas.all { itensPorCategoria[it.id]?.isEmpty() == true }
 
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
+    // Puxar para atualizar: ao arrastar a lista para baixo, o cache do catálogo é descartado,
+    // as categorias são esvaziadas e o efeito acima as busca de novo (tentativa++ também refaz
+    // as recomendações). O indicador some quando o efeito termina (atualizando = false).
+    PullToRefreshBox(
+        isRefreshing = atualizando,
+        onRefresh = {
+            atualizando = true
+            CatalogoCache.limpar()
+            itensPorCategoria.clear()
+            tentativa++
+        },
+        modifier = Modifier.fillMaxSize()
+    ) {
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
 
-        // Cabeçalho: logotipo, avatar (ou entrar) e botão de pesquisar
-        item {
-            Column24 {
-                Spacer(modifier = Modifier.height(24.dp))
+            // Cabeçalho: logotipo, avatar (ou entrar) e botão de pesquisar
+            item {
+                Column24 {
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Logotipo: o ícone do S faz o papel da primeira letra e "eriando" vem ao lado
-                    LogoSeriando(alturaIcone = 48.dp, tamanhoTexto = 34.sp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Logotipo: o ícone do S faz o papel da primeira letra e "eriando" vem ao lado
+                        LogoSeriando(alturaIcone = 48.dp, tamanhoTexto = 34.sp)
 
-                    if (usuario != null) {
-                        // Logado: avatar no canto direito; tocar nele abre a aba Conta.
-                        // O "Sair" fica na aba Conta.
-                        AvatarDoCabecalho(
-                            fotoGoogle = usuario?.photoUrl,
-                            perfil = perfilPublico,
-                            aoClicar = aoClicarEmPerfil
-                        )
-                    } else {
-                        // "Entrar" abre a folha com as duas opções: Google ou e-mail e senha.
-                        // OutlinedButton desenha a borda que destaca o botão para o visitante.
-                        OutlinedButton(onClick = { mostrarLogin = true }) {
-                            Text("Entrar")
-                        }
-                        if (mostrarLogin) {
-                            DialogoLoginObrigatorio(
-                                aoFechar = { mostrarLogin = false },
-                                aoLogarComSucesso = {
-                                    mostrarLogin = false
-                                    // Atualiza o usuário da Home (agora logado e com e-mail confirmado)
-                                    usuario = authRepository.usuarioAtual()
-                                }
+                        if (usuario != null) {
+                            // Logado: avatar no canto direito; tocar nele abre a aba Conta.
+                            // O "Sair" fica na aba Conta.
+                            AvatarDoCabecalho(
+                                fotoGoogle = usuario?.photoUrl,
+                                perfil = perfilPublico,
+                                aoClicar = aoClicarEmPerfil
                             )
+                        } else {
+                            // "Entrar" abre a folha com as duas opções: Google ou e-mail e senha.
+                            // OutlinedButton desenha a borda que destaca o botão para o visitante.
+                            OutlinedButton(onClick = { mostrarLogin = true }) {
+                                Text("Entrar")
+                            }
+                            if (mostrarLogin) {
+                                DialogoLoginObrigatorio(
+                                    aoFechar = { mostrarLogin = false },
+                                    aoLogarComSucesso = {
+                                        mostrarLogin = false
+                                        // Atualiza o usuário da Home (agora logado e com e-mail confirmado)
+                                        usuario = authRepository.usuarioAtual()
+                                    }
+                                )
+                            }
                         }
+                    }
+
+                    // Saudação no lugar da antiga frase de efeito (só leitura; editar o apelido fica na aba Conta).
+                    // Logado: "Olá, apelido!" (some até o perfil carregar, para não piscar um texto errado).
+                    // Visitante: boas-vindas genéricas.
+                    val publico = perfilPublico
+                    val saudacao = when {
+                        usuario == null -> "Bem-vindo ao Seriando"
+                        publico != null -> "Olá, ${publico.apelido}!"
+                        else -> null
+                    }
+                    if (saudacao != null) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = saudacao,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Barra de busca: não é um campo de texto de verdade, só um atalho visual;
+                    // tocar em qualquer parte dela abre a tela de busca
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .clickable(onClickLabel = "Pesquisar série ou filme") { aoClicarEmPesquisar() }
+                            .padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // contentDescription nulo: o texto ao lado já descreve a ação
+                        Icon(
+                            imageVector = Icons.Outlined.Search,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "Pesquisar série ou filme...",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+            }
+
+            if (todasFalharam) {
+                // Uma mensagem só, com ícone e o botão para tentar de novo (RF62)
+                item {
+                    MensagemSemConexao(
+                        texto = if (!online) {
+                            "Sem conexão com a internet. Os destaques precisam de internet, " +
+                                    "mas sua lista continua disponível na aba Minha Lista."
+                        } else {
+                            "Não foi possível carregar os destaques agora."
+                        },
+                        aoTentarDeNovo = { tentativa++ }
+                    )
+                }
+            } else {
+                // Fileira personalizada no topo, só quando há recomendações (RF81)
+                if (recomendacoes.isNotEmpty()) {
+                    item(key = "recomendados") {
+                        FileiraDeRecomendacoes(
+                            itens = recomendacoes,
+                            aoClicarEmItem = aoClicarEmItem
+                        )
                     }
                 }
 
-                // Saudação no lugar da antiga frase de efeito (só leitura; editar o apelido fica na aba Conta).
-                // Logado: "Olá, apelido!" (some até o perfil carregar, para não piscar um texto errado).
-                // Visitante: boas-vindas genéricas.
-                val publico = perfilPublico
-                val saudacao = when {
-                    usuario == null -> "Bem-vindo ao Seriando"
-                    publico != null -> "Olá, ${publico.apelido}!"
-                    else -> null
-                }
-                if (saudacao != null) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = saudacao,
-                        style = MaterialTheme.typography.titleMedium
+                // Uma fileira por categoria, na ordem definida em Categorias.todas.
+                // A chave (id) mantém a posição de rolagem estável quando os dados chegam.
+                items(Categorias.todas, key = { it.id }) { categoria ->
+                    CategoriaRow(
+                        categoria = categoria,
+                        itens = itensPorCategoria[categoria.id],
+                        aoClicarEmItem = aoClicarEmItem,
+                        aoClicarEmVerMais = { aoClicarEmVerMais(categoria.id) }
                     )
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Barra de busca: não é um campo de texto de verdade, só um atalho visual;
-                // tocar em qualquer parte dela abre a tela de busca
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable(onClickLabel = "Pesquisar série ou filme") { aoClicarEmPesquisar() }
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // contentDescription nulo: o texto ao lado já descreve a ação
-                    Icon(
-                        imageVector = Icons.Outlined.Search,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "Pesquisar série ou filme...",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-            }
-        }
-
-        if (todasFalharam) {
-            // Uma mensagem só, com ícone e o botão para tentar de novo (RF62)
-            item {
-                MensagemSemConexao(
-                    texto = if (!online) {
-                        "Sem conexão com a internet. Os destaques precisam de internet, " +
-                                "mas sua lista continua disponível na aba Minha Lista."
-                    } else {
-                        "Não foi possível carregar os destaques agora."
-                    },
-                    aoTentarDeNovo = { tentativa++ }
-                )
-            }
-        } else {
-            // Uma fileira por categoria, na ordem definida em Categorias.todas.
-            // A chave (id) mantém a posição de rolagem estável quando os dados chegam.
-            items(Categorias.todas, key = { it.id }) { categoria ->
-                CategoriaRow(
-                    categoria = categoria,
-                    itens = itensPorCategoria[categoria.id],
-                    aoClicarEmItem = aoClicarEmItem,
-                    aoClicarEmVerMais = { aoClicarEmVerMais(categoria.id) }
-                )
             }
         }
     }

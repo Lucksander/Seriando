@@ -85,6 +85,8 @@ Aplicativo Android para acompanhar séries e filmes, com lista pessoal, progress
 | RF66 | Buscar por nome (ignorando maiúsculas e acentos) e ordenar a Minha Lista por data de adição, nome ou status, com filtros fixos por status em chips | Concluído |
 | RF67 | Exibir estatísticas na aba Conta (cartão "Minha atividade"): filmes concluídos, séries maratonadas e episódios assistidos, contados na hora a partir do banco local | Concluído |
 | RF80 | Escolher o tema do app na aba Conta (seção Aparência): do aparelho, claro ou escuro; a escolha fica só no aparelho (DataStore) e vale também para o visitante. O tema claro usa uma paleta lilás mais viva | Concluído |
+| RF81 | Fileira "Recomendados para você" no topo da Home, para quem está logado: obras parecidas com as últimas que o usuário terminou (séries com status Maratonei e filmes Concluído), vindas do endpoint de recomendações da TMDB, sem repetir o que já está na lista e respeitando o controle de idade (RF50). Não aparece para o visitante nem para quem ainda não terminou nenhuma obra (versão simples; ver sugestão de evolução em 1.4) | Concluído |
+| RF82 | Puxar para atualizar na Home: arrastar a tela para baixo descarta o cache do catálogo e busca de novo as categorias e as recomendações, com o indicador de progresso do Material 3 | Concluído |
 
 ### 1.2 A implementar (escopo atual)
 
@@ -107,7 +109,7 @@ Os RF63 a RF68 vieram do documento propostas_e_melhorias_seriando.md. Os RF63, R
 
 | Sugestão | Origem |
 |----------|--------|
-| Recomendação de séries e filmes parecidos com os já assistidos | Apontada com destaque na pergunta aberta da pesquisa de viabilidade (ver estudo-viabilidade.md) |
+| Evoluir as recomendações (RF81) usando também as notas dadas pelo usuário e os gêneros que ele mais assiste, com uma tela "Ver mais" | A versão simples (RF81) foi implementada; esta evolução vinha da pergunta aberta da pesquisa de viabilidade (ver estudo-viabilidade.md) |
 | Descobrir obras pelas emoções registradas pela comunidade | Proposta do documento de propostas; exige contadores calculados no servidor (Cloud Function, plano pago do Firebase) e só teria resultados para obras avaliadas por usuários |
 | Notificação de novos episódios e temporadas das séries marcadas como "Assistindo" | Proposta do documento de propostas; exige tarefa em segundo plano (WorkManager) e permissão de notificação |
 | Média de estrelas dadas pelo usuário nas estatísticas da aba Conta | Proposta do documento de propostas; exige ler as avaliações do usuário em todas as obras |
@@ -162,7 +164,7 @@ Apesar do foco inicial, o projeto foi estruturado com os princípios de desacopl
 | RNF14 | Conteúdo das telas começa abaixo da barra de status e não rola por baixo dos ícones dela, mantendo a barra transparente (tela de ponta a ponta) | Usabilidade |
 | RNF15 | Ícones da interface no estilo Outlined do Material Icons, de forma consistente (preenchidos só onde o preenchimento tem significado, como a estrela da avaliação) | Usabilidade (identidade visual) |
 | RNF16 | Backup automático do Android desativado (`allowBackup="false"`), para que o banco local com dados pessoais não seja copiado para a nuvem do Google (STRIDE I4) | Segurança / Privacidade |
-| RNF17 | Testes automatizados das regras de negócio puras (data de nascimento e idade, controle de idade, leitura da classificação indicativa, status, busca e ordenação da Minha Lista, validação de e-mail, senha e apelido, e mensagens de erro do login), executados na JVM sem emulador, e do banco local (Room, incluindo as estatísticas), executados no Android com banco em memória | Qualidade / Manutenibilidade |
+| RNF17 | Testes automatizados das regras de negócio puras (data de nascimento e idade, controle de idade, leitura da classificação indicativa, status, busca e ordenação da Minha Lista, escolha e combinação das recomendações, validação de e-mail, senha e apelido, e mensagens de erro do login), executados na JVM sem emulador, e do banco local (Room, incluindo as estatísticas), executados no Android com banco em memória | Qualidade / Manutenibilidade |
 | RNF18 | Contas de e-mail e senha: a senha nunca é guardada pelo app (fica só no Firebase Authentication), tem de 8 a 64 caracteres, e as mensagens de erro de entrada e cadastro são neutras para não revelar quais e-mails têm conta (proteção contra enumeração de e-mails, RN35) | Segurança / Privacidade |
 
 ---
@@ -207,6 +209,7 @@ Apesar do foco inicial, o projeto foi estruturado com os princípios de desacopl
 | RN34 | O cadastro exige e-mail em formato válido (até 254 caracteres), senha de 8 a 64 caracteres, confirmação da senha igual e apelido de até 40 caracteres |
 | RN35 | Os erros de entrada e de cadastro são neutros: "E-mail ou senha incorretos." vale para senha errada e para e-mail inexistente, e o aviso de e-mail já cadastrado orienta a usar "Esqueci minha senha" sem dizer se a conta é do Google ou de e-mail e senha |
 | RN36 | Ao excluir a conta (RF29), quem entrou com e-mail e senha digita a senha de novo (reautenticação); quem entrou com Google continua reautenticando pelo Google |
+| RN38 | As recomendações da Home (RF81) partem das até 5 obras terminadas mais recentes da lista (séries Maratonei, filmes Concluído); obras que já estão na lista nunca são recomendadas, a obra recomendada por mais de uma base sobe na fileira, a fileira tem no máximo 20 obras, passa pelo filtro por idade (RN15) e nada é gravado no Firestore |
 | RN37 | A foto de perfil própria (RF30) existe em um único arquivo no armazenamento interno do app, nunca é enviada à nuvem e é apagada no logout, na exclusão da conta, na troca de usuário no aparelho e ao escolher outro avatar |
 
 ---
