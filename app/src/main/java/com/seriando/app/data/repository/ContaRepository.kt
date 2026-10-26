@@ -126,6 +126,9 @@ class ContaRepository {
         // Opiniões privadas
         etapa1.addAll(usuarioDoc.collection("opinioesPrivadas").get().await().documents.map { it.reference })
 
+        // Marcas de opiniões ocultadas por denúncia (RF68)
+        etapa1.addAll(usuarioDoc.collection("opinioesOcultas").get().await().documents.map { it.reference })
+
         // ---- Etapa 2: documentos "pais" ----
         val etapa2 = mutableListOf<DocumentReference>()
         // Avaliações e opiniões públicas do próprio usuário (o id do documento é o uid do autor)

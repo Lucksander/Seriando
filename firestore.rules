@@ -125,6 +125,22 @@ service cloud.firestore {
           && request.resource.data.get('emocoes', null) is list
           && request.resource.data.emocoes.size() <= 6;         // RN10
       }
+
+      // Opiniões ocultadas por quem denunciou (RF68): só o dono lê e escreve.
+      // O id do documento é "<obra>_<autorUid>", o que impede duplicar a marca.
+      match /opinioesOcultas/{ocultaId} {
+        allow read, delete: if dono(uid); // delete também serve à exclusão de conta (RF29)
+        allow create, update: if dono(uid)
+          && request.resource.data.keys().hasOnly(['obraKey', 'autorUid', 'ocultadaEm'])
+          && request.resource.data.get('obraKey', null) is string
+          && request.resource.data.obraKey.size() <= 40
+          && request.resource.data.get('autorUid', null) is string
+          // Não se oculta a própria opinião
+          && request.resource.data.autorUid != uid
+          // O id do documento precisa ser exatamente obra + "_" + autor
+          && ocultaId == request.resource.data.obraKey + '_' + request.resource.data.autorUid
+          && request.resource.data.get('ocultadaEm', null) is int;
+      }
     }
 
     // ---------- perfisPublicos/{uid}: apelido e avatar ----------

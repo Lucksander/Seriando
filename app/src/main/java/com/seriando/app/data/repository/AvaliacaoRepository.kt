@@ -199,11 +199,28 @@ class AvaliacaoRepository {
             } else null
         } else null
 
+        // RF68: autores cujas opiniões este usuário ocultou ao denunciar (só para ele)
+        val ocultos = if (uidAtual != null) buscarAutoresOcultos(uidAtual, tipoMidia, tmdbId) else emptySet()
+
         // Privada primeiro: se houver duplicata do mesmo autor, ela prevalece
         return (listOfNotNull(minhaPrivada) + publicas)
-            .filter { it.texto.isNotBlank() }
+            .filter { it.texto.isNotBlank() && it.autorUid !in ocultos }
             .distinctBy { it.autorUid }
             .sortedByDescending { it.data }
+    }
+
+    /**
+     * RF68: uids dos autores cujas opiniões o usuário ocultou ao denunciar, nesta obra.
+     * Lê usuarios/{uid}/opinioesOcultas filtrando pela obra (consulta de um único campo,
+     * sem índice composto). A ocultação vale só para quem denunciou; os outros usuários
+     * continuam vendo a opinião normalmente.
+     */
+    private suspend fun buscarAutoresOcultos(uid: String, tipoMidia: String, tmdbId: Int): Set<String> {
+        val docs = db.collection("usuarios").document(uid)
+            .collection("opinioesOcultas")
+            .whereEqualTo("obraKey", idObra(tipoMidia, tmdbId))
+            .get().await()
+        return docs.documents.mapNotNull { it.getString("autorUid") }.toSet()
     }
 
     // RF23, RF24, RF25: registra o voto do usuário numa opinião. Tocar de

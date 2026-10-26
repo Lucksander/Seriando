@@ -1048,7 +1048,10 @@ fun DetailsScreen(
                             denunciaRepository.denunciarOpiniao(
                                 autorDenunciado, tipoMidia, serieId, denuncianteUid, motivo
                             )
-                            Toast.makeText(context, "Denúncia enviada.", Toast.LENGTH_SHORT).show()
+                            // RF68: a opinião denunciada some da tela na hora, sem nova consulta
+                            opinioes = opinioes.filter { it.autorUid != autorDenunciado }
+                            votosPorOpiniao = votosPorOpiniao - autorDenunciado
+                            Toast.makeText(context, "Denúncia enviada. A opinião foi ocultada para você.", Toast.LENGTH_SHORT).show()
                         } catch (e: Exception) {
                             avisarErro("Não foi possível enviar a denúncia.", e)
                         }
