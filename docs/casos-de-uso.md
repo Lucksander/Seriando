@@ -36,6 +36,9 @@ graph LR
   Visitante --- UC40([Recuperar a senha])
   Visitante --- UC44([Escolher o tema do app])
   Visitante --- UC38([Ler a Política de Privacidade e os Termos de Uso])
+  Visitante --- UC48([Fazer o tour guiado da Home])
+  Visitante --- UC49([Fazer o tour guiado dos Detalhes])
+  Visitante --- UC50([Rever o tour])
 
   Usuario --- UC09([Adicionar/remover item da lista pessoal])
   Usuario --- UC10([Definir status de acompanhamento])
@@ -115,6 +118,9 @@ graph LR
 | UC47 | Continuar assistindo de onde parou (fileira com as séries em andamento, próximo episódio e progresso, funciona offline) | Usuário autenticado | Ter ao menos uma série com status Assistindo | RF83 |
 | UC44 | Escolher o tema do app (do aparelho, claro ou escuro) | Visitante | — | RF80 |
 | UC38 | Ler a Política de Privacidade e os Termos de Uso (textos guardados no app, a partir da introdução, da tela de entrada e da seção Sobre da aba Conta) | Visitante | — (funciona sem internet) | RF77, RF79, RNF08 |
+| UC48 | Fazer o tour guiado da Home (seis passos: pesquisa, carrossel de destaques, fileira de gênero e as abas Descobrir, Minha Lista e Conta; o recorte destaca o elemento e o balão traz os botões Próximo e Pular; a tecla Voltar pula o tour) | Visitante | Primeira vez que a Home aparece | RF86, RN42, RN43 |
+| UC49 | Fazer o tour guiado dos Detalhes (três passos: Onde assistir, Sua avaliação e Opiniões da comunidade, com rolagem automática; para o visitante o último passo convida a entrar na conta) | Visitante | Primeira vez que uma obra é aberta | RF87, RN08, RN42, RN43 |
+| UC50 | Rever o tour (item "Rever tour" da seção Sobre da aba Conta: apaga as duas indicações, volta para a Home e roda o tour de novo) | Visitante | — (funciona sem conta) | RF88, RN42 |
 
 ## 4. Fora do escopo atual
 

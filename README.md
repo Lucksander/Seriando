@@ -12,6 +12,7 @@ Projeto desenvolvido em **Kotlin** com **Jetpack Compose**, seguindo boas práti
 
 ### 🆕 Novidades & Destaques da Versão
 
+- **Tour guiado (`TourOverlay`, `TourState`, RF86, RF87, RF88, RN42, RN43)**: na primeira vez, a Home escurece e um recorte destaca, passo a passo, a pesquisa, o carrossel de destaques, as fileiras de gênero e as abas Descobrir, Minha Lista e Conta; ao abrir a primeira obra, mais três passos mostram Onde assistir, Sua avaliação e a comunidade. A tela rola sozinha até cada alvo, passos sem alvo são pulados e a indicação de "tour visto" fica só no aparelho (DataStore). O item *Rever tour*, na seção Sobre da aba Conta, roda tudo de novo.
 - **Login com e-mail e senha (`FolhaDeLoginPorEmail`, `ValidacaoDeConta`, `ErrosDeAuth`, RF32, RN33 a RN36, RNF18)**: alternativa ao Google, em uma folha inferior de quatro etapas (entrar, criar conta, aguardar a confirmação do e-mail e recuperar a senha). A conta só vale depois de o e-mail ser confirmado: até lá o app a trata como visitante (`AuthRepository.usuarioAtual()` devolve nulo) e as regras do Firestore exigem `email_verified`. Mensagens de erro neutras, que não revelam quais e-mails têm conta, e exclusão de conta com reautenticação por senha. Quem já usa Google continua entrando normalmente.
 - **Foto de perfil própria só no aparelho (`FotoDePerfilLocal`, RF30, RN37)**: escolha pelo Photo Picker, recorte quadrado de 384 px e arquivo único na pasta interna do app, sem Firebase Storage e sem sincronização. Apagada no logout, na exclusão da conta e ao escolher outro avatar.
 - **Minha Lista com busca, ordenação e filtros (`BarraDeBuscaDaLista`, `OrganizadorDaLista`, RF66)**: busca por nome sem diferenciar maiúsculas e acentos, ordem por data, nome ou status e chips fixos por status. Os status ganharam rótulos novos (séries: *Maratonei*; filmes: *Concluído*) e o *Abandonei* passou a existir também para filmes, sem mudar os valores gravados no Firestore.
@@ -28,7 +29,7 @@ Projeto desenvolvido em **Kotlin** com **Jetpack Compose**, seguindo boas práti
 
 - **Política de Privacidade & Termos de Uso dentro do app (`TextoLegalScreen`, `TextosLegais`, RF77)**: textos em conformidade com a LGPD guardados no código (funcionam sem internet e para o visitante), acessíveis pelas telas de introdução, pela tela de entrada e pela seção *Sobre* da aba Conta. Os mesmos textos estão em `docs/`.
 - **Avatares em imagem (`AvatarDoUsuario`, `SeletorAvatar`, RF78)**: 15 avatares do app, escolhidos em uma folha inferior junto da foto da conta Google, no lugar dos antigos emojis.
-- **Aba Conta reorganizada (`ComponentesDaConta`, RF79)**: perfil, classificação liberada, seção *Sobre* (Termos, Política e versão) e ações da conta (sair e excluir) em cartões.
+- **Aba Conta reorganizada (`ComponentesDaConta`, RF79)**: perfil, classificação liberada, seção *Sobre* (Termos, Política, Rever tour e versão) e ações da conta (sair e excluir) em cartões.
 - **Segurança & Testes (RNF16, RNF17)**: modelo de ameaças STRIDE e checklist OWASP MASVS verificados no código ([stride-seriando.md](docs/stride-seriando.md)), backup automático do Android desativado (`allowBackup="false"`), BoM do Firebase duplicado removido e testes unitários das regras de negócio (data de nascimento, controle de idade, classificação indicativa e status).
 - **Controle de Idade & Classificação Indicativa do Brasil (`FiltroDeIdadeRepository`, `ControleDeIdade`, `ClassificacaoIndicativa`, RF49, RF50, RF51, RF59, RN13 a RN17)**: Sistema completo e centralizado de controle de idade e filtragem de conteúdo baseado na classificação indicativa brasileira (L, 10, 12, 14, 16 e 18 anos).
   - **Filtro Unificado na Camada de Dados ([FiltroDeIdadeRepository](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/data/repository/FiltroDeIdadeRepository.kt))**: Ponto único de decisão na camada de dados que oculta obras inadequadas na Home, categorias ("Ver mais"), busca, aba Descobrir e filmografia de artistas, sem duplicar regras de negócio na UI (RN15).
@@ -94,6 +95,7 @@ flowchart TD
         A --> C[DetailsScreen / PessoaScreen]
         A --> S[SearchScreen]
         A --> BANNER[ComFaixaDeConexao]
+        MAIN --> TOUR[TourOverlay / TourState]
     end
 
     subgraph Cache ["In-Memory & Local Preferences"]
@@ -135,6 +137,7 @@ flowchart TD
     DESC <--> DESC_CACHE
     A <--> F
     INTRO <--> PREFS
+    TOUR <--> PREFS
 
     UI --> Repositories
     J --> R
@@ -272,6 +275,7 @@ O banco relacional local (`SeriandoDatabase`) armazena os dados da sessão ativa
 | Mecanismo | Chave / Arquivo | Conteúdo & Utilidade |
 | :--- | :--- | :--- |
 | **DataStore Preferences** | `preferencias_app` / `introducao_vista` | Flag booleana indicando se a introdução de 3 telas já foi concluída ou pulada (RF52). |
+| **DataStore Preferences** | `preferencias_app` / `tour_home_visto`, `tour_detalhes_visto` | Flags booleanas do tour guiado, uma para a Home e outra para os Detalhes: gravadas ao concluir ou pular e apagadas pelo "Rever tour" (RF86 a RF88, RN42). |
 | **SharedPreferences** | `historico_busca_prefs` | Histórico local com limite de 10 termos pesquisados recentemente e lista de obras visualizadas. |
 
 ### Schema do Cloud Firestore
@@ -377,9 +381,9 @@ A comunicação remota com a API da TMDB é intermediada pela interface [TmdbApi
 A especificação técnica detalhada do projeto encontra-se disponível no diretório `docs/`:
 
 - 📋 [**Levantamento Completo de Requisitos (`requisitos-seriando.md`)**](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/docs/requisitos-seriando.md):
-  - **Requisitos Funcionais (RF01 a RF85)**: Detalhamento dos blocos implementados e em desenvolvimento.
+  - **Requisitos Funcionais (RF01 a RF88)**: Detalhamento dos blocos implementados e em desenvolvimento.
   - **Requisitos Não Funcionais (RNF01 a RNF20)**: Segurança, LGPD, portabilidade para Compose Multiplatform e regras de banco.
-  - **Regras de Negócio (RN01 a RN41)**: Comportamento das avaliações, pontuação, privacidade, concorrência e sincronização offline.
+  - **Regras de Negócio (RN01 a RN43)**: Comportamento das avaliações, pontuação, privacidade, concorrência e sincronização offline.
   - **Análise de Risco & Segurança**: Modelo de ameaças STRIDE e checklist OWASP MASVS.
   - **Esteira de Publicação**: Procedimento de envio para Google Play Store e preparação para Apple App Store.
 - 🏗️ **Arquitetura (`arquitetura.md`)**: camadas ui, data, model e navigation, modo offline e controle de idade.
@@ -454,6 +458,7 @@ com.seriando.app
 │   ├── pessoa/        # PessoaScreen (Biografia, dados e filmografia do artista)
 │   ├── search/        # SearchScreen (Pesquisa com suporte a histórico e cache)
 │   ├── theme/         # Color.kt, CoresEmocao.kt, Formas.kt (capaDeObra), Theme.kt, Type.kt (Design System Velvet Purple)
+│   ├── tour/          # TourState (passos, estado e Modifier.alvoDoTour) e TourOverlay (recorte com balão do tour guiado)
 │   └── usuario/       # UsuarioScreen, SeletorAvatar, SeletorDataNascimento, CartaoDeAparencia e CartaoDeEstatisticas
 │
 ├── MainActivity.kt    # Ponto de entrada do Android com setup de Edge-to-Edge
@@ -588,7 +593,7 @@ Os testes do banco de dados local ([BancoLocalTest.kt](file:///C:/Users/Lucas/An
 - **V0.12**: Home organizada por categorias de gênero com botão "Ver mais", lista paginada em grade de 3 colunas, regras de segurança estritas no Firestore, opiniões privadas em coleções isoladas, exclusão permanente de conta (RF29 / LGPD), Design System Velvet Purple e documentação completa de requisitos.
 - **V0.13**: Onboarding de apresentação com carrossel de 3 páginas (`IntroducaoScreen`), persistência via DataStore (`PreferenciasApp`), Tela de Entrada (`EntradaScreen`) e Modo Visitante interceptado por `DialogoLoginObrigatorio`. Faixa de status de conectividade em tempo real (`ComFaixaDeConexao`), nova Aba Descobrir (`DescobrirScreen`) com botão "Sortear", persistência offline completa com Room Database (`SeriandoDatabase`), motor de sincronização em segundo plano com Firestore (`Sincronizador`) e testes instrumentados ([BancoLocalTest](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/androidTest/java/com/seriando/app/data/local/BancoLocalTest.kt)).
 - **V0.14**: Implementação completa do Controle de Idade e Classificação Indicativa do Brasil (Bloco K / RF49, RF50, RF51, RF59, RN13 a RN17), com o repositório centralizado [FiltroDeIdadeRepository](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/data/repository/FiltroDeIdadeRepository.kt), cálculo dinâmico de idade, selos visuais de classificação indicativa (L, 10, 12, 14, 16, 18), bloqueio de detalhes ([ObraBloqueada](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/details/ObraBloqueada.kt)), seletor de data de nascimento com DatePicker M3 ([SeletorDataNascimento](file:///C:/Users/Lucas/AndroidStudioProjects/Seriando/app/src/main/java/com/seriando/app/ui/usuario/SeletorDataNascimento.kt)), trava de correção única no Firestore (`aniversarioAlterado`) e invalidação de cache em tempo de execução via `VersaoDaIdade`. Melhorias na tela de Detalhes: compartilhar (RF73), situação da obra (RF74), ano de lançamento (RF75) e temporadas em cartões com progresso (RF76).
-- **V1.0**: **(Versão Atual)** Login com e-mail e senha (RF32), foto de perfil própria no aparelho (RF30), busca e ordenação na Minha Lista (RF66), estatísticas na aba Conta (RF67), escolha do tema (RF80), recomendações na Home (RF81), continuar assistindo (RF83), carrossel de destaques (RF84), ranking nas fileiras em alta (RF85), status renovados, 15 avatares, opinião com novo visual e botão de sair em destaque, além de Política de Privacidade (LGPD) e Termos de Uso dentro do app (RF77), avatares em imagem (RF78), aba Conta reorganizada em cartões (RF79), modelo de ameaças STRIDE e checklist OWASP MASVS (`docs/stride-seriando.md`), backup automático do Android desativado (RNF16), BoM do Firebase unificado, testes unitários das regras de negócio (RNF17) e documentação completa em `docs/`.
+- **V1.0**: **(Versão Atual)** Login com e-mail e senha (RF32), foto de perfil própria no aparelho (RF30), busca e ordenação na Minha Lista (RF66), estatísticas na aba Conta (RF67), escolha do tema (RF80), recomendações na Home (RF81), continuar assistindo (RF83), carrossel de destaques (RF84), ranking nas fileiras em alta (RF85), tour guiado com "Rever tour" (RF86 a RF88), status renovados, 15 avatares, opinião com novo visual e botão de sair em destaque, além de Política de Privacidade (LGPD) e Termos de Uso dentro do app (RF77), avatares em imagem (RF78), aba Conta reorganizada em cartões (RF79), modelo de ameaças STRIDE e checklist OWASP MASVS (`docs/stride-seriando.md`), backup automático do Android desativado (RNF16), BoM do Firebase unificado, testes unitários das regras de negócio (RNF17) e documentação completa em `docs/`.
 
 ---
 
@@ -607,6 +612,7 @@ Os testes do banco de dados local ([BancoLocalTest.kt](file:///C:/Users/Lucas/An
 - [x] **Login com e-mail e senha, foto de perfil local, busca e ordenação da Minha Lista, estatísticas e escolha de tema** (RF32, RF30, RF66, RF67, RF80).
 - [x] **Recomendações na Home** (RF81): fileira "Recomendados para você" a partir das obras terminadas.
 - [x] **Home mais rica** (RF83 a RF85): Continuar assistindo, carrossel de destaques e ranking Top 10 nas fileiras em alta.
+- [x] **Tour guiado** (RF86 a RF88): destaque passo a passo das funcionalidades na Home e nos Detalhes, com "Rever tour" na aba Conta.
 - [ ] **Login com a conta Microsoft**: avaliado e adiado (esforço maior que o benefício neste momento).
 - [ ] **Testes Automatizados (expansão)**: testes para repositórios/caches, regras do Firestore (emulador) e testes de UI com Compose Testing.
 - [ ] **Publicação na Google Play Store**.

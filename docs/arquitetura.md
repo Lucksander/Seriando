@@ -18,6 +18,7 @@ graph TD
     Legal["TextoLegalScreen (Termos e Política)"]
     LoginDialog[DialogoLoginObrigatorio]
     Faixa[ComFaixaDeConexao / BotaoSair]
+    Tour["TourOverlay / TourState (tour guiado)"]
   end
 
   subgraph Nav["Navegação"]
@@ -64,6 +65,9 @@ graph TD
   NavHost --> Legal
 
   Intro --> Prefs
+  Home --> Tour
+  Details --> Tour
+  Tour --> Prefs
   Intro --> AuthRepo
   Home --> AuthRepo
   Home --> PerfilRepo
@@ -135,11 +139,13 @@ graph TD
 
 ### 2.1 UI (`ui/`)
 
-Telas escritas como funções `@Composable`, organizadas por funcionalidade: `intro` (introdução e tela de entrada), `home`, `descobrir`, `search`, `details`, `mylist`, `usuario`, `login`, `legal`. Cada tela recebe funções de callback (ex: `aoClicarEmItem`) em vez de navegar sozinha — quem decide a navegação é sempre o `SeriandoNavHost`, nunca a tela em si. Essa separação permite testar e reutilizar os componentes de UI sem depender da navegação. Componentes de apoio da tela de Detalhes ficam em arquivos próprios: `InformacoesDaObra` (ano, situação da obra e selos de situação e de classificação), `CartaoTemporada` e `ObraBloqueada`; a aba Conta tem o `SeletorDataNascimento`, o `SeletorAvatar` (folha com as 15 imagens de avatar, a foto do Google e a foto própria do aparelho), o `AvatarDoUsuario` (mostra a foto, a imagem escolhida ou a inicial do apelido) e os cartões de seção de `ComponentesDaConta`. A pasta `legal` guarda a Política de Privacidade e os Termos de Uso como texto no código (`TextosLegais`), a tela que os exibe (`TextoLegalScreen`, com as rotas `termos` e `privacidade`) e o aviso com links usado na introdução e na tela de entrada (`AvisoDeTermosEPolitica`); funcionam sem internet e para o visitante (RF77).
+Telas escritas como funções `@Composable`, organizadas por funcionalidade: `intro` (introdução e tela de entrada), `home`, `descobrir`, `search`, `details`, `mylist`, `usuario`, `login`, `legal`, `tour`. Cada tela recebe funções de callback (ex: `aoClicarEmItem`) em vez de navegar sozinha — quem decide a navegação é sempre o `SeriandoNavHost`, nunca a tela em si. Essa separação permite testar e reutilizar os componentes de UI sem depender da navegação. Componentes de apoio da tela de Detalhes ficam em arquivos próprios: `InformacoesDaObra` (ano, situação da obra e selos de situação e de classificação), `CartaoTemporada` e `ObraBloqueada`; a aba Conta tem o `SeletorDataNascimento`, o `SeletorAvatar` (folha com as 15 imagens de avatar, a foto do Google e a foto própria do aparelho), o `AvatarDoUsuario` (mostra a foto, a imagem escolhida ou a inicial do apelido) e os cartões de seção de `ComponentesDaConta`. A pasta `legal` guarda a Política de Privacidade e os Termos de Uso como texto no código (`TextosLegais`), a tela que os exibe (`TextoLegalScreen`, com as rotas `termos` e `privacidade`) e o aviso com links usado na introdução e na tela de entrada (`AvisoDeTermosEPolitica`); funcionam sem internet e para o visitante (RF77).
+
+A pasta `tour` guarda o tour guiado (RF86 a RF88, seção 7): `TourState` (passos, estado e posição dos alvos, mais o `Modifier.alvoDoTour` que marca cada elemento) e `TourOverlay` (escurecimento com recorte, balão e botões).
 
 ### 2.2 Navegação (`navigation/`)
 
-`Rotas.kt` centraliza os nomes das rotas. `SeriandoNavHost.kt` declara o grafo de navegação (quais telas existem e como se conectam), inclusive o fluxo de primeira abertura (introdução, depois entrada, depois o app). `MainScaffold.kt` implementa a navegação por abas (Home / Descobrir / Minha Lista / Conta) dentro da rota principal, com uma `NavigationBar` inferior.
+`Rotas.kt` centraliza os nomes das rotas. `SeriandoNavHost.kt` declara o grafo de navegação (quais telas existem e como se conectam), inclusive o fluxo de primeira abertura (introdução, depois entrada, depois o app). `MainScaffold.kt` implementa a navegação por abas (Home / Descobrir / Minha Lista / Conta) dentro da rota principal, com uma `NavigationBar` inferior. Também hospeda o tour da Home (RF86): cria o `TourState`, entrega-o às telas pelo `LocalTour` e desenha o `TourOverlay` por cima do Scaffold, para o escurecimento cobrir a barra inferior.
 
 ### 2.3 Data (`data/`)
 
@@ -153,7 +159,7 @@ Por que essas escolhas: o custo por usuário é leituras por abertura × abertur
 - **`cache/`** — `BuscaCache`, `AbaCache`, `CatalogoCache` e `DescobrirCache`, estado em memória (não persistido) que sobrevive à navegação entre telas, para a pesquisa, a aba selecionada, as fileiras da Home e os filtros da Descobrir não "resetarem" ao voltar. `VersaoDaIdade` é um `StateFlow` que avisa as telas quando a idade do usuário muda e esvazia `CatalogoCache` e `BuscaCache` (RN32).
 - **`local/`** — o banco local (Room): entidades, DAOs (interfaces), `SeriandoDatabase` e `Dependencias`, que entrega os DAOs aos repositórios sem que eles precisem de `Context` (RNF11). É a única pasta que conhece o Room.
 - **`sync/`** — `Sincronizador`, que envia as alterações pendentes ao Firestore e baixa os dados da nuvem (inclusive a data de nascimento, avisando a `VersaoDaIdade`), e `MonitorConexao`, que informa se há internet e dispara a sincronização quando ela volta.
-- **Preferências do aparelho** — `PreferenciasApp` (DataStore: indicação de "introdução já vista", RN30) e `HistoricoBusca` (SharedPreferences: pesquisas e obras vistas recentemente, RN29). Ficam só no aparelho e nunca vão ao Firestore.
+- **Preferências do aparelho** — `PreferenciasApp` (DataStore: indicação de "introdução já vista", RN30; modo do tema, RF80; e as indicações de "tour visto", RN42) e `HistoricoBusca` (SharedPreferences: pesquisas e obras vistas recentemente, RN29). Ficam só no aparelho e nunca vão ao Firestore.
 
 ### 2.4 Model (`model/`)
 
@@ -216,3 +222,37 @@ Os diagramas de sequência da sincronização estão em `diagrama-sequencia-sinc
 **Trava da data (RN17):** a data pode ser informada e corrigida uma única vez. O controle fica no campo `aniversarioAlterado` do Firestore (validado nas regras de segurança) e no campo `aniversarioCorrigido` do Room.
 
 **Limitações conhecidas:** a data de nascimento é informada pelo próprio usuário e não é verificada; o filtro vive no app, então um app adulterado ou chamadas diretas à TMDB o contornam. A aba Minha Lista ainda mostra obras acima da idade (a trava vale ao abrir os detalhes). Estes pontos são tratados no modelo de ameaças (STRIDE).
+
+## 7. Tour guiado
+
+**Objetivo:** apresentar as funcionalidades na primeira vez que o usuário usa o app, destacando os elementos reais da tela (RF86 e RF87), e permitir revê-lo depois (RF88).
+
+**Peças (`ui/tour`):**
+
+| Arquivo | Responsabilidade |
+|---|---|
+| `TourState.kt` | `PassoDoTour` (id do alvo, título, texto e uma ação opcional que prepara a tela, como rolar até o alvo), `TourState` (passos, passo atual e posição de cada alvo), `rememberTourState`, `LocalTour` e o `Modifier.alvoDoTour(id)` |
+| `TourOverlay.kt` | Camada desenhada por cima da tela: escurecimento com recorte no alvo, contorno colorido, balão com contador, título, texto e os botões Próximo e Pular |
+
+**Como funciona:**
+
+- Cada tela marca seus elementos com `Modifier.alvoDoTour("id")`. O modificador grava a posição do elemento num mapa observável do `TourState` a cada layout e a remove quando o elemento sai da tela.
+- O `TourOverlay` desenha o escurecimento numa camada própria e fura o alvo com `BlendMode.Clear`. O balão fica do lado do alvo que tiver mais espaço. Enquanto o tour está ativo, o overlay consome os toques, para o app por baixo ficar inerte.
+- A cada passo, o overlay executa a ação de preparo (rolagem) e espera até 1,5 segundo o alvo aparecer. Se ele não aparecer, o passo é pulado. A tecla Voltar do Android pula o tour inteiro.
+- Não há ViewModel: o `TourState` é guardado com `rememberSaveable` (só o índice do passo sobrevive à rotação da tela), de acordo com a seção 4.
+
+**Onde é hospedado:**
+
+| Parte | Hospedeiro | Alvos (ids) | Como chega ao alvo |
+|---|---|---|---|
+| Home (6 passos) | `MainScaffold`, com o overlay por cima do Scaffold | `busca`, `destaques`, `categoria`, `aba_descobrir`, `aba_minha_lista`, `aba_conta` | A `HomeScreen` guarda o estado da `LazyColumn` e rola até o item do passo; os passos das abas voltam ao topo |
+| Detalhes (3 passos) | `DetailsScreen`, com um `Box` e o `CompositionLocalProvider` em volta do conteúdo rolável | `onde_assistir`, `avaliacao`, `opiniao` | Um `BringIntoViewRequester` por seção leva o alvo à área visível |
+
+**Persistência:** `PreferenciasApp` guarda `tour_home_visto` e `tour_detalhes_visto` e oferece `marcarTourHomeVisto()`, `marcarTourDetalhesVisto()` e `reiniciarTour()` (usada pelo "Rever tour"). A indicação só é gravada se algum passo foi exibido (RN43). Ficam só no aparelho (RN42).
+
+**Limitações conhecidas:**
+
+- O recorte muda de lugar sem animação entre os passos.
+- O espaço reservado ao balão (200 dp) é uma estimativa; em telas muito baixas, o balão pode cobrir parte do alvo.
+- Os ids dos passos e dos alvos são textos soltos: se não coincidirem, o passo é pulado sem erro de compilação.
+- No tour dos Detalhes, o último passo destaca só o título da seção de opiniões, e não o formulário inteiro, que muda de forma conforme o usuário já tenha opinado.

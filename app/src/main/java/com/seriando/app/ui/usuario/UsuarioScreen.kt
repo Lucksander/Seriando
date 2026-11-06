@@ -29,6 +29,7 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PrivacyTip
+import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -84,7 +85,7 @@ private fun textoDaFaixaLiberada(idadeEfetiva: Int): String = when {
 /**
  * Aba Conta (RF12 a RF15, RF29, RF33, RF59): cabeçalho com avatar, apelido e e-mail;
  * seções Perfil (apelido, e-mail, data de nascimento e faixa liberada), Sobre (Termos de Uso,
- * Política de Privacidade e versão) e Conta (sair e excluir).
+ * Política de Privacidade, Rever tour e versão) e Conta (sair e excluir).
  * O perfil vem do banco local (Room), que a tela observa: funciona sem internet e se atualiza
  * sozinho quando a sincronização traz mudanças da nuvem (RN21).
  * Toda gravação tem try/catch com Log e Toast, porque a falha não pode derrubar o app.
@@ -92,12 +93,15 @@ private fun textoDaFaixaLiberada(idadeEfetiva: Int): String = when {
  * @param aoSair             chamado depois do logout ou da exclusão da conta; quem navega é o SeriandoNavHost (RF53).
  * @param aoAbrirTermos      abre a tela dos Termos de Uso.
  * @param aoAbrirPrivacidade abre a tela da Política de Privacidade.
+ * @param aoReverTour        chamado ao tocar em "Rever tour": quem hospeda a tela zera as flags do
+ *                           tour e leva o usuário de volta à Home para ele rodar de novo.
  */
 @Composable
 fun UsuarioScreen(
     aoSair: () -> Unit = {},
     aoAbrirTermos: () -> Unit = {},
-    aoAbrirPrivacidade: () -> Unit = {}
+    aoAbrirPrivacidade: () -> Unit = {},
+    aoReverTour: () -> Unit = {}
 ) {
 
     val authRepository = remember { AuthRepository() }
@@ -328,6 +332,13 @@ fun UsuarioScreen(
                 icone = Icons.Outlined.PrivacyTip,
                 titulo = "Política de Privacidade",
                 aoClicar = aoAbrirPrivacidade
+            )
+            SeparadorDeLinhas()
+            // Roda o tour guiado de novo (vale também para o visitante, como o resto do Sobre)
+            LinhaDaConta(
+                icone = Icons.Outlined.Replay,
+                titulo = "Rever tour",
+                aoClicar = aoReverTour
             )
             SeparadorDeLinhas()
             LinhaDaConta(

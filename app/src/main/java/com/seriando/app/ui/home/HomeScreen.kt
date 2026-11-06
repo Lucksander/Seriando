@@ -70,6 +70,9 @@ import kotlinx.coroutines.launch
 import com.seriando.app.data.cache.VersaoDaIdade
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.foundation.lazy.rememberLazyListState
+import com.seriando.app.ui.tour.LocalTour
+import com.seriando.app.ui.tour.alvoDoTour
 
 /**
  * Tela inicial (RF11, RF44, RF45, RF46, RF62).
@@ -227,6 +230,32 @@ fun HomeScreen(
         }
     }
 
+    // ---------- Tour guiado: rolagem da Home ----------
+    // Estado de rolagem da lista, para o tour poder levar cada alvo até a tela.
+    val listState = rememberLazyListState()
+    val tour = LocalTour.current
+    // Id do elemento que o passo atual do tour destaca (null quando o tour está parado)
+    val alvoDoPassoAtual = tour?.passoAtual?.alvoId
+    LaunchedEffect(alvoDoPassoAtual) {
+        when {
+            // A barra de busca está no cabeçalho, o primeiro item da lista
+            alvoDoPassoAtual == "busca" -> listState.animateScrollToItem(0)
+            // O carrossel é o item logo depois do cabeçalho. Se não houver destaques, o item 1
+            // é outro e o alvo "destaques" não existe: o tour pula o passo sozinho.
+            alvoDoPassoAtual == "destaques" -> listState.animateScrollToItem(1)
+            // As categorias são sempre os ÚLTIMOS itens da lista, então a primeira fica em
+            // (total de itens - quantidade de categorias), mesmo que apareçam fileiras
+            // opcionais antes dela (continuar assistindo, recomendados)
+            alvoDoPassoAtual == "categoria" -> {
+                val primeiraCategoria =
+                    (listState.layoutInfo.totalItemsCount - Categorias.todas.size).coerceAtLeast(0)
+                listState.animateScrollToItem(primeiraCategoria)
+            }
+            // Nos passos das abas da barra inferior, volta ao topo
+            alvoDoPassoAtual?.startsWith("aba_") == true -> listState.animateScrollToItem(0)
+        }
+    }
+
     // Nenhuma categoria carregou: em vez de várias fileiras de erro, uma mensagem só
     val todasFalharam = Categorias.todas.all { itensPorCategoria[it.id]?.isEmpty() == true }
 
@@ -246,7 +275,7 @@ fun HomeScreen(
         },
         modifier = Modifier.fillMaxSize()
     ) {
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(modifier = Modifier.fillMaxSize(), state = listState) {
 
             // Cabeçalho: logotipo, avatar (ou entrar) e botão de pesquisar
             item {
@@ -313,6 +342,7 @@ fun HomeScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp)
+                            .alvoDoTour("busca") // alvo do tour
                             .clip(RoundedCornerShape(16.dp))
                             .background(MaterialTheme.colorScheme.surfaceVariant)
                             .clickable(onClickLabel = "Pesquisar série ou filme") { aoClicarEmPesquisar() }
@@ -342,7 +372,8 @@ fun HomeScreen(
                 item(key = "carrossel_destaques") {
                     CarrosselDeDestaques(
                         itens = destaques,
-                        aoClicarEmItem = aoClicarEmItem
+                        aoClicarEmItem = aoClicarEmItem,
+                        modifier = Modifier.alvoDoTour("destaques") // alvo do tour
                     )
                 }
             }
@@ -389,7 +420,13 @@ fun HomeScreen(
                         categoria = categoria,
                         itens = itensPorCategoria[categoria.id],
                         aoClicarEmItem = aoClicarEmItem,
-                        aoClicarEmVerMais = { aoClicarEmVerMais(categoria.id) }
+                        aoClicarEmVerMais = { aoClicarEmVerMais(categoria.id) },
+                        // Só a primeira fileira é alvo do tour
+                        modifier = if (categoria.id == Categorias.todas.first().id) {
+                            Modifier.alvoDoTour("categoria")
+                        } else {
+                            Modifier
+                        }
                     )
                 }
             }

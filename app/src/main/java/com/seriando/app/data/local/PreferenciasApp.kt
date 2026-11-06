@@ -39,6 +39,10 @@ class PreferenciasApp(context: Context) {
 
         // Modo do tema (RF80): guarda a chave do enum ModoDoTema ("sistema", "claro" ou "escuro")
         val MODO_DO_TEMA = stringPreferencesKey("modo_do_tema")
+
+        // Tour guiado: uma flag para a parte da Home e outra para a parte da tela de Detalhes
+        val TOUR_HOME_VISTO = booleanPreferencesKey("tour_home_visto")
+        val TOUR_DETALHES_VISTO = booleanPreferencesKey("tour_detalhes_visto")
     }
 
     /**
@@ -98,6 +102,63 @@ class PreferenciasApp(context: Context) {
         } catch (erro: IOException) {
             // Se não conseguir gravar, o tema volta ao anterior na próxima abertura; não é grave
             Log.e("PreferenciasApp", "Falha ao gravar modo_do_tema", erro)
+        }
+    }
+
+    // ---------- Tour guiado ----------
+
+    /**
+     * Lê uma flag booleana do DataStore. Chave ausente vira false, e falha de leitura
+     * não derruba o app (trata como "ainda não viu"), igual aos outros Flows desta classe.
+     */
+    private fun lerFlag(chave: Preferences.Key<Boolean>): Flow<Boolean> = dataStore.data
+        .catch { erro ->
+            if (erro is IOException) {
+                Log.e("PreferenciasApp", "Falha ao ler a flag ${chave.name}", erro)
+                emit(emptyPreferences())
+            } else {
+                throw erro
+            }
+        }
+        .map { preferencias -> preferencias[chave] ?: false }
+
+    /** true se o usuário já concluiu ou pulou a parte do tour que acontece na Home. */
+    val tourHomeVisto: Flow<Boolean> = lerFlag(TOUR_HOME_VISTO)
+
+    /** true se o usuário já concluiu ou pulou a parte do tour que acontece nos Detalhes. */
+    val tourDetalhesVisto: Flow<Boolean> = lerFlag(TOUR_DETALHES_VISTO)
+
+    /** Grava que o tour da Home foi visto (concluído ou pulado). Suspend: chamar numa corrotina. */
+    suspend fun marcarTourHomeVisto() {
+        try {
+            dataStore.edit { preferencias -> preferencias[TOUR_HOME_VISTO] = true }
+        } catch (erro: IOException) {
+            // Se não conseguir gravar, o tour reaparece na próxima abertura; não é grave
+            Log.e("PreferenciasApp", "Falha ao gravar tour_home_visto", erro)
+        }
+    }
+
+    /** Grava que o tour dos Detalhes foi visto (concluído ou pulado). Suspend: chamar numa corrotina. */
+    suspend fun marcarTourDetalhesVisto() {
+        try {
+            dataStore.edit { preferencias -> preferencias[TOUR_DETALHES_VISTO] = true }
+        } catch (erro: IOException) {
+            Log.e("PreferenciasApp", "Falha ao gravar tour_detalhes_visto", erro)
+        }
+    }
+
+    /**
+     * Zera as duas flags do tour: é o "Rever tour" da aba Conta. Na próxima vez que a Home
+     * e os Detalhes aparecerem, o tour roda de novo.
+     */
+    suspend fun reiniciarTour() {
+        try {
+            dataStore.edit { preferencias ->
+                preferencias.remove(TOUR_HOME_VISTO)
+                preferencias.remove(TOUR_DETALHES_VISTO)
+            }
+        } catch (erro: IOException) {
+            Log.e("PreferenciasApp", "Falha ao reiniciar o tour", erro)
         }
     }
 }
